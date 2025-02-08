@@ -1,0 +1,21 @@
+services:
+  mysql_db:
+    image: mysql
+    restart: always
+    privileged: true
+    # Just for testing - need proper .env file usage in the future. Can reference .env files in yml using ${VAR_NAME}
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: main
+    ports:
+      - 3306:3306
+    volumes:
+      # Stores the database files on the host machine to persist changes
+      - mysql_data:/var/lib/mysql
+      # SQL files in this directory will execute on container start
+      - ./mysql_init:/docker-entrypoint-initdb.d
+
+#  Volume to be created on local machine. This will store the database files - placement handled by Docker
+volumes:
+  mysql_data:
+    driver: local

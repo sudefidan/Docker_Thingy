@@ -1,0 +1,101 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+db.sqlite3
+*.db
+*.sqlite3-journal
+
+# Django migrations
+*/migrations/*
+
+# If you are using Django Compressor
+compressed/
+
+# Static files
+staticfiles/
+static/
+
+# Media files
+media/
+
+# Local environment variables
+.env
+.env.*
+
+# Docker
+*.log
+*.pid
+*.seed
+*.pid.lock
+.env
+docker-compose.override.yml
+docker-compose.local.yml
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+.envrc
+.docker/
+docker-compose.override.yml
+docker-compose.local.yml
+docker-compose.production.yml
+docker-compose.test.yml
+docker-compose.*.yml
+.dockerignore
+Dockerfile
+Dockerfile.*
+
+# Svelte
+node_modules/
+*.log
+*.lock
+*.cache
+*.tmp
+*.swp
+*.swo
+*.svelte
+.svelte-kit/
+build/
+dist/
+public/build/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
