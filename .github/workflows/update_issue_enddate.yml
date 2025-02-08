@@ -8,7 +8,7 @@ on:
 permissions:
   issues: write
   contents: write
-  projects: write
+  project: write
 
 jobs:
   update-roadmap:
