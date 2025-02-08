@@ -51,28 +51,9 @@ jobs:
                           title
                         }
                       }
-                      fieldValues(first: 10) {
-                        nodes {
-                          field {
-                            id
-                            name
-                          }
-                          value {
-                            ... on ProjectV2ItemFieldValueDate {
-                              date
-                            }
-                            ... on ProjectV2ItemFieldValueText {
-                              text
-                            }
-                            ... on ProjectV2ItemFieldValueNumber {
-                              number
-                            }
-                            ... on ProjectV2ItemFieldValueSingleSelect {
-                              singleSelectOption {
-                                name
-                              }
-                            }
-                          }
+                      fieldValueByName(name: "End date") {
+                        ... on ProjectV2ItemFieldValueDate {
+                          date
                         }
                       }
                     }
@@ -96,11 +77,8 @@ jobs:
           for (const item of projectItems) {
             if (item.content && item.content.title.includes(`#${issue_number}`)) {
               projectItemId = item.id;
-              for (const fieldValue of item.fieldValues.nodes) {
-                if (fieldValue.field.name === "End date") {
-                  endDateFieldId = fieldValue.field.id;
-                  break;
-                }
+              if (item.fieldValueByName && item.fieldValueByName.date) {
+                endDateFieldId = item.fieldValueByName.id;
               }
               break;
             }
