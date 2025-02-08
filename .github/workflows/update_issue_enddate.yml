@@ -57,30 +57,34 @@ jobs:
           };
 
           const result = await github.graphql(query, variables);
-          const projectItemId = result.repository.issue.projectItems.nodes[0].id;
+          if (result.repository.issue.projectItems.nodes.length > 0) {
+            const projectItemId = result.repository.issue.projectItems.nodes[0].id;
 
-          const mutation = `
-            mutation($projectItemId: ID!, $current_date: DateTime!) {
-              updateProjectV2ItemFieldValue(input: {
-                projectId: "PVT_kwHOBIiZWc4Axi5Z",
-                itemId: $projectItemId,
-                fieldId: "PVTF_lAHOBIiZWc4Axi5Zzgno-o8",
-                value: {
-                  date: $current_date
-                }
-              }) {
-                projectV2Item {
-                  id
+            const mutation = `
+              mutation($projectItemId: ID!, $current_date: DateTime!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: "PVT_kwHOBIiZWc4Axi5Z",
+                  itemId: $projectItemId,
+                  fieldId: "PVTF_lAHOBIiZWc4Axi5Zzgno-o8",
+                  value: {
+                    date: $current_date
+                  }
+                }) {
+                  projectV2Item {
+                    id
+                  }
                 }
               }
-            }
-          `;
+            `;
 
-          const mutationVariables = {
-            projectItemId: projectItemId,
-            current_date: current_date
-          };
+            const mutationVariables = {
+              projectItemId: projectItemId,
+              current_date: current_date
+            };
 
-          await github.graphql(mutation, mutationVariables);
+            await github.graphql(mutation, mutationVariables);
+          } else {
+            console.log(`No project items found for issue #${issue_number}`);
+          }
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
