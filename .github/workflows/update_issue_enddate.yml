@@ -1,0 +1,36 @@
+name: Update Issue End Date
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  update-roadmap:
+    if: contains(github.event.comment.body, '#')
+    runs-on: ubuntu-latest
+    steps:
+    - name: Extract issue number from comment
+      id: extract_issue_number
+      run: |
+        echo "ISSUE_NUMBER=$(echo '${{ github.event.comment.body }}' | grep -o '#[0-9]\+' | tr -d '#')" >> $GITHUB_ENV
+
+    - name: Update issue end date on roadmap
+      uses: actions/github-script@v3
+      with:
+        script: |
+          const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
+          const issue_number = process.env.ISSUE_NUMBER;
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+
+          // Update the end date of the issue in the roadmap
+          await octokit.issues.update({
+            owner,
+            repo,
+            issue_number,
+            milestone: {
+              due_on: new Date().toISOString()
+            }
+          });
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
