@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2.x
+      uses: actions/checkout@v2
 
     - name: Extract issue number from commit message
       id: extract_issue_number
@@ -23,7 +23,7 @@ jobs:
 
     - name: Update issue end date on roadmap
       if: env.ISSUE_NUMBER != ''
-      uses: octokit/request-action@v2
+      uses: octokit/request-action@v2.4.0
       with:
         route: PATCH /repos/${{ github.repository }}/issues/${{ env.ISSUE_NUMBER }}
         milestone: |
