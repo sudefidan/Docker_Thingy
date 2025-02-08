@@ -17,33 +17,18 @@ jobs:
       run: |
         echo "ISSUE_NUMBER=$(git log -1 --pretty=%B | grep -o '#[0-9]\+' | tr -d '#')" >> $GITHUB_ENV
 
+    - name: Get current date
+      id: date
+      run: echo "::set-output name=current_date::$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
     - name: Update issue end date on roadmap
       if: env.ISSUE_NUMBER != ''
-      uses: actions/github-script@v3
+      uses: octokit/request-action@v2
       with:
-        script: |
-          const { Octokit } = require("@octokit/rest");
-          const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-          const issue_number = process.env.ISSUE_NUMBER;
-          const owner = context.repo.owner;
-          const repo = context.repo.repo;
-
-          // Get the issue details
-          const { data: issue } = await octokit.issues.get({
-            owner,
-            repo,
-            issue_number
-          });
-
-          // Check if the issue has a milestone
-          if (issue.milestone) {
-            // Update the milestone's due date to the current date
-            await octokit.issues.updateMilestone({
-              owner,
-              repo,
-              milestone_number: issue.milestone.number,
-              due_on: new Date().toISOString()
-            });
+        route: PATCH /repos/${{ github.repository }}/issues/${{ env.ISSUE_NUMBER }}
+        milestone: |
+          {
+            "due_on": "${{ steps.date.outputs.current_date }}"
           }
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
