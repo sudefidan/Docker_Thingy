@@ -40,9 +40,18 @@ jobs:
               repository(owner: $owner, name: $repo) {
                 issue(number: $issue_number) {
                   id
-                  projectItems(first: 1) {
+                  projectItems(first: 10) {
                     nodes {
                       id
+                      title
+                      fieldValues(first: 10) {
+                        nodes {
+                          field {
+                            name
+                          }
+                          value
+                        }
+                      }
                     }
                   }
                 }
@@ -57,32 +66,77 @@ jobs:
           };
 
           const result = await github.graphql(query, variables);
-          if (result.repository.issue.projectItems.nodes.length > 0) {
-            const projectItemId = result.repository.issue.projectItems.nodes[0].id;
+          const projectItems = result.repository.issue.projectItems.nodes;
+          let projectItemId = null;
+          let endDateFieldId = null;
 
-            const mutation = `
-              mutation($projectItemId: ID!, $current_date: DateTime!) {
-                updateProjectV2ItemFieldValue(input: {
-                  projectId: "PVT_kwHOBIiZWc4Axi5Z",
-                  itemId: $projectItemId,
-                  fieldId: "PVTF_lAHOBIiZWc4Axi5Zzgno-o8",
-                  value: {
-                    date: $current_date
-                  }
-                }) {
-                  projectV2Item {
-                    id
+          for (const item of projectItems) {
+            if (item.title.includes(`#${issue_number}`)) {
+              projectItemId = item.id;
+              break;
+            }
+          }
+
+          if (projectItemId) {
+            const endDateFieldQuery = `
+              query($projectId: ID!) {
+                node(id: $projectId) {
+                  ... on ProjectV2 {
+                    fields(first: 100) {
+                      nodes {
+                        ... on ProjectV2Field {
+                          id
+                          name
+                        }
+                      }
+                    }
                   }
                 }
               }
             `;
 
-            const mutationVariables = {
-              projectItemId: projectItemId,
-              current_date: current_date
+            const endDateFieldVariables = {
+              projectId: "PVT_kwHOBIiZWc4Axi5Z"
             };
 
-            await github.graphql(mutation, mutationVariables);
+            const endDateFieldResult = await github.graphql(endDateFieldQuery, endDateFieldVariables);
+            const fields = endDateFieldResult.node.fields.nodes;
+
+            for (const field of fields) {
+              if (field.name === "End date") {
+                endDateFieldId = field.id;
+                break;
+              }
+            }
+
+            if (endDateFieldId) {
+              const mutation = `
+                mutation($projectItemId: ID!, $endDateFieldId: ID!, $current_date: DateTime!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: "PVT_kwHOBIiZWc4Axi5Z",
+                    itemId: $projectItemId,
+                    fieldId: $endDateFieldId,
+                    value: {
+                      date: $current_date
+                    }
+                  }) {
+                    projectV2Item {
+                      id
+                    }
+                  }
+                }
+              `;
+
+              const mutationVariables = {
+                projectItemId: projectItemId,
+                endDateFieldId: endDateFieldId,
+                current_date: current_date
+              };
+
+              await github.graphql(mutation, mutationVariables);
+            } else {
+              console.log(`No 'End date' field found in the project`);
+            }
           } else {
             console.log(`No project items found for issue #${issue_number}`);
           }
