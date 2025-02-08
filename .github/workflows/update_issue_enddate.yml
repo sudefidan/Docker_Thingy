@@ -24,14 +24,22 @@ jobs:
           const owner = context.repo.owner;
           const repo = context.repo.repo;
 
-          // Update the end date of the issue in the roadmap
-          await octokit.issues.update({
+          // Get the issue details
+          const { data: issue } = await octokit.issues.get({
             owner,
             repo,
-            issue_number,
-            milestone: {
-              due_on: new Date().toISOString()
-            }
+            issue_number
           });
+
+          // Check if the issue has a milestone
+          if (issue.milestone) {
+            // Update the milestone's due date to the current date
+            await octokit.issues.updateMilestone({
+              owner,
+              repo,
+              milestone_number: issue.milestone.number,
+              due_on: new Date().toISOString()
+            });
+          }
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
