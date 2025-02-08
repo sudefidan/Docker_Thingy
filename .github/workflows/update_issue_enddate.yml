@@ -9,6 +9,9 @@ jobs:
   update-roadmap:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
     - name: Extract issue number from commit message
       id: extract_issue_number
       run: |
