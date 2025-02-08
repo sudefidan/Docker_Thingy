@@ -1,20 +1,21 @@
 name: Update Issue End Date
 
 on:
-  issue_comment:
-    types: [created]
+  push:
+    branches:
+      - main
 
 jobs:
   update-roadmap:
-    if: contains(github.event.comment.body, '#')
     runs-on: ubuntu-latest
     steps:
-    - name: Extract issue number from comment
+    - name: Extract issue number from commit message
       id: extract_issue_number
       run: |
-        echo "ISSUE_NUMBER=$(echo '${{ github.event.comment.body }}' | grep -o '#[0-9]\+' | tr -d '#')" >> $GITHUB_ENV
+        echo "ISSUE_NUMBER=$(git log -1 --pretty=%B | grep -o '#[0-9]\+' | tr -d '#')" >> $GITHUB_ENV
 
     - name: Update issue end date on roadmap
+      if: env.ISSUE_NUMBER != ''
       uses: actions/github-script@v3
       with:
         script: |
