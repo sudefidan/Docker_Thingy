@@ -7,13 +7,16 @@ on:
 
 permissions:
   issues: write
-  
+  contents: write
+
 jobs:
   update-roadmap:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        repository: sudefidan/Docker_Thingy
 
     - name: Extract issue number from commit message
       id: extract_issue_number
