@@ -57,18 +57,20 @@ jobs:
                             id
                             name
                           }
-                          ... on ProjectV2ItemFieldValueDate {
-                            date
-                          }
-                          ... on ProjectV2ItemFieldValueText {
-                            text
-                          }
-                          ... on ProjectV2ItemFieldValueNumber {
-                            number
-                          }
-                          ... on ProjectV2ItemFieldValueSingleSelect {
-                            singleSelectOption {
-                              name
+                          value {
+                            ... on ProjectV2ItemFieldValueDate {
+                              date
+                            }
+                            ... on ProjectV2ItemFieldValueText {
+                              text
+                            }
+                            ... on ProjectV2ItemFieldValueNumber {
+                              number
+                            }
+                            ... on ProjectV2ItemFieldValueSingleSelect {
+                              singleSelectOption {
+                                name
+                              }
                             }
                           }
                         }
