@@ -8,6 +8,7 @@ on:
 permissions:
   issues: write
   contents: write
+  projects: write
 
 jobs:
   update-roadmap:
@@ -15,8 +16,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-      with:
-        repository: sudefidan/Docker_Thingy
 
     - name: Extract issue number from commit message
       id: extract_issue_number
@@ -25,16 +24,64 @@ jobs:
 
     - name: Get current date
       id: date
-      run: echo "::set-output name=current_date::$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+      run: echo "current_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
 
-    - name: Update issue end date on roadmap
+    - name: Update issue end date in project
       if: env.ISSUE_NUMBER != ''
-      uses: octokit/request-action@v2.4.0
+      uses: actions/github-script@v3
       with:
-        route: PATCH /repos/${{ github.repository }}/issues/${{ env.ISSUE_NUMBER }}
-        milestone: |
-          {
-            "due_on": "${{ steps.date.outputs.current_date }}"
-          }
+        script: |
+          const issue_number = process.env.ISSUE_NUMBER;
+          const current_date = process.env.current_date;
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+
+          const query = `
+            query($owner: String!, $repo: String!, $issue_number: Int!) {
+              repository(owner: $owner, name: $repo) {
+                issue(number: $issue_number) {
+                  id
+                  projectItems(first: 1) {
+                    nodes {
+                      id
+                    }
+                  }
+                }
+              }
+            }
+          `;
+
+          const variables = {
+            owner: owner,
+            repo: repo,
+            issue_number: parseInt(issue_number)
+          };
+
+          const result = await github.graphql(query, variables);
+          const projectItemId = result.repository.issue.projectItems.nodes[0].id;
+
+          const mutation = `
+            mutation($projectItemId: ID!, $current_date: DateTime!) {
+              updateProjectV2ItemFieldValue(input: {
+                projectId: "PVT_kwHOBIiZWc4Axi5Z",
+                itemId: $projectItemId,
+                fieldId: "PVTF_lAHOBIiZWc4Axi5Zzgno-o8",
+                value: {
+                  date: $current_date
+                }
+              }) {
+                projectV2Item {
+                  id
+                }
+              }
+            }
+          `;
+
+          const mutationVariables = {
+            projectItemId: projectItemId,
+            current_date: current_date
+          };
+
+          await github.graphql(mutation, mutationVariables);
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
