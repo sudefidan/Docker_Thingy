@@ -43,7 +43,14 @@ jobs:
                   projectItems(first: 10) {
                     nodes {
                       id
-                      title
+                      content {
+                        ... on Issue {
+                          title
+                        }
+                        ... on PullRequest {
+                          title
+                        }
+                      }
                       fieldValues(first: 10) {
                         nodes {
                           field {
@@ -71,44 +78,19 @@ jobs:
           let endDateFieldId = null;
 
           for (const item of projectItems) {
-            if (item.title.includes(`#${issue_number}`)) {
+            if (item.content && item.content.title.includes(`#${issue_number}`)) {
               projectItemId = item.id;
+              for (const fieldValue of item.fieldValues.nodes) {
+                if (fieldValue.field.name === "End date") {
+                  endDateFieldId = fieldValue.field.id;
+                  break;
+                }
+              }
               break;
             }
           }
 
           if (projectItemId) {
-            const endDateFieldQuery = `
-              query($projectId: ID!) {
-                node(id: $projectId) {
-                  ... on ProjectV2 {
-                    fields(first: 100) {
-                      nodes {
-                        ... on ProjectV2Field {
-                          id
-                          name
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            `;
-
-            const endDateFieldVariables = {
-              projectId: "PVT_kwHOBIiZWc4Axi5Z"
-            };
-
-            const endDateFieldResult = await github.graphql(endDateFieldQuery, endDateFieldVariables);
-            const fields = endDateFieldResult.node.fields.nodes;
-
-            for (const field of fields) {
-              if (field.name === "End date") {
-                endDateFieldId = field.id;
-                break;
-              }
-            }
-
             if (endDateFieldId) {
               const mutation = `
                 mutation($projectItemId: ID!, $endDateFieldId: ID!, $current_date: DateTime!) {
@@ -135,7 +117,7 @@ jobs:
 
               await github.graphql(mutation, mutationVariables);
             } else {
-              console.log(`No 'End date' field found in the project`);
+              console.log(`No 'End date' field found for issue #${issue_number}`);
             }
           } else {
             console.log(`No project items found for issue #${issue_number}`);
