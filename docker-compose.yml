@@ -5,8 +5,10 @@ services:
     privileged: true
     # Just for testing - need proper .env file usage in the future. Can reference .env files in yml using ${VAR_NAME}
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: main
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
     ports:
       - 3306:3306
     volumes:
@@ -14,6 +16,35 @@ services:
       - mysql_data:/var/lib/mysql
       # SQL files in this directory will execute on container start
       - ./mysql_init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  django_backend:
+    build: ./src/backend
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./src/backend:/app
+      - ./.env:/app/.env
+    ports:
+      - 8000:8000
+    depends_on:
+      mysql_db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://root:root@mysql_db/main
+
+  # svelte_frontend:
+  #   build: ./src/frontend
+  #   command: npm run dev
+  #   volumes:
+  #     - ./src/frontend:/app
+  #   ports:
+  #     - 5000:5000
+  #   depends_on:
+  #     - django_backend
 
 #  Volume to be created on local machine. This will store the database files - placement handled by Docker
 volumes:

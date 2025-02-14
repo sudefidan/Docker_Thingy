@@ -67,14 +67,14 @@ docker-compose.local.yml
 .env.*.local
 .envrc
 .docker/
-docker-compose.override.yml
-docker-compose.local.yml
-docker-compose.production.yml
-docker-compose.test.yml
-docker-compose.*.yml
-.dockerignore
-Dockerfile
-Dockerfile.*
+# docker-compose.override.yml
+# docker-compose.local.yml
+# docker-compose.production.yml
+# docker-compose.test.yml
+# docker-compose.*.yml
+# .dockerignore
+# Dockerfile
+# Dockerfile.*
 
 # Svelte
 node_modules/
