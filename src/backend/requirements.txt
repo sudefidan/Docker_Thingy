@@ -7,3 +7,4 @@ django-environ==0.8.1
 mysqlclient==2.2.7
 dj-database-url==2.3.0
 python-decouple==3.8
+requests==2.32.3

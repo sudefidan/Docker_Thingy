@@ -36,15 +36,17 @@ services:
     environment:
       DATABASE_URL: mysql://root:root@mysql_db/main
 
-  # svelte_frontend:
-  #   build: ./src/frontend
-  #   command: npm run dev
-  #   volumes:
-  #     - ./src/frontend:/app
-  #   ports:
-  #     - 5000:5000
-  #   depends_on:
-  #     - django_backend
+  svelte_frontend:
+    build: ./src/frontend
+    volumes:
+      # By mounting - /usr/app/frontend/node_modules in Docker Compose, you instructed Docker to treat node_modules as a container-specific directory,
+      # keeping it independent from your host environment. This way, you can avoid potential conflicts between the host and container dependencies.
+      # (Solution found on GitHub), wouldn't work causing dependency issues on Windows without mounting node_modules separately.
+      - ./src/frontend:/usr/app/frontend - /usr/app/frontend/node_modules
+    ports:
+      - 4173:4173
+    depends_on:
+      - django_backend
 
 #  Volume to be created on local machine. This will store the database files - placement handled by Docker
 volumes:
