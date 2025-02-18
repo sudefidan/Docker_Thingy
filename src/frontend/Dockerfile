@@ -7,7 +7,13 @@ RUN npm install --optional=true
 
 COPY . .
 
-RUN npm run build
+
+# FOR DEVELOPMENT
+# Node sucks so it needs -- before --host
+CMD ["npm", "run", "dev", "--", "--host"]
+
+# FOR PRODUCTION
+# RUN npm run build
 
 # Node sucks so it needs -- before --host
-CMD ["npm", "run", "preview", "--", "--host"]
+# CMD ["npm", "run", "preview", "--", "--host"]

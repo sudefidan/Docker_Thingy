@@ -13,6 +13,9 @@ def example_view(request):
     return JsonResponse(data)
 
 def svelte_view(request, path=''):
-    svelte_url = f"http://svelte_frontend:4173/{path}"
+    # Development URL
+    svelte_url = f"http://svelte_frontend:5173/{path}"
+    # Production URL
+    # svelte_url = f"http://svelte_frontend:4173/{path}"
     response = requests.get(svelte_url)
     return HttpResponse(response.content, status=response.status_code)

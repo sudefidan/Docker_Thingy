@@ -35,5 +35,8 @@ export default defineConfig({
 	},
 	preview: {
 		allowedHosts: ['svelte_frontend']
+	},
+	server: {
+		allowedHosts: ['svelte_frontend']
 	}
 });
