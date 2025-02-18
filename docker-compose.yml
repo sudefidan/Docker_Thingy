@@ -44,7 +44,10 @@ services:
       - ./src/frontend:/app
       - /app/node_modules
     ports:
+      # Development port
       - 5173:5173
+      # "Preview"/deployment port
+      # - 4173:4173
     depends_on:
       - django_backend
     environment:
