@@ -1,4 +1,4 @@
 from django.contrib import admin
-from .models import ExampleModel
+from .models import Community, Event, Eventtype, Post, Subscribed
 
-admin.site.register(ExampleModel)
+admin.site.register(Community)
