@@ -1,1 +1,6 @@
 @import 'tailwindcss';
+body {
+    background-color: grey;  /* Apply the background color globally */
+    margin: 0;               /* Remove default margin */
+    height: 100vh;           /* Ensure the body takes full height */
+}
