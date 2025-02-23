@@ -1,19 +1,57 @@
-<style>
+<script>
+    let name = "";
+    let email = "";
+    let password = "";
 
-</style>
+    async function createTodo() {
+        try {
+            const response = await fetch("http://127.0.0.1:8000/api/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    'name': name,
+                    'email': email,
+                    'password': password
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Error:", errorData);
+            } else {
+                const data = await response.json();
+                console.log("Success:", data);
+                alert("Todo created successfully!");
+            }
+        } catch (error) {
+            console.error("Request failed:", error);
+        }
+    }
+
+    function handleSubmit(event) {
+        event.preventDefault(); // Prevent default form submission
+        createTodo();
+    }
+</script>
 
 <main>
-
     <h1>Enter your details:</h1>
-    <form action="/submit" method="POST">
+    <form on:submit={handleSubmit}>
         <div>
-            <label for="username">Name:</label>
-            <input type="text" id="name" name="name" required />
+            <label for="name">Name:</label>
+            <input type="text" id="name" bind:value={name} required />
         </div>
 
         <div>
             <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required />
+            <input type="email" id="email" bind:value={email} required />
+        </div>
+
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" bind:value={password} required />
         </div>
 
         <div>
@@ -21,4 +59,3 @@
         </div>
     </form>
 </main>
-

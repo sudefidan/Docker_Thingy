@@ -7,7 +7,7 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
-
+from django.contrib.auth.hashers import make_password
 
 class Community(models.Model):
     community_id = models.AutoField(primary_key=True)
@@ -68,12 +68,28 @@ class Subscribed(models.Model):
         unique_together = (('community', 'user'),)
 
 
+class UserManager(models.Manager):
+    def create_user(self, username, email, password, access_level=1):
+        """
+        Create and return a user with a hashed password.
+        """
+        # Hash the password before saving
+        hashed_password = make_password(password)
+        
+        # Create the user instance and save it
+        user = self.create(username=username, email=email, password=hashed_password, access_level=access_level)
+        return user
+
+
 class User(models.Model):
     user_id = models.AutoField(primary_key=True)
     username = models.CharField(max_length=255)
     email = models.CharField(max_length=255)
     password = models.CharField(max_length=255)
     access_level = models.IntegerField()
+
+    # Add the custom manager to handle user creation
+    objects = UserManager()
 
     class Meta:
         managed = False

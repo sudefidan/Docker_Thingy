@@ -12,7 +12,7 @@ DATABASES = {
         'NAME'    : env_config.get('MYSQL_DATABASE'),
         'USER'    : env_config.get('MYSQL_USER'),
         'PASSWORD': env_config.get('MYSQL_PASSWORD'),
-        'HOST'    : 'mysql_db',
+        'HOST'    : '127.0.0.1',
         'PORT'    : '3306',
     }
 }
@@ -20,6 +20,15 @@ DATABASES = {
 DEBUG = env_config.get('DEBUG')
 SECRET_KEY = env_config.get('SECRET_KEY')
 # ALLOWED_HOST = ['*']
+ALLOWED_HOST = [
+    '127.0.0.1',
+    'localhost'
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',  # Your Svelte frontend
+    'http://127.0.0.1:5173',  # Alternative for the same host
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -29,16 +38,23 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'app',  # Your Django app
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # ✅ Allow Svelte dev server
+    "http://127.0.0.1:5173",
 ]
 
 ROOT_URLCONF = 'proj.urls'
