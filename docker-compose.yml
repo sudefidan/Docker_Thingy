@@ -32,11 +32,6 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: mysql://root:root@mysql_db/main
-    develop:
-      watch:
-        - path: /app
-          target: /app
-          action: restart
 
   svelte_frontend:
     build: ./src/frontend
@@ -53,11 +48,6 @@ services:
     environment:
       # Fixes issue with hot reloading not working through Docker
       CHOKIDAR_USEPOLLING: "true"
-    develop:
-      watch:
-        - path: /app
-          target: /app
-          action: restart
 
 volumes:
   mysql_data:
