@@ -2,7 +2,7 @@ from decouple import Config, RepositoryEnv
 from os import path, curdir
 
 file_path = path.dirname(path.abspath(__file__))
-env_path = path.join(file_path, "../.env")
+env_path = "/app/.env"
 
 env_config = Config(RepositoryEnv(env_path))
 
@@ -17,9 +17,10 @@ DATABASES = {
     }
 }
 
-DEBUG = env_config.get('DEBUG')
+DEBUG = True
 SECRET_KEY = env_config.get('SECRET_KEY')
 # ALLOWED_HOST = ['*']
+AUTH_USER_MODEL = 'app.User'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -28,7 +29,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'app',  # Your Django app
+    'corsheaders',
+    'rest_framework',
+    'app',
+    'proj'
 ]
 
 MIDDLEWARE = [
@@ -89,3 +93,18 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ]
+}
+
+CSRF_COOKIE_SECURE = False  # Set to True in production for HTTPS
+CSRF_COOKIE_HTTPONLY = False # Set to True in production for security
+CSRF_COOKIE_SAMESITE = None # Set to 'Lax' or 'Strict' if you need it
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000', 'http://localhost:5173'] 
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173"  # Replace with your frontend's URL
+]
