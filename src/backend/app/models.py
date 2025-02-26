@@ -7,7 +7,7 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
-
+from django.contrib.auth.models import AbstractUser
 
 class Community(models.Model):
     community_id = models.AutoField(primary_key=True)
@@ -17,7 +17,6 @@ class Community(models.Model):
     owner = models.ForeignKey('User', models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
-        managed = False
         db_table = 'Community'
 
 
@@ -32,7 +31,6 @@ class Event(models.Model):
     community = models.ForeignKey(Community, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
-        managed = False
         db_table = 'Event'
 
 
@@ -41,7 +39,6 @@ class Eventtype(models.Model):
     name = models.CharField(max_length=255)
 
     class Meta:
-        managed = False
         db_table = 'EventType'
 
 
@@ -54,7 +51,6 @@ class Post(models.Model):
     community = models.ForeignKey(Community, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
-        managed = False
         db_table = 'Post'
 
 
@@ -63,18 +59,12 @@ class Subscribed(models.Model):
     user = models.ForeignKey('User', models.DO_NOTHING)
 
     class Meta:
-        managed = False
         db_table = 'Subscribed'
         unique_together = (('community', 'user'),)
 
+# Inherit from base Django user and add access_level
+class User(AbstractUser):
+    access_level = models.IntegerField(default=1)
 
-class User(models.Model):
-    user_id = models.AutoField(primary_key=True)
-    username = models.CharField(max_length=255)
-    email = models.CharField(max_length=255)
-    password = models.CharField(max_length=255)
-    access_level = models.IntegerField()
-
-    class Meta:
-        managed = False
-        db_table = 'User'
+    def __str__(self):
+        return self.username

@@ -21,17 +21,16 @@ services:
 
   django_backend:
     build: ./src/backend
-    command: python manage.py runserver 0.0.0.0:8000
+    entrypoint: ./entrypoint.sh
     volumes:
       - ./src/backend:/app
       - ./.env:/app/.env
+
     ports:
       - 8000:8000
     depends_on:
       mysql_db:
         condition: service_healthy
-    environment:
-      DATABASE_URL: mysql://root:root@mysql_db/main
 
   svelte_frontend:
     build: ./src/frontend
