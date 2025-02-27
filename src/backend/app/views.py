@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from app.models import User
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 
 def index(request):
@@ -47,6 +48,20 @@ class create_user(APIView):
             return Response({'error': f'Missing field: {e}'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class login_user(APIview):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        user = IsAuthenticated(username=username, password=password)
+        if user: 
+            refresh = RefreshToken.for_user(user)
+            return Response({'access': str(refresh.access_token),
+            'refresh': str(refresh)})
+        return Response({'error': 'Invalid credentials'}, status-status.HTTP_401_UNAUTHORIZED) 
 
 # Testing JWT requirement
 class protected_view(APIView):
