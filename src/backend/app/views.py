@@ -48,6 +48,31 @@ class create_user(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class create_super_user(APIView):
+    # Allowing any is definitely NOT a good idea, but class used for now as a test
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            data = request.data
+            # Check for required fields
+            username = data.get('username')
+            password = data.get('password')
+            email = data.get('email')
+            if not username or not password:
+              return Response({'error':'Username and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Use create_user for secure password hashing
+            user = User.objects.create_superuser(username=username, password=password, email=email)
+            user.access_level = data.get('access_level', 3)
+            user.save()
+            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+        except KeyError as e:
+            return Response({'error': f'Missing field: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # Testing JWT requirement
 class protected_view(APIView):
     permission_classes = [IsAuthenticated]
