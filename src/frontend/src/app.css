@@ -1,2 +1,48 @@
 @import 'tailwindcss';
 @plugin 'daisyui';
+
+
+.left-panel {
+    @apply w-1/4 bg-[#f4faff] p-4;
+}
+
+
+.main-container {
+    @apply flex min-h-screen;
+}
+
+.left-panel {
+    @apply w-1/5 bg-[#f4faff] p-4;
+}
+
+.main-content {
+    @apply bg-[#4f646f] flex-1 flex justify-center;
+}
+
+.panel-item {
+    @apply mb-4;
+    /* Add margin-bottom to each list item */
+}
+
+.panel-item-text{
+    @apply text-[#4f646f] text-2xl p-2 mb-6;
+}
+
+.top-panel{
+    @apply bg-[#4f646f] flex-1 flex flex-col
+
+}
+.search-bar{
+    @apply bg-[#b0413e] rounded-2xl p-2 text-[#f4faff] w-full;
+}
+
+
+.icon-default {
+    @apply text-gray-500;
+    /* Default icon color */
+}
+
+.icon-active {
+    @apply text-blue-500;
+    /* Active icon color */
+}
