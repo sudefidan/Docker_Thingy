@@ -14,7 +14,6 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view()),
     path('api/token/verify/', TokenVerifyView.as_view()),
     path('api/register/', views.create_user.as_view()),
-    path('api/register/super/', views.create_super_user.as_view()),
+    # path('api/register/super/', views.create_super_user.as_view()),
     path('api/protected/', views.protected_view.as_view()),
-    re_path(r'^(?P<path>.*)$', views.svelte_view),  # Serves Svelte app
 ]
