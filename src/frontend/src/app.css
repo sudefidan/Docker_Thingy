@@ -1,9 +1,38 @@
 @import 'tailwindcss';
 @plugin 'daisyui';
+@plugin "daisyui/theme" {
+    name: "mytheme";
+    default: true;
+    /* set as default */
+    prefersdark: false;
+    /* set as default dark mode (prefers-color-scheme:dark) */
+    color-scheme: dark;
+
+    /* colors*/
+    --color-base-100: #535657; /* base color: davy's gray */
+    --color-primary: #b0413e; /* primary color: redwood */
+    --color-secondary: #f4faff; /* secondary color: alice blue */
+
+    /* border radius */
+    --radius-selector: 0.25rem;
+    --radius-field: 2rem;
+    --radius-box: 1rem;
+
+    /* base sizes */
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+
+    /* border size */
+    --border: 1px;
+
+    /* effects */
+    --depth: 1;
+    --noise: 0;
+}
 
 
 .left-panel {
-    @apply w-1/4 bg-[#f4faff] p-4;
+    @apply w-1/4 p-4;
 }
 
 
@@ -12,37 +41,22 @@
 }
 
 .left-panel {
-    @apply w-1/5 bg-[#f4faff] p-4;
+    @apply w-1/5 p-4 pt-10;
 }
 
 .main-content {
-    @apply bg-[#4f646f] flex-1 flex justify-center;
+    @apply flex-1 flex justify-center;
 }
 
 .panel-item {
-    @apply mb-4;
-    /* Add margin-bottom to each list item */
-}
-
-.panel-item-text{
-    @apply text-[#4f646f] text-2xl p-2 mb-6;
+    @apply mb-8;
 }
 
 .top-panel{
-    @apply bg-[#4f646f] flex-1 flex flex-col
+    @apply flex-1 flex flex-col
 
 }
 .search-bar{
-    @apply bg-[#b0413e] rounded-2xl p-2 text-[#f4faff] w-full;
+    @apply rounded-2xl p-2 w-full;
 }
 
-
-.icon-default {
-    @apply text-gray-500;
-    /* Default icon color */
-}
-
-.icon-active {
-    @apply text-blue-500;
-    /* Active icon color */
-}
