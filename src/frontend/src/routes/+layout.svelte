@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-    import {page} from '$app/stores';
+	import { page } from '$app/state';
 	let { children } = $props();
 </script>
 
@@ -14,7 +14,7 @@
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						viewBox="0 0 24 24"
-						fill={$page.url.pathname === '/home' ? 'var(--color-primary)' : 'currentColor'}
+						fill={page.url.pathname === '/home' ? 'var(--color-primary)' : 'currentColor'}
 						class="size-8"
 					>
 						<path
@@ -24,7 +24,11 @@
 							d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z"
 						/>
 					</svg>
-					<span class="ml-2" style="color: {$page.url.pathname === '/home' ? 'var(--color-primary)' : 'currentColor'}">Hub</span>
+					<span
+						class="ml-2"
+						style="color: {page.url.pathname === '/home' ? 'var(--color-primary)' : 'currentColor'}"
+						>Hub</span
+					>
 				</a>
 			</li>
 			<li class="panel-item">
@@ -32,7 +36,7 @@
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						viewBox="0 0 24 24"
-						fill={$page.url.pathname === '/communities' ? 'var(--color-primary)' : 'currentColor'}
+						fill={page.url.pathname === '/communities' ? 'var(--color-primary)' : 'currentColor'}
 						class="size-8"
 					>
 						<path
@@ -42,7 +46,12 @@
 							d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z"
 						/>
 					</svg>
-					<span class="ml-2" style="color: {$page.url.pathname === '/communities' ? 'var(--color-primary)' : 'currentColor'}">Communities</span>
+					<span
+						class="ml-2"
+						style="color: {page.url.pathname === '/communities'
+							? 'var(--color-primary)'
+							: 'currentColor'}">Communities</span
+					>
 				</a>
 			</li>
 			<li class="panel-item">
@@ -50,7 +59,7 @@
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						viewBox="0 0 24 24"
-						fill={$page.url.pathname === '/events' ? 'var(--color-primary)' : 'currentColor'}
+						fill={page.url.pathname === '/events' ? 'var(--color-primary)' : 'currentColor'}
 						class="size-8"
 					>
 						<path
@@ -62,7 +71,12 @@
 							clip-rule="evenodd"
 						/>
 					</svg>
-					<span class="ml-2" style="color: {$page.url.pathname === '/events' ? 'var(--color-primary)' : 'currentColor'}">Events</span>
+					<span
+						class="ml-2"
+						style="color: {page.url.pathname === '/events'
+							? 'var(--color-primary)'
+							: 'currentColor'}">Events</span
+					>
 				</a>
 			</li>
 			<li class="panel-item">
@@ -70,7 +84,7 @@
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						viewBox="0 0 24 24"
-						fill={$page.url.pathname === '/notifications' ? 'var(--color-primary)' : 'currentColor'}
+						fill={page.url.pathname === '/notifications' ? 'var(--color-primary)' : 'currentColor'}
 						class="size-8"
 					>
 						<path
@@ -82,7 +96,12 @@
 							clip-rule="evenodd"
 						/>
 					</svg>
-					<span class="ml-2" style="color: {$page.url.pathname === '/notifications' ? 'var(--color-primary)' : 'currentColor'}">Notifications</span>
+					<span
+						class="ml-2"
+						style="color: {page.url.pathname === '/notifications'
+							? 'var(--color-primary)'
+							: 'currentColor'}">Notifications</span
+					>
 				</a>
 			</li>
 			<li class="panel-item">
@@ -90,7 +109,7 @@
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						viewBox="0 0 24 24"
-						fill={$page.url.pathname === '/profile' ? 'var(--color-primary)' : 'currentColor'}
+						fill={page.url.pathname === '/profile' ? 'var(--color-primary)' : 'currentColor'}
 						class="size-8"
 					>
 						<path
@@ -99,7 +118,12 @@
 							clip-rule="evenodd"
 						/>
 					</svg>
-					<span class="ml-2" style="color: {$page.url.pathname === '/profile' ? 'var(--color-primary)' : 'currentColor'}">Profile</span>
+					<span
+						class="ml-2"
+						style="color: {page.url.pathname === '/profile'
+							? 'var(--color-primary)'
+							: 'currentColor'}">Profile</span
+					>
 				</a>
 			</li>
 		</ul>
