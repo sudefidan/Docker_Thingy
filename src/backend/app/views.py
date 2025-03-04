@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from app.models import User
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
 import requests
 
 def index(request):
@@ -55,31 +57,20 @@ class create_user(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# class create_super_user(APIView):
-#     # Allowing any is definitely NOT a good idea, but class used for now as a test
-#     permission_classes = [AllowAny]
+class login_user(APIView):
+    permission_classes = [AllowAny]
 
-#     def post(self, request):
-#         try:
-#             data = request.data
-#             # Check for required fields
-#             username = data.get('username')
-#             password = data.get('password')
-#             email = data.get('email')
-#             if not username or not password:
-#               return Response({'error':'Username and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
 
-#             # Use create_user for secure password hashing
-#             user = User.objects.create_superuser(username=username, password=password, email=email)
-#             user.access_level = data.get('access_level', 3)
-#             user.save()
-#             return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
-#         except KeyError as e:
-#             return Response({'error': f'Missing field: {e}'}, status=status.HTTP_400_BAD_REQUEST)
-#         except Exception as e:
-#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
+        user = authenticate(username=username, password=password)
+        if user: 
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh)}, status=status.HTTP_200_OK)
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 # Testing JWT requirement
 class protected_view(APIView):
     permission_classes = [IsAuthenticated]
