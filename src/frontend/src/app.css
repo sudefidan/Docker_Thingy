@@ -1,1 +1,68 @@
 @import 'tailwindcss';
+@plugin 'daisyui' {
+	themes: 'mytheme';
+}
+@plugin "daisyui/theme" {
+	name: 'mytheme';
+	default: true;
+	/* set as default */
+	prefersdark: false;
+	/* set as default dark mode (prefers-color-scheme:dark) */
+	color-scheme: dark;
+
+	/* colors*/
+	--color-base-100: #535657; /* base color: davy's gray */
+	--color-primary: #b0413e; /* primary color: redwood */
+	--color-secondary: #f4faff; /* secondary color: alice blue */
+    --color-error: #b0413e; /* error color: redwood */
+    --color-success: #535657; /* success color: success */
+
+	/* border radius */
+	--radius-selector: 0.25rem;
+	--radius-field: 2rem;
+	--radius-box: 1rem;
+
+	/* base sizes */
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+
+	/* border size */
+	--border: 1px;
+
+	/* effects */
+	--depth: 1;
+	--noise: 0;
+}
+
+.left-panel {
+	@apply w-1/4 p-4;
+}
+
+.main-container {
+	@apply flex min-h-screen;
+}
+
+.left-panel {
+	@apply w-1/5 p-4 pt-10;
+}
+
+.main-content {
+	@apply flex flex-1 justify-center;
+}
+
+.panel-item {
+	@apply mb-8;
+}
+
+.top-panel {
+	@apply flex flex-1 flex-col;
+}
+.search-bar {
+	@apply w-full rounded-2xl p-2;
+}
+
+
+.label-text{
+    @apply text-lg font-bold ml-2;
+}
+

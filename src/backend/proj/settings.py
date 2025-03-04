@@ -36,6 +36,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -103,8 +104,24 @@ REST_FRAMEWORK = {
 CSRF_COOKIE_SECURE = False  # Set to True in production for HTTPS
 CSRF_COOKIE_HTTPONLY = False # Set to True in production for security
 CSRF_COOKIE_SAMESITE = None # Set to 'Lax' or 'Strict' if you need it
-CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000', 'http://localhost:5173'] 
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://127.0.0.1:4173', 'http://localhost:4173'] 
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173"  # Replace with your frontend's URL
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:4173",
+    "http://localhost:4173"
+]
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-sveltekit-action",
 ]

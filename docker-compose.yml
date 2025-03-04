@@ -21,7 +21,6 @@ services:
 
   django_backend:
     build: ./src/backend
-    entrypoint: ./entrypoint.sh
     volumes:
       - ./src/backend:/app
       - ./.env:/app/.env

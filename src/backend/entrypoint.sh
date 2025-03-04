@@ -1,11 +1,10 @@
 #!/bin/bash
-source /backend/.env
+source /app/.env
 
-# Run migrations
-python manage.py makemigrations
-python manage.py makemigrations app
-python manage.py migratre app
-python manage.py migrate
+PYTHON_PATH=$(python -c 'import sys; print(sys.executable)')
+$PYTHON_PATH manage.py makemigrations app
+$PYTHON_PATH manage.py makemigrations
+$PYTHON_PATH manage.py migrate app
+$PYTHON_PATH manage.py migrate
 
-# Start the server
-python manage.py runserver 0.0.0.0:8000
+$PYTHON_PATH manage.py runserver 0.0.0.0:8000
