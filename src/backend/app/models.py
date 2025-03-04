@@ -65,6 +65,33 @@ class Subscribed(models.Model):
 # Inherit from base Django user and add access_level
 class User(AbstractUser):
     access_level = models.IntegerField(default=1)
+    about = models.CharField(max_length=255, blank=True, null=True)
+    profile_picture = models.BinaryField(
+        blank=True, 
+        null=True, 
+    )
+
+class SocialType(models.Model):
+    social_type = models.CharField(max_length=255, unique=True, primary_key=True)
+
+    def __str__(self):
+        return self.social_type
+    
+    class Meta:
+      db_table = 'SocialType'
 
     def __str__(self):
         return self.username
+
+class UserSocial(models.Model):
+    user_social_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    social_type = models.ForeignKey(SocialType, on_delete=models.CASCADE)
+    social_username = models.CharField(max_length=255, null=False)
+
+    class Meta:
+        db_table = 'UserSocial'
+        unique_together = ('user', 'social_type') # A user can have only one social link of each type
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.social_type.name}: {self.name}"
