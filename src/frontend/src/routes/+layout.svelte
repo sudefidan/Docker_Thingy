@@ -12,7 +12,7 @@
 			<!-- Panel content -->
 			<ul class="text-base-100 text-2xl">
 				<li class="panel-item">
-					<a href="/" class="flex flex-row items-center">
+					<a href="/home" class="flex flex-row items-center">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
