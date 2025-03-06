@@ -1,7 +1,9 @@
 @import 'tailwindcss';
+
 @plugin 'daisyui' {
 	themes: 'mytheme';
 }
+
 @plugin "daisyui/theme" {
 	name: 'mytheme';
 	default: true;
@@ -11,11 +13,18 @@
 	color-scheme: dark;
 
 	/* colors*/
-	--color-base-100: #535657; /* base color: davy's gray */
-	--color-primary: #b0413e; /* primary color: redwood */
-	--color-secondary: #f4faff; /* secondary color: alice blue */
-    --color-error: #b0413e; /* error color: redwood */
-    --color-success: #535657; /* success color: success */
+	--color-base-100: #535657;
+	/* base color: davy's gray */
+	--color-primary: #b0413e;
+	/* primary color: redwood */
+	--color-secondary: #f4faff;
+	/* secondary color: alice blue */
+	--color-accent: #DEE7E7;
+	/* accent color: light cyan */
+	--color-error: #b0413e;
+	/* error color: redwood */
+	--color-success: #535657;
+	/* success color: success */
 
 	/* border radius */
 	--radius-selector: 0.25rem;
@@ -57,6 +66,7 @@
 .top-panel {
 	@apply flex flex-1 flex-col;
 }
+
 .search-bar {
 	@apply w-full rounded-2xl p-2;
 }
@@ -65,7 +75,15 @@ input::selection {
 	@apply bg-primary text-secondary;
 }
 
-.label-text{
-    @apply text-lg font-bold ml-2;
+.label-text {
+	@apply text-lg font-bold ml-2;
+}
+
+.text-user-info {
+	@apply text-lg text-right mr-2 text-base-100;
+}
+
+.text-user-details {
+	@apply text-lg text-center text-base-100;
 }
 
