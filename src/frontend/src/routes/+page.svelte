@@ -18,6 +18,12 @@
 
 			if (res.ok) {
 				// After successful login, forward to homepage
+				
+				//const data = await res.json();
+
+				//localStorage.setItem('access_token', data.access);
+				//localStorage.setItem('refresh_token', data.refresh);
+
 				goto('/home');
 			} else {
 				const data = await res.json();

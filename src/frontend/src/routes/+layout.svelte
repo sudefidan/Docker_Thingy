@@ -110,11 +110,11 @@
 					</a>
 				</li>
 				<li class="panel-item">
-					<a href="/profile" class="flex flex-row items-center">
+					<a href={`/profile`} class="flex flex-row items-center">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill={page.url.pathname === '/profile' ? 'var(--color-primary)' : 'currentColor'}
+							fill={page.url.pathname === `/profile` ? 'var(--color-primary)' : 'currentColor'}
 							class="size-8"
 						>
 							<path
@@ -125,7 +125,7 @@
 						</svg>
 						<span
 							class="ml-2"
-							style="color: {page.url.pathname === '/profile'
+							style="color: {page.url.pathname === `/profile`
 								? 'var(--color-primary)'
 								: 'currentColor'}">Profile</span
 						>

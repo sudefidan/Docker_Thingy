@@ -1,13 +1,15 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from app.models import User
+from app.models import User, UserSocial
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
+import base64
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -78,3 +80,52 @@ class protected_view(APIView):
     def get(self, request):
         user = request.user
         return Response({'message': f'You are logged in as {user.username}!', 'access_level': user.access_level})
+    
+    
+class user_profile_view(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, user_id):
+        
+        user = get_object_or_404(User, pk=user_id)
+        
+        return Response({
+            "username": user.username,
+            "forename": user.first_name,
+            "surname": user.last_name,
+            "email": user.email
+        })
+        
+    
+    
+'''class upload_profile_picture(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        user = request.user
+        
+        if "profile_picture" not in request.FILES:
+            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        file = request.FILES["profile_picture"]
+        
+        if isinstance(file, InMemoryUploadedFile):
+            user.profile_picture = file.read()
+            user.save()
+            return Response({"error": "Profile picture uploaded successfully"}, status=status.HTTP_200_OK)
+        
+        return Response({"error": "Invalid file"}, status=status.HTTP_400_BAD_REQUEST)
+    
+class GetProfilePicture(APIView):
+    permission_classes = [IsAuthenticated]  
+
+    def get(self, request):
+        # Fetches users profile picture and returns it as a b64 string
+        
+        user = request.user
+        if user.profile_picture:
+            base64_image = base64.b64encode(user.profile_picture).decode("utf-8")
+            return Response({"profile_picture": f"data:image/png;base64,{base64_image}"}, status=status.HTTP_200_OK)
+
+        return Response({"profile_picture": None}, status=status.HTTP_200_OK)
+'''
