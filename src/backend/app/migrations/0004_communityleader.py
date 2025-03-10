@@ -16,12 +16,12 @@ class Migration(migrations.Migration):
             name='CommunityLeader',
             fields=[
                 ('community_leader_id', models.AutoField(primary_key=True, serialize=False)),
-                ('community_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='app.community')),
-                ('user_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('community', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='app.community')),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'db_table': 'CommunityLeader',
-                'unique_together': {('community_id', 'user_id')},
+                'unique_together': {('community', 'user')},
             },
         ),
     ]
