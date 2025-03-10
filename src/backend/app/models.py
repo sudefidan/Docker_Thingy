@@ -105,13 +105,12 @@ class UserSocial(models.Model):
 
 
 class CommunityLeader(models.Model):
-    community_leader_id = models.AutoField(primary_key=True)
     community = models.ForeignKey(Community, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Meta:
         db_table = 'CommunityLeader'
-        unique_together = ('community', 'user')
+        unique_together = (('community', 'user'),)
 
     def __str__(self):
         return f"{self.user.username} - {self.community.name}"
