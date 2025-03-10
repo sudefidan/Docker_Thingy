@@ -95,3 +95,12 @@ class UserSocial(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.social_type.name}: {self.name}"
+
+class CommunityLeader(models.Model):
+    community_leader_id = models.AutoField(primary_key=True)
+    community = models.ForeignKey(Community, on_delete=models.CASCADE) # Django will append _id in DB
+    user = models.ForeignKey(User, on_delete=models.CASCADE) # Django will append _id in DB
+
+    class Meta:
+        db_table = 'CommunityLeader'
+        unique_together = ('community', 'user') # A user can only be a leader of one community once
