@@ -26,8 +26,7 @@ class Community(models.Model):
 
 
 class EventType(models.Model):
-    event_type_id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, primary_key=True)
 
     class Meta:
         db_table = 'EventType'
@@ -114,3 +113,14 @@ class CommunityLeader(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.community.name}"
+
+class EventParticipant(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = 'EventParticipant'
+        unique_together = (('event', 'user'),)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.event.title}"
