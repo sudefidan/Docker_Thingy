@@ -80,6 +80,22 @@ class protected_view(APIView):
     def get(self, request):
         user = request.user
         return Response({'message': f'You are logged in as {user.username}!', 'access_level': user.access_level})
+
+class logout_user(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh = request.data.get('refresh')
+            if not refresh:
+                return Response({'error': 'Refresh token is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            token = RefreshToken(refresh)
+            token.blacklist() # This is to prevent reuse of token
+
+            return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': 'Invalid Token'}, status=status.HTTP_400_BAD_REQUEST)
     
     
 class user_profile_view(APIView):

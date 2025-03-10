@@ -1,7 +1,34 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
+	import { goto } from "$app/navigation";
 	let { children } = $props();
+
+					async function logout() {
+					const refreshToken = localStorage.getItem("refresh_token");
+				  
+					  if (refreshToken) {
+						try {
+						  const response = await fetch("/api/logout/", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ refresh: refreshToken }),  
+						  });
+				  
+						  if (!response.ok) {
+							console.error("Logout failed:", await response.json());
+						  }
+						} catch (error) {
+						  console.error("Logout failed:", error);
+						}
+					  }
+				  
+					  localStorage.removeItem("access_token");
+					  localStorage.removeItem("refresh_token");
+				  
+					  goto("http://localhost:5173/"); // Redirect to login page
+					}
+
 </script>
 
 <main class="main-container">
@@ -130,6 +157,30 @@
 								: 'currentColor'}">Profile</span
 						>
 					</a>
+				</li>
+
+				<li class="panel-item">
+					<button onclick= {logout} class="flex flex-row items-center w-full text-left">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill='currentColor'
+							class="size-8"
+						>
+						<path
+						fill-rule="evenodd"
+						d="M15.75 9V5.25a.75.75 0 0 0-1.5 0V9h-3a.75.75 0 0 0 0 1.5h3v3.75a.75.75 0 0 0 1.5 0V10.5h3a.75.75 0 0 0 0-1.5h-3Z"
+						clip-rule="evenodd"
+					  />
+					  <path
+						fill-rule="evenodd"
+						d="M3 12a9 9 0 1 1 18 0 9 9 0 0 1-18 0Zm9-7.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Z"
+						clip-rule="evenodd"
+					  />
+						</svg>
+						<span class="ml-2">Logout</span
+						>
+					</button>
 				</li>
 			</ul>
 		</div>
