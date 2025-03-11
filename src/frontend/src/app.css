@@ -87,3 +87,11 @@ input::selection {
 	@apply text-lg text-center text-base-100;
 }
 
+.panel-item button svg {
+	stroke: var(--color-base-100);
+}
+
+.panel-item button:hover svg {
+	stroke: var(--color-primary);
+}
+
