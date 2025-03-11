@@ -1,34 +1,33 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
-	import { goto } from "$app/navigation";
+	import { goto } from '$app/navigation';
 	let { children } = $props();
 
-					async function logout() {
-					const refreshToken = localStorage.getItem("refresh_token");
-				  
-					  if (refreshToken) {
-						try {
-						  const response = await fetch("/api/logout/", {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ refresh: refreshToken }),  
-						  });
-				  
-						  if (!response.ok) {
-							console.error("Logout failed:", await response.json());
-						  }
-						} catch (error) {
-						  console.error("Logout failed:", error);
-						}
-					  }
-				  
-					  localStorage.removeItem("access_token");
-					  localStorage.removeItem("refresh_token");
-				  
-					  goto("http://localhost:5173/"); // Redirect to login page
-					}
+	async function logout() {
+		const refreshToken = localStorage.getItem('refresh_token');
 
+		if (refreshToken) {
+			try {
+				const response = await fetch('/api/logout/', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ refresh: refreshToken })
+				});
+
+				if (!response.ok) {
+					console.error('Logout failed:', await response.json());
+				}
+			} catch (error) {
+				console.error('Logout failed:', error);
+			}
+		}
+
+		localStorage.removeItem('access_token');
+		localStorage.removeItem('refresh_token');
+
+		goto('http://localhost:5173/'); // Redirect to login page
+	}
 </script>
 
 <main class="main-container">
@@ -158,28 +157,21 @@
 						>
 					</a>
 				</li>
-
 				<li class="panel-item">
-					<button onclick= {logout} class="flex flex-row items-center w-full text-left">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 24 24"
-							fill='currentColor'
-							class="size-8"
-						>
-						<path
-						fill-rule="evenodd"
-						d="M15.75 9V5.25a.75.75 0 0 0-1.5 0V9h-3a.75.75 0 0 0 0 1.5h3v3.75a.75.75 0 0 0 1.5 0V10.5h3a.75.75 0 0 0 0-1.5h-3Z"
-						clip-rule="evenodd"
-					  />
-					  <path
-						fill-rule="evenodd"
-						d="M3 12a9 9 0 1 1 18 0 9 9 0 0 1-18 0Zm9-7.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Z"
-						clip-rule="evenodd"
-					  />
+					<hr class="border-base-100" />
+				</li>
+				<li class="panel-item">
+					<button onclick={logout} class="flex flex-row items-center">
+						<svg class="size-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path
+								d="M15 16.5V19C15 20.1046 14.1046 21 13 21H6C4.89543 21 4 20.1046 4 19V5C4 3.89543 4.89543 3 6 3H13C14.1046 3 15 3.89543 15 5V8.0625M11 12H21M21 12L18.5 9.5M21 12L18.5 14.5"
+								stroke="var(--color-base-100)"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
 						</svg>
-						<span class="ml-2">Logout</span
-						>
+						<span class="ml-2">Sign Out</span>
 					</button>
 				</li>
 			</ul>
