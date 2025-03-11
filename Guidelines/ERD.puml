@@ -29,7 +29,7 @@ entity Event {
     * date: date
     * virtual_link: string
     * location: string
-    * event_type : int <<FK>>
+    * event_type : string <<FK>>
     * community_id: int <<FK>>
 }
 
@@ -57,7 +57,7 @@ entity Post {
 }
 
 entity SocialType {
-    * social_type: string << PK>> 
+    * social_type: string << PK>>
 }
 
 entity UserSocial {
@@ -79,16 +79,14 @@ entity EventParticipant {
 }
 
 User ||--o{ Subscribed
-User }o--o{ Post
+User }o-up-o{ Post
 User ||--o{ Community
-User ||--o{ UserSocial
-UserSocial }o--|| SocialType
-CommunityLeader }o--|| User
+User ||-up-o{ UserSocial
+UserSocial }o-left-|| SocialType
+CommunityLeader }o-right-|| User
 CommunityLeader }o--|| Community
 EventParticipant }o--|| Event
-EventParticipant }o--|| User
-
-
+EventParticipant }o-left-|| User
 
 Community }o--o{ Subscribed
 Community ||-right-o{ Event
