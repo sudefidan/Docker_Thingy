@@ -40,6 +40,4 @@
 
 <main>
     <h1>Home uniHub</h1>
-    <div id="responseMessage"></div>
-    <div id="accessLevel"></div>
 </main>

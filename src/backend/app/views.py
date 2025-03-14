@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 import requests
+from .models import Community, CommunityLeader
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -78,3 +79,35 @@ class protected_view(APIView):
     def get(self, request):
         user = request.user
         return Response({'message': f'You are logged in as {user.username}!', 'access_level': user.access_level})
+    
+
+class create_community(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        name = request.data.get('name')
+        description = request.data.get('description')
+        category = request.data.get('category')
+        
+
+        if request.user.is_authenticated:
+            owner_id = request.user.id
+        else:
+            return Response({"error": "User must be logged in"}, status=400)
+
+        community = Community.objects.create(
+            name=name,
+            description=description,
+            category=category,
+            owner_id=owner_id
+        )
+        # sends the data to the community leader table
+        CommunityLeader.objects.create(
+            community=community,
+            user=request.user
+        )
+
+        return Response({
+            "community_id": community.community_id,
+            "message": "Community created successfully and user assigned as leader"
+        })

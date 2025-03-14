@@ -17,4 +17,5 @@ urlpatterns = [
     path('api/register/', views.create_user.as_view()),
     path('api/login/', login_user.as_view()),
     path('api/protected/', views.protected_view.as_view()),
+    path('api/create_community/', views.create_community.as_view()),
 ]
