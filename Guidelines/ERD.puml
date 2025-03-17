@@ -1,0 +1,96 @@
+@startuml erd
+
+skinparam linetype ortho
+hide circle
+
+entity User {
+    * user_id: int <<PK>>
+    --
+    * username: string
+    * first_name: string
+    * last_name: string
+    * email: string
+    * password: string
+    * access_level: int
+    about: string
+    profile_picture: blob
+}
+
+entity Subscribed {
+    * community_id: int <<FK>>
+    * user_id: int <<FK>>
+}
+
+entity Event {
+    * event_id: int <<PK>>
+    --
+    * title: string
+    * description: string
+    * date: date
+    * virtual_link: string
+    * location: string
+    * event_type : string <<FK>>
+    * community_id: int <<FK>>
+}
+
+entity Community {
+    * community_id: int <<PK>>
+    --
+    * name: string
+    * description: string
+    * category: string
+    * owner_id: int <<FK>>
+}
+
+entity EventType {
+    * name: string <<PK>>
+}
+
+entity Post {
+    * post_id: int <<PK>>
+    --
+    * title: string
+    * content: string
+    * date: date
+    * user_id: int <<FK>>
+    community_id: int <<FK>>
+}
+
+entity SocialType {
+    * social_type: string << PK>>
+}
+
+entity UserSocial {
+    * user_social_id: int <<PK>>
+    --
+    * social_username
+    * social_type: string <<FK>>
+    * user_id: int <<FK>>
+}
+
+entity CommunityLeader {
+    * community_id: int <<FK>>
+    * user_id: int <<FK>>
+}
+
+entity EventParticipant {
+    * event_id: int <<FK>>
+    * user_id: int <<FK>>
+}
+
+User ||--o{ Subscribed
+User }o-up-o{ Post
+User ||--o{ Community
+User ||-up-o{ UserSocial
+UserSocial }o-left-|| SocialType
+CommunityLeader }o-right-|| User
+CommunityLeader }o--|| Community
+EventParticipant }o--|| Event
+EventParticipant }o-left-|| User
+
+Community }o--o{ Subscribed
+Community ||-right-o{ Event
+
+Event ||--|| EventType
+
+@enduml

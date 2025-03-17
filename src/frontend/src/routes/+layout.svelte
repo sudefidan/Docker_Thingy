@@ -1,7 +1,33 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	let { children } = $props();
+
+	async function logout() {
+		const refreshToken = localStorage.getItem('refresh_token');
+
+		if (refreshToken) {
+			try {
+				const response = await fetch('/api/logout/', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ refresh: refreshToken })
+				});
+
+				if (!response.ok) {
+					console.error('Logout failed:', await response.json());
+				}
+			} catch (error) {
+				console.error('Logout failed:', error);
+			}
+		}
+
+		localStorage.removeItem('access_token');
+		localStorage.removeItem('refresh_token');
+
+		goto('http://localhost:5173/'); // Redirect to login page
+	}
 </script>
 
 <main class="main-container">
@@ -110,11 +136,11 @@
 					</a>
 				</li>
 				<li class="panel-item">
-					<a href="/profile" class="flex flex-row items-center">
+					<a href={`/profile`} class="flex flex-row items-center">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill={page.url.pathname === '/profile' ? 'var(--color-primary)' : 'currentColor'}
+							fill={page.url.pathname === `/profile` ? 'var(--color-primary)' : 'currentColor'}
 							class="size-8"
 						>
 							<path
@@ -125,11 +151,27 @@
 						</svg>
 						<span
 							class="ml-2"
-							style="color: {page.url.pathname === '/profile'
+							style="color: {page.url.pathname === `/profile`
 								? 'var(--color-primary)'
 								: 'currentColor'}">Profile</span
 						>
 					</a>
+				</li>
+				<li class="panel-item">
+					<hr class="border-base-100" />
+				</li>
+				<li class="panel-item">
+					<button onclick={logout} class="flex flex-row items-center hover:text-primary">
+						<svg class="size-8 panel-item-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path
+								d="M15 16.5V19C15 20.1046 14.1046 21 13 21H6C4.89543 21 4 20.1046 4 19V5C4 3.89543 4.89543 3 6 3H13C14.1046 3 15 3.89543 15 5V8.0625M11 12H21M21 12L18.5 9.5M21 12L18.5 14.5"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+						<span class="ml-2">Sign Out</span>
+					</button>
 				</li>
 			</ul>
 		</div>

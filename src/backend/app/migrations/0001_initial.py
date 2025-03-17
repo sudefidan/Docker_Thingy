@@ -132,28 +132,4 @@ class Migration(migrations.Migration):
                 'unique_together': {('community', 'user')},
             },
         ),
-        migrations.CreateModel(
-            name='EventParticipant',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('event', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='app.event')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-            ],
-            options={
-                'db_table': 'EventParticipant',
-                'unique_together': {('event', 'user')},
-            },
-        ),
-        migrations.CreateModel(
-            name='CommunityLeader',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('community', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='app.community')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-            ],
-            options={
-                'db_table': 'CommunityLeader',
-                'unique_together': {('community', 'user')},
-            },
-        ),
     ]
