@@ -10,6 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
+from .models import Community, CommunityLeader
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -145,3 +146,35 @@ class GetProfilePicture(APIView):
 
         return Response({"profile_picture": None}, status=status.HTTP_200_OK)
 '''
+    
+
+class create_community(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        name = request.data.get('name')
+        description = request.data.get('description')
+        category = request.data.get('category')
+        
+
+        if request.user.is_authenticated:
+            owner_id = request.user.id
+        else:
+            return Response({"error": "User must be logged in"}, status=400)
+
+        community = Community.objects.create(
+            name=name,
+            description=description,
+            category=category,
+            owner_id=owner_id
+        )
+        # sends the data to the community leader table
+        CommunityLeader.objects.create(
+            community=community,
+            user=request.user
+        )
+
+        return Response({
+            "community_id": community.community_id,
+            "message": "Community created successfully and user assigned as leader"
+        })

@@ -22,4 +22,5 @@ urlpatterns = [
     #path('api/upload-profile-picture/', views.protected_view.as_view()),
     #path('api/get-profile-picture/', views.protected_view.as_view()),
     
+    path('api/create_community/', views.create_community.as_view()),
 ]
