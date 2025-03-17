@@ -12,7 +12,7 @@ DATABASES = {
         'NAME'    : env_config.get('MYSQL_DATABASE'),
         'USER'    : env_config.get('MYSQL_USER'),
         'PASSWORD': env_config.get('MYSQL_PASSWORD'),
-        'HOST'    : 'docker_thingy-mysql_db-1',
+        'HOST'    : 'mysql_db',
         'PORT'    : '3306',
     }
 }
