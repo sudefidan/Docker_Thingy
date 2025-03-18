@@ -11,6 +11,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
 from .models import Community, CommunityLeader
+from rest_framework.decorators import api_view, permission_classes
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -37,7 +38,6 @@ class create_user(APIView):
     def post(self, request):
         try:
             data = request.POST
-            # Check for required fields
             first_name = data.get('first_name')
             last_name = data.get('last_name')
             username = data.get('username')
@@ -92,7 +92,7 @@ class logout_user(APIView):
                 return Response({'error': 'Refresh token is required'}, status=status.HTTP_400_BAD_REQUEST)
 
             token = RefreshToken(refresh)
-            token.blacklist() # This is to prevent reuse of token
+            token.blacklist()
 
             return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
         except Exception as e:
@@ -155,8 +155,8 @@ class create_community(APIView):
         name = request.data.get('name')
         description = request.data.get('description')
         category = request.data.get('category')
+        leader_ids = request.data.get('leader_ids', [])
         
-
         if request.user.is_authenticated:
             owner_id = request.user.id
         else:
@@ -168,13 +168,20 @@ class create_community(APIView):
             category=category,
             owner_id=owner_id
         )
-        # sends the data to the community leader table
-        CommunityLeader.objects.create(
-            community=community,
-            user=request.user
-        )
+
+        for leader_id in leader_ids:
+            user = User.objects.get(id=leader_id)
+            CommunityLeader.objects.create(community=community, user=user)
 
         return Response({
             "community_id": community.community_id,
-            "message": "Community created successfully and user assigned as leader"
+            "message": "Community created successfully and selected leaders assigned"
         })
+
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_users(request):
+    users = User.objects.all()
+    users_data = [{"id": user.id, "username": user.username, "email": user.email} for user in users]
+    return JsonResponse(users_data, safe=False, status=200)

@@ -1,5 +1,6 @@
 services:
   mysql_db:
+    container_name: mysql_db  # Forces the container to be named exactly "mysql_db"
     image: mysql
     restart: always
     privileged: true
@@ -14,7 +15,7 @@ services:
       - mysql_data:/var/lib/mysql
       - ./mysql_init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
