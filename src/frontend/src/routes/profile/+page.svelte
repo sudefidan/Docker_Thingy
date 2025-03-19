@@ -198,7 +198,7 @@
 									<input
 										type={showCurrentPassword ? 'text' : 'password'}
 										name="current_password"
-										class="input input-bordered validator custom-input"
+										class="input input-bordered validator custom-input pr-9"
 										required
 										minlength="8"
 										autocomplete="new-password"
@@ -259,7 +259,7 @@
 									<input
 										type={showNewPassword ? 'text' : 'password'}
 										name="new_password"
-										class="input input-bordered validator custom-input"
+										class="input input-bordered validator custom-input pr-9"
 										required
 										minlength="8"
 										autocomplete="new-password"
@@ -320,7 +320,7 @@
 									<input
 										type={showConfirmPassword ? 'text' : 'password'}
 										name="confirm_password"
-										class="input input-bordered validator custom-input"
+										class="input input-bordered validator custom-input pr-9"
 										required
 										minlength="8"
 										autocomplete="new-password"
