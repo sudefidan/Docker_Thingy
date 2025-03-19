@@ -52,7 +52,7 @@
 }
 
 .left-panel {
-	@apply w-1/5 p-4 pt-10;
+	@apply w-1/6 p-4 pt-10;
 }
 
 .main-content {
