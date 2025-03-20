@@ -22,6 +22,7 @@
 	--color-secondary: #f4faff;
 	/* secondary color: alice blue */
 	--color-accent: #DEE7E7;
+	--color-placeholder: #A9A9A9;
 	/* accent color: platinum */
 	--color-error: #b0413e;
 	/* error color: redwood */
@@ -104,6 +105,20 @@ input::selection {
 	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2
 }
 
+.placeholder-selected option[value=""] {
+	color: #697282;
+	outline: var(--color-primary);
+}
+
+.placeholder-selected {
+	color: #697282;
+	outline: var(--color-primary);
+}
+
+select:not(.placeholder-selected) {
+	color: var(--color-base-100);
+	outline: var(--color-primary);
+}
 
 
 @source "../node_modules/flowbite-svelte/dist";
