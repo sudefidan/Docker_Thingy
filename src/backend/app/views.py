@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityLeader
+from .models import Community, CommunityMember, CommunityLeader
 from rest_framework.decorators import api_view, permission_classes
 
 def index(request):
@@ -113,6 +113,34 @@ class user_profile_view(APIView):
             "email": user.email
         })
         
+@csrf_exempt 
+def join_community(request):
+    if request.method == "POST"
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('userId')
+        community_id = data.get('communityId')
+
+        if not user_id or not community_id:
+            return JsonResponse({"message": "User ID & Community ID are mandatory "}, status = 400) 
+
+        user = user.objects.get(id=user_id)
+        community community.objects.get(id=community_id)
+
+        if CommunityMember.objects.filter(user=user, community=community).exists():
+            return JsonResponse({"message": "User is already a member", status = 400})  
+
+        CommunityMember.objects.create(user=user, community=community)
+        return JsonResponse({"message": "Welcome, you joined the community"}, status = 201)
+    
+    except user.Doesnotexsist:
+        return JsonResponse ({"message": "User not found", status = 404})
+    except community.Doesnotexsist:
+        return JsonResponse({"message": "Community not found"}, status = 404)
+    except Exception as e:
+        return JsonResponse({"message": str(e)}, status = 500)
+
+return JsonResponse({"message": "Invalid request method"}, status = 405)
     
     
 '''class upload_profile_picture(APIView):

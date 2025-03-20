@@ -24,6 +24,14 @@ class Community(models.Model):
     def __str__(self):
         return self.name
 
+class CommunityMember(models.model):
+    user = models.ForeignKey(user, on_delete=model.CASCADE)
+    community = models.ForeignKey(Community, on_delete=models.CASCADE)
+    joined_at = models.ForeignKey(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user','community' )
+
 
 class EventType(models.Model):
     name = models.CharField(max_length=255, primary_key=True)

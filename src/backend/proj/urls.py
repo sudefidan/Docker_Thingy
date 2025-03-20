@@ -3,7 +3,7 @@ from django.urls import path, re_path, include
 from app import views
 from app.views import login_user, logout_user, user_profile_view
 from rest_framework import routers, serializers, viewsets
-from app.views import get_users
+from app.views import get_users, 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -24,4 +24,6 @@ urlpatterns = [
     #path('api/get-profile-picture/', views.protected_view.as_view()),
     path('api/users/', get_users, name='get_users'),
     path('api/create_community/', views.create_community.as_view()),
+    path('api/community/', include ('community.urls')),
+    path('join/', join_community, name= 'join_community'),
 ]
