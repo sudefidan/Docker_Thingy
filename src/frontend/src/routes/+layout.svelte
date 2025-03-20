@@ -178,7 +178,7 @@
 		<!-- Main content -->
 		<div class="top-panel bg-base">
 			<div class="p-4">
-				<input type="text" placeholder="Search..." class="search-bar bg-primary text-secondary" />
+				<input type="text" placeholder="Search..." class="input search-bar" />
 			</div>
 			<div class="main-content">
 				{@render children()}
