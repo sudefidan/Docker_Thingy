@@ -4,6 +4,8 @@
 	themes: 'mytheme';
 }
 
+@plugin 'flowbite/plugin';
+
 @plugin "daisyui/theme" {
 	name: 'mytheme';
 	default: true;
@@ -20,7 +22,7 @@
 	--color-secondary: #f4faff;
 	/* secondary color: alice blue */
 	--color-accent: #DEE7E7;
-	/* accent color: light cyan */
+	/* accent color: platinum */
 	--color-error: #b0413e;
 	/* error color: redwood */
 	--color-success: #535657;
@@ -68,7 +70,10 @@
 }
 
 .search-bar {
-	@apply w-full rounded-2xl p-2;
+	@apply w-full rounded-2xl p-2 border-primary bg-primary text-secondary pl-5 pr-5;
+}
+.search-bar::placeholder {
+	@apply text-base-100;
 }
 
 input::selection {
@@ -95,3 +100,10 @@ input::selection {
 	stroke: var(--color-primary);
 }
 
+.custom-input {
+	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2
+}
+
+
+
+@source "../node_modules/flowbite-svelte/dist";
