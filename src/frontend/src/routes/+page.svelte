@@ -58,7 +58,7 @@
 							type="text"
 							bind:value={username}
 							name="username"
-							class="input input-bordered validator focus:outline-primary bg-secondary text-base-100 w-full rounded-md focus:outline-2 focus:-outline-offset-2"
+							class="input input-bordered validator custom-input"
 							required
 							pattern="[A-Za-z][A-Za-z0-9\-]*"
 							minlength="3"
@@ -79,7 +79,7 @@
 								type={showPassword ? 'text' : 'password'}
 								name="password"
 								bind:value={password}
-								class="input input-bordered validator focus:outline-primary bg-secondary text-base-100 w-full rounded-md pr-10 focus:outline-2 focus:-outline-offset-2"
+								class="input input-bordered validator custom-input pr-9"
 								required
 								minlength="8"
 								autocomplete="current-password"
