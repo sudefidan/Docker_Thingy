@@ -78,6 +78,23 @@ entity EventParticipant {
     * user_id: int <<FK>>
 }
 
+entity Notification {
+    * notification_id: int <<PK>>
+    --
+    * user_id: int <<FK>>
+    * message: string
+    * timestamp: date
+}
+
+entity Comment {
+    * comment_id: int <<PK>>
+    --
+    * post_id: int <<FK>>
+    * user_id: int <<FK>>
+    * comment: string
+    * timestamp: date
+}
+
 User ||--o{ Subscribed
 User }o-up-o{ Post
 User ||--o{ Community
@@ -87,6 +104,9 @@ CommunityLeader }o-right-|| User
 CommunityLeader }o--|| Community
 EventParticipant }o--|| Event
 EventParticipant }o-left-|| User
+Notification }o--|| User
+Comment ||--|| User
+Comment ||--|| Post
 
 Community }o--o{ Subscribed
 Community ||-right-o{ Event
