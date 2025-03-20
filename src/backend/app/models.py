@@ -13,7 +13,7 @@ class User(AbstractUser):
 
 class Community(models.Model):
     community_id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True)
     category = models.CharField(max_length=255, blank=True, null=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
@@ -124,3 +124,23 @@ class EventParticipant(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.event.title}"
+
+class Notification(models.Model):
+    notification_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+    message = models.TextField(null=False)
+    # Should auto add the current date when a record is created.
+    timestamp = models.DateTimeField(auto_now_add=True, null=False) 
+
+    class Meta:
+        db_table = 'Notification'
+
+class Comment(models.Model):
+    comment_id = models.AutoField(primary_key=True)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, null=False)
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+    comment = models.TextField(null=False)
+    timestamp = models.DateTimeField(auto_now_add=True, null=False)
+
+    class Meta:
+        db_table = 'Comment'
