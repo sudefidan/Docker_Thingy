@@ -249,7 +249,31 @@
 				</div>
 			</div>
 		</div>
+
 		<!-- Right Column -->
-		<div class="space-y-10"></div>
+		<div class="space-y-10">
+			<!-- Socials Section -->
+			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
+				<div class="card-body bg-secondary rounded-3xl">
+					<div class="mb-4 flex items-center justify-between">
+						<div class="flex-grow text-center">
+							<h1 class="text-primary text-4xl font-bold">Your Communities</h1>
+						</div>
+					</div>
+					<div class="flex flex-wrap justify-center space-y-2">
+						<!-- Your Community Card -->
+						<!-- TODO: We need to change this to user's created communities or if they are community leaders, we can subscribe them automatically? -->
+						{#each users as user}
+							<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
+								<p class="text-user-details pr-2">{user.email}</p>
+
+							</div>
+						{/each}
+
+					</div>
+				</div>
+			</div>
+
+		</div>
 	</div>
 </main>
