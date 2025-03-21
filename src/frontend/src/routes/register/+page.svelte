@@ -3,13 +3,15 @@
 	import { goto } from '$app/navigation';
 
 	let showPassword = false;
-
 	let registerForm: HTMLFormElement;
 
 	interface CustomResult {
 		message?: string;
 		error?: string;
+		access?: string;
+		refresh?: string;
 	}
+
 </script>
 
 <main class="flex items-center justify-center">
@@ -22,9 +24,14 @@
 				bind:this={registerForm}
 				use:enhance={() => {
 					return async ({ update, result }) => {
-						// Not getting expected SvelteKit response as Django is responding, not SvelteKit. We either send a message or an error.
 						const customResult = result as CustomResult;
 						if (customResult?.message) {
+							// Save the tokens to local storage and push onto the main ;D
+							if (customResult.access && customResult.refresh) {
+								localStorage.setItem('access_token', customResult.access);
+								localStorage.setItem('refresh_token', customResult.refresh);
+							}
+							// Redirect to the home page like a boss :D
 							goto('/home');
 							registerForm.reset();
 						} else if (customResult?.error) {

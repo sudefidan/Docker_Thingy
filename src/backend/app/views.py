@@ -34,7 +34,6 @@ def example_view(request):
 class create_user(APIView):
     permission_classes = [AllowAny]
 
-    # Usually use request.data, but since page has been switched to standard form it is sending FormData, which reqires request.POST
     def post(self, request):
         try:
             data = request.POST
@@ -43,20 +42,25 @@ class create_user(APIView):
             username = data.get('username')
             password = data.get('password')
             email = data.get('email')
-            if not username or not password:
-              return Response({'error':'Username and password are required'}, status=status.HTTP_400_BAD_REQUEST)
-            if not first_name or not last_name:
-              return Response({'error':'First and last name are required'}, status=status.HTTP_400_BAD_REQUEST)
-            if not email:
-              return Response({'error':'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Use create_user for secure password hashing
+            # if these fields are not filled in then error, make sure to put in details :D
+            if not all([username, password, first_name, last_name, email]):
+                return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+
             user = User.objects.create_user(username=username, password=password, email=email, first_name=first_name, last_name=last_name)
             user.access_level = data.get('access_level', 1)
             user.save()
-            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
-        except KeyError as e:
-            return Response({'error': f'Missing field: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+            # refresh access token instead of regular so user no longer has to log in and it be annoying it will just refresh :D
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            # check response that shit is working :D
+            return Response({
+                'message': 'User created successfully',
+                'access': access_token,
+                'refresh': refresh_token
+            }, status=status.HTTP_201_CREATED)
+
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
