@@ -113,37 +113,7 @@ class user_profile_view(APIView):
             "surname": user.last_name,
             "email": user.email
         })
-        
-@csrf_exempt 
-def join_community(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            user_id = data.get('userId')
-            community_id = data.get('communityId')
 
-            if not user_id or not community_id:
-                return JsonResponse({"message": "User ID & Community ID are mandatory "}, status = 400) 
-
-            user = user.objects.get(id=user_id)
-            community = community.objects.get(id=community_id)
-
-            if CommunityMember.objects.filter(user=user, community=community).exists():
-                return JsonResponse({"message": "User is already a member", status: 400})  
-
-            CommunityMember.objects.create(user=user, community=community)
-            return JsonResponse({"message": "Welcome, you joined the community"}, status = 201)
-        
-        except user.Doesnotexsist:
-            return JsonResponse ({"message": "User not found", status: 404})
-        except community.Doesnotexsist:
-            return JsonResponse({"message": "Community not found"}, status = 404)
-        except Exception as e:
-            return JsonResponse({"message": str(e)}, status = 500)
-
-    return JsonResponse({"message": "Invalid request method"}, status = 405)
-    
-    
 '''class upload_profile_picture(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -175,37 +145,6 @@ class GetProfilePicture(APIView):
 
         return Response({"profile_picture": None}, status=status.HTTP_200_OK)
 '''
-    
-
-class create_community(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        name = request.data.get('name')
-        description = request.data.get('description')
-        category = request.data.get('category')
-        leader_ids = request.data.get('leader_ids', [])
-        
-        if request.user.is_authenticated:
-            owner_id = request.user.id
-        else:
-            return Response({"error": "User must be logged in"}, status=400)
-
-        community = Community.objects.create(
-            name=name,
-            description=description,
-            category=category,
-            owner_id=owner_id
-        )
-
-        for leader_id in leader_ids:
-            user = User.objects.get(id=leader_id)
-            CommunityLeader.objects.create(community=community, user=user)
-
-        return Response({
-            "community_id": community.community_id,
-            "message": "Community created successfully and selected leaders assigned"
-        })
 
     
 @api_view(['GET'])
@@ -214,3 +153,58 @@ def get_users(request):
     users = User.objects.all()
     users_data = [{"id": user.id, "username": user.username, "email": user.email} for user in users]
     return JsonResponse(users_data, safe=False, status=200)
+
+class create_community(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        name = request.data.get('name')
+        description = request.data.get('description')
+        category = request.data.get('category')
+        leader_ids = request.data.get('leader_ids', [])
+
+        if request.user.is_authenticated:
+            owner_id = request.user.id
+        else:
+            return Response({"error": "User must be logged in"}, status=400)
+
+        # Check if community with the same name already exists
+        existing_community = Community.objects.filter(name=name).first()
+        if existing_community:
+            return Response({"error": "A community with this name already exists."}, status=400)
+
+        # Create the new community
+        community = Community.objects.create(
+            name=name,
+            description=description,
+            category=category,
+            owner_id=owner_id
+        )
+
+        # Add community leaders
+        for leader_id in leader_ids:
+            user = get_object_or_404(User, id=leader_id)
+            CommunityLeader.objects.create(community=community, user=user)
+
+        return Response({
+            "community_id": community.community_id,
+            "message": "Community created successfully and selected leaders assigned"
+        })
+
+
+# A view for users to join a community (if not already a member)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def join_community(request):
+    user = request.user
+    community_id = request.data.get('community_id')
+
+    # Check if the user is already a member of the community
+    if CommunityMember.objects.filter(user=user, community_id=community_id).exists():
+        return Response({"error": "You are already a member of this community."}, status=400)
+
+    # Add user as a member of the community
+    community = get_object_or_404(Community, id=community_id)
+    CommunityMember.objects.create(user=user, community=community)
+
+    return Response({"message": "Successfully joined the community."}, status=200)

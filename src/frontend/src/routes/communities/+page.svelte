@@ -117,6 +117,29 @@
 			message = 'An error occurred. Please try again!';
 		}
 	};
+
+	const join_community = async (communityId) => {
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/api/join_community/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${access_token}`
+            },
+            body: JSON.stringify({ community_id: communityId })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            console.log(result.message);
+        } else {
+            console.error(result.error);
+        }
+    } catch (error) {
+        console.error('Error joining community:', error);
+    }
+};
+
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
