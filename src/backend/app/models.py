@@ -24,10 +24,10 @@ class Community(models.Model):
     def __str__(self):
         return self.name
 
-class CommunityMember(models.model):
-    user = models.ForeignKey(user, on_delete=model.CASCADE)
+class CommunityMember(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     community = models.ForeignKey(Community, on_delete=models.CASCADE)
-    joined_at = models.ForeignKey(auto_now_add=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('user','community' )
