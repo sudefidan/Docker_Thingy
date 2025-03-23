@@ -183,6 +183,31 @@ class create_community(APIView):
             "community_id": community.community_id,
             "message": "Community created successfully and selected leaders assigned"
         })
+    
+class SubscribedCommunities(APIView):
+    # the user must be logged in otherwise it will not work
+    permission_classes = [IsAuthenticated] 
+
+    def get(self, request):
+        user = request.user
+        # Fetch all subscriptions where user_id matches the currently logged in user.
+        subscriptions = Subscribed.objects.filter(user=user)
+        # Get the list of communities that have been subscribed too
+        communities = [sub.community for sub in subscriptions]
+        
+        # Serialize the response
+        community_data = [
+            {
+                "id": community.community_id,
+                "name": community.name,
+                "description": community.description,
+                "category": community.category,
+                "owner_id": community.owner_id
+            } 
+            for community in communities
+        ]
+
+        return Response({"subscribed_communities": community_data})
 
     
 @api_view(['GET'])
