@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityLeader
+from .models import Community, CommunityLeader, Subscribed
 from rest_framework.decorators import api_view, permission_classes
 
 def index(request):
@@ -154,28 +154,30 @@ class GetProfilePicture(APIView):
 
 class create_community(APIView):
     permission_classes = [AllowAny]
-
+    # post request to send off the following variables
     def post(self, request):
         name = request.data.get('name')
         description = request.data.get('description')
         category = request.data.get('category')
         leader_ids = request.data.get('leader_ids', [])
-        
+        # check if users is authenticated
         if request.user.is_authenticated:
             owner_id = request.user.id
         else:
             return Response({"error": "User must be logged in"}, status=400)
-
+        # create the record in the database with these variables
         community = Community.objects.create(
             name=name,
             description=description,
             category=category,
             owner_id=owner_id
         )
-
+        # create the link between the leader and the community
         for leader_id in leader_ids:
             user = User.objects.get(id=leader_id)
             CommunityLeader.objects.create(community=community, user=user)
+        # auto subscribe the current userid that is logged to the community
+        Subscribed.objects.create(community=community, user_id=owner_id)
 
         return Response({
             "community_id": community.community_id,
