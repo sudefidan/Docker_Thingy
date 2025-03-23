@@ -24,4 +24,5 @@ urlpatterns = [
     #path('api/get-profile-picture/', views.protected_view.as_view()),
     path('api/users/', get_users, name='get_users'),
     path('api/create_community/', views.create_community.as_view()),
+    path('api/subscribed_communities/', views.SubscribedCommunities.as_view(), name='subscribed_communities'),
 ]

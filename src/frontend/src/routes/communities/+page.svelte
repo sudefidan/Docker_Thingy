@@ -14,6 +14,7 @@
 	let usersList = []; // List of users for the MultiSelect component
 	let message = '';
     let loggedInUserId; // ID of the logged-in user to avoid adding them as a community leader, they are automatically added as the owner
+	let subscribedCommunities = [];
 
 	// Sort the categories alphabetically
 	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())),"Other"];
@@ -29,17 +30,39 @@
 	}
 
 	onMount(async () => {
-		// Retrieve the access token from localStorage
-		access_token = localStorage.getItem('access_token');
+    // Retrieve the access_token from localStorage
+    access_token = localStorage.getItem('access_token');
 
-		if (!access_token) {
-			// Redirect to login if no access token found
-			goto('/login');
-		} else {
-            loggedInUserId = getLoggedInUserIdFromToken(access_token);
-			await fetchUsers();
-		}
-	});
+    // If there's no access_token, redirect to the login page or home
+    if (!access_token) {
+        goto('http://localhost:5173/');  // Or wherever you want the user to go if they are not logged in
+    } else {
+        loggedInUserId = getLoggedInUserIdFromToken(access_token);
+
+        // Fetch users and subscribed communities on page load.
+        await fetchUsers();
+        await fetchSubscribedCommunities();  
+    }
+});
+
+	// fetches the subscribed communities that the current user is subscribed too
+	const fetchSubscribedCommunities = async () => {
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/subscribed_communities/', {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${access_token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                subscribedCommunities = data.subscribed_communities; 
+            } else {
+                console.error('Failed to fetch subscribed communities');
+            }
+        } catch (error) {
+            console.error('Network error:', error.message);
+        }
+    };
 
     // Retrieve the logged-in user's ID from the access token
     function getLoggedInUserIdFromToken(token) {
@@ -72,22 +95,22 @@
 			console.error('Network error:', error.message);
 		}
 	};
-
+// submit form to create a new community 
 	const submitForm = async (event) => {
 		event.preventDefault();
-
+		// checks if all fields are completed if not it will not submit
 		if (!name || !description || !category) {
 			console.log('All fields are required!');
 			return;
 		}
-
+		// data that will be passed through the api
 		const data = {
 			name,
 			description,
 			category: category === 'Other' ? customCategory : category,
 			leader_ids: selectedUsers
 		};
-
+		// the api call and post method
 		try {
 			const response = await fetch('http://127.0.0.1:8000/api/create_community/', {
 				method: 'POST',
@@ -99,7 +122,7 @@
 			});
 
 			const result = await response.json();
-
+			// if it worked and is okay display in the console log the data passed through and then reload the window 
 			if (response.ok) {
 				//window.location.reload();
 				console.log('Community created:', result);
@@ -108,6 +131,7 @@
 				description = '';
 				category = '';
 				selectedUsers = [];
+				window.location.reload();
 			} else {
 				console.error('Error creating community:', result.error || 'Something went wrong');
 				message = 'Failed to create community!';
@@ -263,11 +287,13 @@
 					<div class="flex flex-wrap justify-center space-y-2">
 						<!-- Your Community Card -->
 						<!-- TODO: We need to change this to user's created communities or if they are community leaders, we can subscribe them automatically? -->
-						{#each users as user}
-							<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
-								<p class="text-user-details pr-2">{user.email}</p>
 
-							</div>
+						{#each subscribedCommunities as community}
+						<div>
+							{community.name}
+							{community.description}
+							{community.category}
+						</div>
 						{/each}
 
 					</div>
