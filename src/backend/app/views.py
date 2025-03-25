@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityLeader, Subscribed
+from .models import Community, CommunityLeader, Subscribed, Notification
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 
@@ -438,4 +438,63 @@ def delete_community(request, community_id):
         return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
 
     community.delete()
-    return Response({"message": "Community deleted successfully."}, status=status.HTTP_200_OK)
+    message = "Community deleted successfully."
+    create_notification(request.user.id, message)
+    return Response({"message": message}, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_notifications(request):
+    try:
+        try:
+            user = request.user.id
+        except:
+            return Response({"message": "Could not get user."}, status=status.HTTP_400_BAD_REQUEST)
+        notifications = Notification.objects.filter(user=user)
+
+        notification_data = [
+            {
+                'notification_id': notification.notification_id,
+                'user': notification.user.id,
+                'message': notification.message,
+                'timestamp': notification.timestamp,
+            }
+            for notification in notifications
+        ]
+
+        return Response(notification_data, status=200)
+    except:
+        return Response({"message": "Could not get notifications."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def create_notification(user_id, message):
+    """
+    Creates a notification for a given user.
+    """
+    try:
+        # Retrieve the user object using get_object_or_404 to handle non-existent users
+        user = get_object_or_404(User, id=user_id)
+
+        # Create the notification object
+        Notification.objects.create(user=user, message=message)
+        return True
+    except Exception as e:
+        print(f"Error creating notification: {e}")
+        return False
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_notification(request, notification_id):
+    """Deletes a notification"""
+    try:
+        notification = get_object_or_404(Notification, notification_id=notification_id)
+    except ValueError:
+        return Response({"error": "Invalid notification ID format."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is the owner
+    if notification.user.id != request.user.id:
+        return Response({"error": "You are not the recipient of this notification."}, status=status.HTTP_403_FORBIDDEN)
+
+    notification.delete()
+    message = "Notification deleted successfully."
+    return Response({"message": message}, status=status.HTTP_200_OK)

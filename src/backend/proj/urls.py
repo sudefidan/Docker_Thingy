@@ -3,7 +3,7 @@ from django.urls import path, re_path, include
 from app import views
 from app.views import login_user, logout_user, user_profile_view
 from rest_framework import routers, serializers, viewsets
-from app.views import get_users, join_community, fetch_communities, fetch_your_communities, leave_community, fetch_owned_communities, update_community_name, update_community_description, update_community_category, delete_community
+from app.views import get_users, join_community, fetch_communities, fetch_your_communities, leave_community, fetch_owned_communities, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -34,4 +34,6 @@ urlpatterns = [
     path('api/communities/update_community_description/', update_community_description, name="update_community_description"),
     path('api/communities/update_community_category/', update_community_category, name="update_community_category"),
     path('api/communities/delete/<int:community_id>/', delete_community, name="delete_community"),
+    path('api/notifications/', get_notifications, name="get_notifications"),
+    path('api/notifications/delete/<int:notification_id>/', delete_notification, name="delete_notification")
 ]
