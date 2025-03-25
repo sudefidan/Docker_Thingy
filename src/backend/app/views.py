@@ -308,6 +308,26 @@ def fetch_your_communities(request):
     
     return Response(community_data, status=200)
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def fetch_owned_communities(request):
+    """Fetch all communities a user owns."""
+    user = request.user
+    communities = Community.objects.filter(owner=user)
+
+    community_data = [
+        {
+            'community_id': community.community_id,
+            'name': community.name,
+            'description': community.description,
+            'category': community.category,
+            'is_owner': True  # Since these are owned communities
+        }
+        for community in communities
+    ]
+
+    return Response(community_data, status=200)
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def leave_community(request):
@@ -324,3 +344,98 @@ def leave_community(request):
         
         # except Subscribed.DoesNotExsist:
         #     return Response({"error": "You are not a member of this community"}, status=400)
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_community_name(request):
+    """
+    Updates the name of a community based on the provided community_id.
+    """
+    try:
+        community_id = request.data.get("community_id")
+        community = get_object_or_404(Community, community_id=community_id)
+    except ValueError:
+        return Response({"error": "Invalid community ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+     # Check if the user is the owner
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    new_name = request.data.get("value")
+
+    if not new_name:
+        return Response({"error": "New community name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if a community with the new name already exists
+    if Community.objects.filter(name__iexact=new_name).exclude(community_id=community_id).exists():
+        return Response({"error": "A community with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+    community.name = new_name
+    community.save()
+
+    return Response({"message": "Community name updated successfully."}, status=status.HTTP_200_OK)
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_community_description(request):
+    """Updates the description of a community."""
+    try:
+        community_id = request.data.get("community_id")
+        community = get_object_or_404(Community, community_id=community_id)
+    except ValueError:
+        return Response({"error": "Invalid community ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is the owner
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    new_description = request.data.get("value")
+
+    if new_description is None:
+        return Response({"error": "New community description is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    community.description = new_description
+    community.save()
+
+    return Response({"message": "Community description updated successfully."}, status=status.HTTP_200_OK)
+
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_community_category(request):
+    """Updates the category of a community."""
+    try:
+        community_id = request.data.get("community_id")
+        community = get_object_or_404(Community, community_id=community_id)
+    except ValueError:
+        return Response({"error": "Invalid community ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is the owner
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    new_category = request.data.get("value")
+
+    if new_category is None:
+        return Response({"error": "New community category is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    community.category = new_category
+    community.save()
+
+    return Response({"message": "Community category updated successfully."}, status=status.HTTP_200_OK)
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_community(request, community_id):
+    """Deletes a community if the user is the owner."""
+    try:
+        community = get_object_or_404(Community, community_id=community_id)
+    except ValueError:
+        return Response({"error": "Invalid community ID format."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is the owner
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    community.delete()
+    return Response({"message": "Community deleted successfully."}, status=status.HTTP_200_OK)

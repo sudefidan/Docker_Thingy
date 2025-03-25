@@ -16,6 +16,10 @@
 	let loggedInUserId; // ID of the logged-in user to avoid adding them as a community leader, they are automatically added as the owner
 	let communities = [];
 	let subscribedCommunities = [];
+	$: community_management_selected = null;
+	let new_community_name = null;
+	let new_community_description = null;
+	let new_community_category = null;
 
 	// Sort the categories alphabetically
 	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())), 'Other'];
@@ -30,6 +34,8 @@
 		} else {
 			// Fetch communities when the page loads
 			fetch_your_communities();
+			// Fetch owned communities when the page loads
+			fetch_owned_communities();
 		}
 	});
 
@@ -124,17 +130,20 @@
 	});
 
 	let your_communities = [];
+	let owned_communities = [];
 
-	const fetch_communities = async () => {
+	const fetch_owned_communities = async () => {
 		try {
-			const response = await fetch('http://127.0.0.1:8000/api/communities/', {
+			const response = await fetch('http://127.0.0.1:8000/api/fetch_owned_communities/', {
 				method: 'GET',
 				headers: {
 					Authorization: `Bearer ${access_token}`
 				}
 			});
 			if (response.ok) {
-				communities = await response.json();
+				const data = await response.json();
+				console.log('Owned Communities:', data);
+				owned_communities = data;
 			} else {
 				console.error('Failed to fetch communities');
 			}
@@ -253,6 +262,69 @@
 			}
 		} catch (error) {
 			console.error('Error leaving community:', error);
+		}
+	};
+
+	const submit_community_management = async (type, value) => {
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/communities/update_community_${type}/`,
+				{
+					method: 'PUT',
+					headers: {
+						Authorization: `Bearer ${access_token}`,
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						value,
+						community_id: community_management_selected
+					})
+				}
+			);
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				location.reload();
+			} else {
+				console.error(result.error);
+			}
+		} catch (error) {
+			console.error('Error changing community settings: ', error);
+		}
+	};
+
+	const delete_community = async () => {
+		if (!community_management_selected) {
+			console.error('No community selected for deletion.');
+			return;
+		}
+
+		const confirmation = confirm('Are you sure? This cannot be undone.');
+		if (!confirmation) return;
+
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/communities/delete/${community_management_selected}`,
+				{
+					method: 'DELETE',
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				location.reload(); // Refresh the page to reflect the deletion
+			} else {
+				console.error(result.error);
+				alert(result.error); // Show the error to the user
+			}
+		} catch (error) {
+			console.error('Error deleting community:', error);
+			alert('An error occurred while deleting the community.');
 		}
 	};
 </script>
@@ -459,6 +531,117 @@
 								{community.category}
 							</div>
 						{/each}
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="space-y-10">
+			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
+				<div class="card-body bg-secondary rounded-3xl">
+					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Community Management</h1>
+					<div class="form-control mb-5 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Communities you Own</span>
+							</label>
+							<div class="relative flex items-center">
+								<select
+									type="text"
+									id="name"
+									bind:value={community_management_selected}
+									required
+									class="select select-bordered custom-input flex-grow"
+								>
+									<option value={null}>Select a Community</option>
+									{#each owned_communities as community}
+										<option value={community.community_id}>{community.name}</option>
+									{/each}
+								</select>
+							</div>
+						</div>
+					</div>
+					<div class="form-control mb-5 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Change Community Name</span>
+							</label>
+							<div class="relative flex items-center">
+								<input
+									type="text"
+									id="name"
+									bind:value={new_community_name}
+									required
+									class="input input-bordered custom-input flex-grow"
+								/>
+								<button
+									class="btn btn-primary ml-2"
+									on:click={() => {
+										submit_community_management('name', new_community_name);
+									}}>Submit</button
+								>
+							</div>
+						</div>
+					</div>
+					<div class="form-control mb-5 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Change Community Description</span>
+							</label>
+							<div class="relative flex items-center">
+								<input
+									type="text"
+									id="name"
+									bind:value={new_community_description}
+									required
+									class="input input-bordered custom-input flex-grow"
+								/>
+								<button
+									class="btn btn-primary ml-2"
+									on:click={() => {
+										submit_community_management('description', new_community_description);
+									}}>Submit</button
+								>
+							</div>
+						</div>
+					</div>
+					<div class="form-control mb-5 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Change Community Category</span>
+							</label>
+							<div class="relative flex items-center">
+								<select
+									type="text"
+									id="name"
+									bind:value={new_community_category}
+									required
+									class="select select-bordered custom-input flex-grow"
+								>
+									<option value={null} disabled selected></option>
+									{#each categories as category}
+										<option value={category}>{category}</option>
+									{/each}
+								</select>
+								<button
+									class="btn btn-primary ml-2"
+									on:click={() => {
+										submit_community_management('category', new_community_category);
+									}}>Submit</button
+								>
+							</div>
+						</div>
+					</div>
+					<div class="form-control mb-5 flex flex-col gap-3">
+						<div class="w-full text-center">
+							<label for="name" class="label">
+								<span class="label-text">Delete Community</span>
+							</label>
+							<div class="relative flex items-center text-center justify-center">
+								<button class="btn btn-primary ml-2 text-center" on:click={delete_community}
+									>DELETE</button
+								>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>

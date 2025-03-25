@@ -70,7 +70,6 @@ class Post(models.Model):
 class Subscribed(models.Model):
     community = models.ForeignKey(Community, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    joined_at = models.DateTimeField(auto_now_add = True)
 
     class Meta:
         db_table = 'Subscribed'
