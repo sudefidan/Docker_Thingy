@@ -56,9 +56,9 @@ class Post(models.Model):
     post_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255)
     content = models.TextField()
-    date = models.DateField()
+    date = models.DateTimeField(auto_now_add=True)  # Change DateField to DateTimeField
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
-    community = models.ForeignKey(Community, on_delete=models.CASCADE, blank=True, null=True)
+    community = models.ForeignKey('Community', on_delete=models.CASCADE, blank=True, null=True)
 
     class Meta:
         db_table = 'Post'

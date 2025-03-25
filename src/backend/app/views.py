@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityLeader, Subscribed
+from .models import Community, CommunityLeader, Subscribed, Post
 from rest_framework.decorators import api_view, permission_classes
 
 def index(request):
@@ -191,3 +191,55 @@ def get_users(request):
     users = User.objects.all()
     users_data = [{"id": user.id, "username": user.username, "email": user.email} for user in users]
     return JsonResponse(users_data, safe=False, status=200)
+
+
+
+
+# get the current posts from the database
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_posts(request):
+    posts = Post.objects.all().order_by('-date') 
+    posts_data = [
+        {
+            'id': post.post_id,
+            'title': post.title,
+            'content': post.content,
+            'date': post.date.isoformat(),  
+            'user_id': post.user.id,  
+            'username': post.user.username,  
+        }
+        for post in posts
+    ]
+    return JsonResponse(posts_data, safe=False, status=200)
+
+
+# send the post from the backend to the database
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_post(request):
+    if request.method == 'POST':
+        data = request.data
+
+        title = data.get('title')  
+        content = data.get('content')  
+        date = data.get('date')
+
+        if not title or not content:
+            return Response({'error': 'Title and content are required!'}, status=400)
+
+        # Create a new post
+        post = Post.objects.create(
+            title=title,
+            content=content,
+            date = date,
+            user=request.user  
+        )
+
+        return Response({
+            'id': post.post_id,
+            'title': post.title,
+            'content': post.content,
+            'user_id': post.user.id,
+            'username': post.user.username
+        }, status=201)
