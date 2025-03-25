@@ -8,6 +8,8 @@
     let postContent = "";
     let posts = [];
     let title = "";
+    let filteredPosts = [];
+    let searchTerm = "";
 
     // on load of the page we ensure that these things are done, before the page is viewable
     // so for example we mostly do fetching and authorization checks to ensure the user is allowed to be
@@ -75,21 +77,16 @@
     const fetchPosts = async () => {
         const response = await fetch('http://127.0.0.1:8000/api/get_posts/', {
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${access_token}`
-            }
+            headers: { 'Authorization': `Bearer ${access_token}` }
         });
         const data = await response.json();
-
         if (response.ok) {
-            posts = data
-            console.log('fetched posts:', posts);
-            // Handle the protected data (e.g., display user info)
+            posts = data;
+            filterPosts();
         } else {
-            console.error('Failed to access posts:', data);
+            console.error('Failed to fetch posts:', data);
         }
-
-    }
+    };
     // create post function to push the form data to the backend api
     const createPost = async() =>{
         if (!title.trim() || !postContent.trim()) return;
@@ -115,14 +112,34 @@
             posts.push(newPost);  
             title = '';  
             postContent = '';
+            filterPosts();
             window.location.reload();
         } else {
             console.error('Failed to create post:', await response.json());
         }
     }
+    // the function that will filter the post and will search for a post based of the input of the user
+    function filterPosts() {
+        filteredPosts = posts.filter(p => 
+            p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            p.content.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }
+
 </script>
 
 <main>
+    <div class="top-panel bg-base">
+        <div class="p-4">
+            <!-- allows search bar to filter out the different posts made by the user -->
+            <input 
+                type="text" 
+                placeholder="Search..." 
+                class="input search-bar" 
+                bind:value={searchTerm}  
+                on:input={filterPosts}
+            />
+        </div>
     <h1>Home uniHub</h1>
 
     <!-- Add input for the title here -->
@@ -143,7 +160,8 @@
     <!-- display the title and content of the post -->
     <section>
         <h2>Posts</h2>
-        {#each posts as p}
+        <!-- filters the post using the variable filteredPosts -->
+        {#each filteredPosts as p}
             <h3>{p.title}</h3>
             <p>{p.content}</p>
         {/each}

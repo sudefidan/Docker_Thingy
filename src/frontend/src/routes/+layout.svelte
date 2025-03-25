@@ -175,14 +175,23 @@
 				</li>
 			</ul>
 		</div>
+
+
+		<!-- sorry sophie I had to change the location of the search panel to the home page to check if it works and was having annoying issues with it -->
+
+		
 		<!-- Main content -->
-		<div class="top-panel bg-base">
+		<!-- <div class="top-panel bg-base">
 			<div class="p-4">
 				<input type="text" placeholder="Search..." class="input search-bar" />
-			</div>
-			<div class="main-content">
+			</div> -->
+			<!-- <div class="main-content">
 				{@render children()}
-			</div>
+			</div> -->
+		<!-- </div> -->
+
+		<div class="main-content">
+			{@render children()}
 		</div>
 	{:else}
 		<!-- If it is register or login page show: -->
