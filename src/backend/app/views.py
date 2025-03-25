@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityMember, CommunityLeader, Subscribed
+from .models import Community, CommunityLeader, Subscribed, Notification
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 
@@ -308,6 +308,26 @@ def fetch_your_communities(request):
     
     return Response(community_data, status=200)
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def fetch_owned_communities(request):
+    """Fetch all communities a user owns."""
+    user = request.user
+    communities = Community.objects.filter(owner=user)
+
+    community_data = [
+        {
+            'community_id': community.community_id,
+            'name': community.name,
+            'description': community.description,
+            'category': community.category,
+            'is_owner': True  # Since these are owned communities
+        }
+        for community in communities
+    ]
+
+    return Response(community_data, status=200)
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def leave_community(request):
@@ -324,3 +344,193 @@ def leave_community(request):
         
         # except Subscribed.DoesNotExsist:
         #     return Response({"error": "You are not a member of this community"}, status=400)
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_community_name(request):
+    """
+    Updates the name of a community based on the provided community_id.
+    """
+    try:
+        community_id = request.data.get("community_id")
+        community = get_object_or_404(Community, community_id=community_id)
+    except ValueError:
+        return Response({"error": "Invalid community ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+     # Check if the user is the owner
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    new_name = request.data.get("value")
+
+    if not new_name:
+        return Response({"error": "New community name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if a community with the new name already exists
+    if Community.objects.filter(name__iexact=new_name).exclude(community_id=community_id).exists():
+        return Response({"error": "A community with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get all users subscribed to the community
+    subscribed_users = Subscribed.objects.filter(community=community)
+
+    # Create notifications for each subscribed user
+    for subscription in subscribed_users:
+        user = subscription.user
+        message = f"The community '{community.name}' has changed it's name to '{new_name}'."
+        create_notification(user.id, message)
+
+    community.name = new_name
+    community.save()
+
+    return Response({"message": "Community name updated successfully."}, status=status.HTTP_200_OK)
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_community_description(request):
+    """Updates the description of a community."""
+    try:
+        community_id = request.data.get("community_id")
+        community = get_object_or_404(Community, community_id=community_id)
+    except ValueError:
+        return Response({"error": "Invalid community ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is the owner
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    new_description = request.data.get("value")
+
+    if new_description is None:
+        return Response({"error": "New community description is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get all users subscribed to the community
+    subscribed_users = Subscribed.objects.filter(community=community)
+
+    # Create notifications for each subscribed user
+    for subscription in subscribed_users:
+        user = subscription.user
+        message = f"The community '{community.name}' has changed it's description to '{new_description}'."
+        create_notification(user.id, message)
+
+    community.description = new_description
+    community.save()
+
+    return Response({"message": "Community description updated successfully."}, status=status.HTTP_200_OK)
+
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_community_category(request):
+    """Updates the category of a community."""
+    try:
+        community_id = request.data.get("community_id")
+        community = get_object_or_404(Community, community_id=community_id)
+    except ValueError:
+        return Response({"error": "Invalid community ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is the owner
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    new_category = request.data.get("value")
+
+    if new_category is None:
+        return Response({"error": "New community category is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get all users subscribed to the community
+    subscribed_users = Subscribed.objects.filter(community=community)
+
+    # Create notifications for each subscribed user
+    for subscription in subscribed_users:
+        user = subscription.user
+        message = f"The community {community.name} has changed it's category to '{new_category}' from '{community.category}'."
+        create_notification(user.id, message)
+
+    community.category = new_category
+    community.save()
+
+    return Response({"message": "Community category updated successfully."}, status=status.HTTP_200_OK)
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_community(request, community_id):
+    """Deletes a community if the user is the owner."""
+    try:
+        community = get_object_or_404(Community, community_id=community_id)
+    except ValueError:
+        return Response({"error": "Invalid community ID format."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is the owner
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    message = "Community deleted successfully."
+
+    # Get all users subscribed to the community
+    subscribed_users = Subscribed.objects.filter(community=community)
+
+    # Create notifications for each subscribed user
+    for subscription in subscribed_users:
+        user = subscription.user
+        message = f"The community '{community.name}' has been deleted."
+        create_notification(user.id, message)
+
+    community.delete()
+    return Response({"message": message}, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_notifications(request):
+    try:
+        try:
+            user = request.user.id
+        except:
+            return Response({"message": "Could not get user."}, status=status.HTTP_400_BAD_REQUEST)
+        notifications = Notification.objects.filter(user=user)
+
+        notification_data = [
+            {
+                'notification_id': notification.notification_id,
+                'user': notification.user.id,
+                'message': notification.message,
+                'timestamp': notification.timestamp,
+            }
+            for notification in notifications
+        ]
+
+        return Response(notification_data, status=200)
+    except:
+        return Response({"message": "Could not get notifications."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def create_notification(user_id, message):
+    """
+    Creates a notification for a given user.
+    """
+    try:
+        # Retrieve the user object using get_object_or_404 to handle non-existent users
+        user = get_object_or_404(User, id=user_id)
+
+        # Create the notification object
+        Notification.objects.create(user=user, message=message)
+        return True
+    except Exception as e:
+        print(f"Error creating notification: {e}")
+        return False
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_notification(request, notification_id):
+    """Deletes a notification"""
+    try:
+        notification = get_object_or_404(Notification, notification_id=notification_id)
+    except ValueError:
+        return Response({"error": "Invalid notification ID format."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is the owner
+    if notification.user.id != request.user.id:
+        return Response({"error": "You are not the recipient of this notification."}, status=status.HTTP_403_FORBIDDEN)
+
+    notification.delete()
+    message = "Notification deleted successfully."
+    return Response({"message": message}, status=status.HTTP_200_OK)
