@@ -258,25 +258,26 @@ def join_community(request, community_id):
 def fetch_your_communities(request):
     """Fetch all communities a user has joined."""
     user = request.user
-    communities = Community.objects.filter(subscribed__user=user) 
+    communities = Community.objects.filter(community_id__in=
+        Subscribed.objects.filter(user_id=user.id).values_list("community_id", flat=True)
+    )
 
     community_data = [
         {
             'community_id': community.community_id,
             'name': community.name,
             'description': community.description,
-            'is_owner': community.owner == user,
-            'is_leader': CommunityLeader.objects.filter(community=community, user=user).exists()
+            'category': community.category,
+            'is_owner': community.owner_id == user.id
         }
         for community in communities
     ]
     
+    return Response(community_data, status=200)
 
-    return Response(community_data)
-
-    @api+view(["POST"])
-    @permission_classes([IsAuthenticated])
-    def leave_community(request):
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def leave_community(request):
         user = request.user
         community_id = request.data.get("community_id")
 
@@ -285,5 +286,8 @@ def fetch_your_communities(request):
             membership.delete()
             return Response({"error": "Successfully left the community"})
         
-        except Subscribed.DoesNotExsist:
+        finally:
             return Response({"error": "You are not a member of this community"}, status=400)
+        
+        # except Subscribed.DoesNotExsist:
+        #     return Response({"error": "You are not a member of this community"}, status=400)

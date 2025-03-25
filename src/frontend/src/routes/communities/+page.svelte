@@ -15,9 +15,25 @@
 	let usersList = []; // List of users for the MultiSelect component
 	let message = '';
     let loggedInUserId; // ID of the logged-in user to avoid adding them as a community leader, they are automatically added as the owner
+	let communities = [];
 
 	// Sort the categories alphabetically
 	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())),"Other"];
+
+
+	onMount(() => {
+        // Get the access token from localStorage
+        access_token = localStorage.getItem('access_token');
+
+        // If no token, redirect to login
+        if (!access_token) {
+            window.location.href = '/login'; // You can use Svelte's `goto()` if you have it imported
+        } else {
+            // Fetch communities when the page loads
+            fetch_your_communities();
+        }
+    });
+
 
 	// Placeholder color for option
 	function updateSelectClass(event) {
@@ -74,7 +90,6 @@
 		}
 	};
 
-	let communities // Ensure this is declared
 
     onMount(async () => {
         try {
@@ -109,27 +124,27 @@
     }
   };
 
-  const fetch_your_communities = async () => {
-    try {
-      const response = await fetch('http://127.0.0.1:8000/api/your_communities/', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-        },
-      });
-      if (response.ok) {
-            const data = await response.json();
-            console.log("Fetched Your Communities:", data);
-            
-            your_communities.set(data);
-      } else {
-        console.error('Failed to fetch communities');
-      }
-    } catch (error) {
-      console.error('Network error:', error.message);
-    }
-  };
+    // Fetch your communities
+    const fetch_your_communities = async () => {
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/your_communities/', {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${access_token}`,
+                },
+            });
 
+            if (response.ok) {
+                const data = await response.json();
+                console.log("Fetched Your Communities:", data);
+                your_communities = data; // This will trigger reactivity in Svelte
+            } else {
+                console.error('Failed to fetch communities');
+            }
+        } catch (error) {
+            console.error('Network error:', error.message);
+        }
+    };
 	const submitForm = async (event) => {
 		event.preventDefault();
 

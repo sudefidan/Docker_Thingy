@@ -3,7 +3,7 @@ from django.urls import path, re_path, include
 from app import views
 from app.views import login_user, logout_user, user_profile_view
 from rest_framework import routers, serializers, viewsets
-from app.views import get_users, join_community, fetch_communities, fetch_your_communities
+from app.views import get_users, join_community, fetch_communities, fetch_your_communities, leave_community
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -26,6 +26,6 @@ urlpatterns = [
     path('api/create_community/', views.create_community.as_view()),
     path("api/communities/", fetch_communities, name="fetch_communities"),
     path("api/join_community/<int:community_id>/", join_community, name="join_community"),
-    path("api/your_communities/", fetch_your_communities, name="fetch_your_communities"),
-    path("api/leave_community/", join_community, name="leave_community")
+    path('api/your_communities/', fetch_your_communities, name="fetch_your_communities"),
+    path("api/leave_community/", leave_community, name="leave_community")
 ]
