@@ -35,7 +35,6 @@ def example_view(request):
 class create_user(APIView):
     permission_classes = [AllowAny]
 
-    # Usually use request.data, but since page has been switched to standard form it is sending FormData, which reqires request.POST
     def post(self, request):
         try:
             data = request.POST
@@ -44,20 +43,25 @@ class create_user(APIView):
             username = data.get('username')
             password = data.get('password')
             email = data.get('email')
-            if not username or not password:
-              return Response({'error':'Username and password are required'}, status=status.HTTP_400_BAD_REQUEST)
-            if not first_name or not last_name:
-              return Response({'error':'First and last name are required'}, status=status.HTTP_400_BAD_REQUEST)
-            if not email:
-              return Response({'error':'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Use create_user for secure password hashing
+            # if these fields are not filled in then error, make sure to put in details :D
+            if not all([username, password, first_name, last_name, email]):
+                return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+
             user = User.objects.create_user(username=username, password=password, email=email, first_name=first_name, last_name=last_name)
             user.access_level = data.get('access_level', 1)
             user.save()
-            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
-        except KeyError as e:
-            return Response({'error': f'Missing field: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+            # refresh access token instead of regular so user no longer has to log in and it be annoying it will just refresh :D
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            # check response that shit is working :D
+            return Response({
+                'message': 'User created successfully',
+                'access': access_token,
+                'refresh': refresh_token
+            }, status=status.HTTP_201_CREATED)
+
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -149,37 +153,66 @@ class GetProfilePicture(APIView):
 
 class create_community(APIView):
     permission_classes = [AllowAny]
-
+    # post request to send off the following variables
     def post(self, request):
         name = request.data.get('name')
         description = request.data.get('description')
         category = request.data.get('category')
         leader_ids = request.data.get('leader_ids', [])
-        
+        # check if users is authenticated
         if request.user.is_authenticated:
             owner_id = request.user.id
         else:
             return Response({"error": "User must be logged in"}, status=400)
-
+          
         if Community.objects.filter(name__iexact=name).exists():
             return Response({"error": "This community already exists."}, status=400)
 
+        # create the record in the database with these variables
         community = Community.objects.create(
             name=name,
             description=description,
             category=category,
             owner_id=owner_id
         )
-
+        # create the link between the leader and the community
         for leader_id in leader_ids:
             user = get_object_or_404(User, id=leader_id)
             CommunityLeader.objects.create(community=community, user=user)
             Subscribed.objects.create(community=community, user=user)
+            
+        # auto subscribe the current userid that is logged to the community
+        Subscribed.objects.create(community=community, user_id=owner_id)
 
         return Response({
             "community_id": community.community_id,
             "message": "Community created successfully and selected leaders assigned"
         })
+    
+class SubscribedCommunities(APIView):
+    # the user must be logged in otherwise it will not work
+    permission_classes = [IsAuthenticated] 
+
+    def get(self, request):
+        user = request.user
+        # Fetch all subscriptions where user_id matches the currently logged in user.
+        subscriptions = Subscribed.objects.filter(user=user)
+        # Get the list of communities that have been subscribed too
+        communities = [sub.community for sub in subscriptions]
+        
+        # Serialize the response
+        community_data = [
+            {
+                "id": community.community_id,
+                "name": community.name,
+                "description": community.description,
+                "category": community.category,
+                "owner_id": community.owner_id
+            } 
+            for community in communities
+        ]
+
+        return Response({"subscribed_communities": community_data})
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

@@ -28,4 +28,5 @@ urlpatterns = [
     path("api/join_community/<int:community_id>/", join_community, name="join_community"),
     path('api/your_communities/', fetch_your_communities, name="fetch_your_communities"),
     path("api/leave_community/", leave_community, name="leave_community")
+    path('api/subscribed_communities/', views.SubscribedCommunities.as_view(), name='subscribed_communities'),
 ]
