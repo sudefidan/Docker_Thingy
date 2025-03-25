@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityMember, CommunityLeader, Subscribed
+from .models import Community, CommunityLeader, Subscribed
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 

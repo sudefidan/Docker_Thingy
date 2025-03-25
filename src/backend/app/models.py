@@ -70,6 +70,7 @@ class Post(models.Model):
 class Subscribed(models.Model):
     community = models.ForeignKey(Community, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    joined_at = models.DateTimeField(auto_now_add = True)
 
     class Meta:
         db_table = 'Subscribed'
@@ -113,15 +114,6 @@ class CommunityLeader(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.community.name}"
-
-class CommunityMember(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    community = models.ForeignKey(Community, on_delete=models.CASCADE)
-    joined_at = models.DateTimeField(auto_now_add = True)
-
-    class Meta:
-        db_table = 'CommunityMember'
-        unique_together = ('user', 'community')
 
 class EventParticipant(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
