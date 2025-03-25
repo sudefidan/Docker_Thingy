@@ -3,21 +3,38 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { MultiSelect, Badge } from 'flowbite-svelte';
+	import { writable } from "svelte/store";
 
 	let access_token;
 	let name = '';
 	let description = '';
 	let category = '';
-    let customCategory = '';
+  let customCategory = '';
 	let users = []; // List of users fetched from the API
 	let selectedUsers = [];
 	let usersList = []; // List of users for the MultiSelect component
 	let message = '';
-    let loggedInUserId; // ID of the logged-in user to avoid adding them as a community leader, they are automatically added as the owner
+  let loggedInUserId; // ID of the logged-in user to avoid adding them as a community leader, they are automatically added as the owner
+	let communities = [];
 	let subscribedCommunities = [];
 
 	// Sort the categories alphabetically
 	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())),"Other"];
+
+
+	onMount(() => {
+        // Get the access token from localStorage
+        access_token = localStorage.getItem('access_token');
+
+        // If no token, redirect to login
+        if (!access_token) {
+            window.location.href = '/login'; // You can use Svelte's `goto()` if you have it imported
+        } else {
+            // Fetch communities when the page loads
+            fetch_your_communities();
+        }
+    });
+
 
 	// Placeholder color for option
 	function updateSelectClass(event) {
@@ -95,6 +112,62 @@
 			console.error('Network error:', error.message);
 		}
 	};
+  
+    onMount(async () => {
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/communities/');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            communities = data;
+        } catch (error) {
+            console.error("Error fetching communities:", error);
+        }
+    });
+
+	let your_communities  = [];
+
+	const fetch_communities = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/communities/', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      });
+      if (response.ok) {
+        communities = await response.json();
+      } else {
+        console.error('Failed to fetch communities');
+      }
+    } catch (error) {
+      console.error('Network error:', error.message);
+    }
+  };
+
+    // Fetch your communities
+    const fetch_your_communities = async () => {
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/your_communities/', {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${access_token}`,
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log("Fetched Your Communities:", data);
+                your_communities = data; // This will trigger reactivity in Svelte
+            } else {
+                console.error('Failed to fetch communities');
+            }
+        } catch (error) {
+            console.error('Network error:', error.message);
+        }
+    };
+  
 // submit form to create a new community 
 	const submitForm = async (event) => {
 		event.preventDefault();
@@ -141,6 +214,50 @@
 			message = 'An error occurred. Please try again!';
 		}
 	};
+
+	const join_community = async (communityId) => {
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/api/join_community/${communityId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${access_token}`
+            },
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            console.log(result.message);
+			await fetch_your_communities();
+        } else {
+            console.error(result.error);
+        }
+    } catch (error) {
+        console.error('Error joining community:', error);
+    }
+};
+
+const leave_community = async (communityId) => {
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/api/leave_community/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${access_token}`
+            },
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            console.log(result.message);
+			await fetch_your_communities();
+        } else {
+            console.error(result.error);
+        }
+    } catch (error) {
+        console.error('Error leaving community:', error);
+    }
+};
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -281,13 +398,57 @@
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
-							<h1 class="text-primary text-4xl font-bold">Your Communities</h1>
+							<h1 class="text-primary text-4xl font-bold">User created communities</h1>
 						</div>
 					</div>
 					<div class="flex flex-wrap justify-center space-y-2">
 						<!-- Your Community Card -->
 						<!-- TODO: We need to change this to user's created communities or if they are community leaders, we can subscribe them automatically? -->
 
+						<form id="community-form" on:submit={submitForm}>
+							<!-- Form content goes here, similar to what you already have -->
+						  </form>
+						  
+						  <!-- List Communities and Join Button -->
+						<div class="flex flex-wrap justify-center gap-4">
+							{#each communities as community}
+								<div class="flex items-center bg-base-200 px-6 py-3 rounded-lg shadow-md border border-gray-300">
+									<p class="text-lg font-semibold text-gray-800 pr-3">{community.name}</p>
+		
+									<!-- Check if the user is neither the owner nor the leader before showing the Join button -->
+									{#if !community.is_owner && !community.is_leader}
+										<button 
+										on:click={() => join_community(community.community_id)} 
+											class="btn btn-accent px-4 py-2 text-white rounded-lg font-medium shadow hover:bg-accent-focus">
+										Join
+										</button>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="space-y-10">
+			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
+				<div class="card-body bg-secondary rounded-3xl">
+					<h1 class="text-primary text-4xl font-bold text-center">Your Communities</h1>
+					<div class="flex flex-wrap justify-center space-x-2 space-y-2">
+						<form id="community-form" on:submit={submitForm}>
+							<!-- Form content goes here, similar to what you already have -->
+						  </form>
+						{#each your_communities as community}
+							<div class="border-base-100 m-1 flex items-center space-x-2 rounded-lg border-2 p-2">
+								<p class="text-user-details pr-2">{community.name}</p>
+								<!-- Show "Leave" button for users who are members -->
+								{#if community.is_owner || community.is_leader}
+									<button on:click={() => leave_community(community.community_id)} 
+											class="bg-red-500 text-white px-4 py-2 rounded-lg">
+										X
+									</button>
+								{/if}
+							</div>
 						{#each subscribedCommunities as community}
 						<div>
 							{community.name}
@@ -295,11 +456,9 @@
 							{community.category}
 						</div>
 						{/each}
-
 					</div>
 				</div>
 			</div>
-
 		</div>
 	</div>
 </main>
