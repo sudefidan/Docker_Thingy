@@ -370,6 +370,15 @@ def update_community_name(request):
     if Community.objects.filter(name__iexact=new_name).exclude(community_id=community_id).exists():
         return Response({"error": "A community with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Get all users subscribed to the community
+    subscribed_users = Subscribed.objects.filter(community=community)
+
+    # Create notifications for each subscribed user
+    for subscription in subscribed_users:
+        user = subscription.user
+        message = f"The community '{community.name}' has changed it's name to '{new_name}'."
+        create_notification(user.id, message)
+
     community.name = new_name
     community.save()
 
@@ -393,6 +402,15 @@ def update_community_description(request):
 
     if new_description is None:
         return Response({"error": "New community description is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get all users subscribed to the community
+    subscribed_users = Subscribed.objects.filter(community=community)
+
+    # Create notifications for each subscribed user
+    for subscription in subscribed_users:
+        user = subscription.user
+        message = f"The community '{community.name}' has changed it's description to '{new_description}'."
+        create_notification(user.id, message)
 
     community.description = new_description
     community.save()
@@ -419,6 +437,15 @@ def update_community_category(request):
     if new_category is None:
         return Response({"error": "New community category is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Get all users subscribed to the community
+    subscribed_users = Subscribed.objects.filter(community=community)
+
+    # Create notifications for each subscribed user
+    for subscription in subscribed_users:
+        user = subscription.user
+        message = f"The community {community.name} has changed it's category to '{new_category}' from '{community.category}'."
+        create_notification(user.id, message)
+
     community.category = new_category
     community.save()
 
@@ -437,9 +464,18 @@ def delete_community(request, community_id):
     if community.owner_id != request.user.id:
         return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
 
-    community.delete()
     message = "Community deleted successfully."
-    create_notification(request.user.id, message)
+
+    # Get all users subscribed to the community
+    subscribed_users = Subscribed.objects.filter(community=community)
+
+    # Create notifications for each subscribed user
+    for subscription in subscribed_users:
+        user = subscription.user
+        message = f"The community '{community.name}' has been deleted."
+        create_notification(user.id, message)
+
+    community.delete()
     return Response({"message": message}, status=status.HTTP_200_OK)
 
 @api_view(["GET"])
