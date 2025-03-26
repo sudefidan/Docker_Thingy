@@ -58,32 +58,36 @@
 	};
 </script>
 
-<main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
-	<div class="gap-13 flex grid w-full w-full grid-cols-1 flex-col justify-center md:grid-cols-2">
-		{#each notifications as notification}
-			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
-				<div class="card-body bg-secondary rounded-3xl">
-					<h1 class="text-primary mb-1 text-center text-4xl font-bold">Notification</h1>
-					<div class="card bg-base-100 min-h-1/2 w-full">
-						<div class="card-body bg-secondary">
-							<div class="w-full">
-								<p class="text-xl">Message: {notification.message}</p>
-								<p class="text-lg">
-									Timestamp: {new Date(notification.timestamp).toLocaleString()}
-								</p>
+{#if notifications && Array.isArray(notifications) && notifications.length > 0}
+	<main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
+		<div class="gap-13 flex grid w-full w-full grid-cols-1 flex-col justify-center md:grid-cols-2">
+			{#each notifications as notification}
+				<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
+					<div class="card-body bg-secondary rounded-3xl">
+						<h1 class="text-primary mb-1 text-center text-4xl font-bold">Notification</h1>
+						<div class="card bg-base-100 min-h-1/2 w-full">
+							<div class="card-body bg-secondary">
+								<div class="w-full">
+									<p class="text-xl">Message: {notification.message}</p>
+									<p class="text-lg">
+										Timestamp: {new Date(notification.timestamp).toLocaleString()}
+									</p>
+								</div>
 							</div>
-						</div>
-						<div class="card-actions bg-secondary justify-end">
-							<button
-								class="btn btn-primary"
-								onclick={() => {
-									dismiss(notification.notification_id);
-								}}>Dismiss</button
-							>
+							<div class="card-actions bg-secondary justify-end">
+								<button
+									class="btn btn-primary"
+									onclick={() => {
+										dismiss(notification.notification_id);
+									}}>Dismiss</button
+								>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-		{/each}
-	</div>
-</main>
+			{/each}
+		</div>
+	</main>
+{:else}
+	<p>No notifications to show...</p>
+{/if}

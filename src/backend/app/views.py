@@ -13,6 +13,7 @@ import base64
 from .models import Community, CommunityLeader, Subscribed, Notification, Post
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
+from .utils import create_notification
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -551,22 +552,6 @@ def get_notifications(request):
     except:
         return Response({"message": "Could not get notifications."}, status=status.HTTP_400_BAD_REQUEST)
 
-
-def create_notification(user_id, message):
-    """
-    Creates a notification for a given user.
-    """
-    try:
-        # Retrieve the user object using get_object_or_404 to handle non-existent users
-        user = get_object_or_404(User, id=user_id)
-
-        # Create the notification object
-        Notification.objects.create(user=user, message=message)
-        return True
-    except Exception as e:
-        print(f"Error creating notification: {e}")
-        return False
-
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_notification(request, notification_id):
@@ -583,3 +568,95 @@ def delete_notification(request, notification_id):
     notification.delete()
     message = "Notification deleted successfully."
     return Response({"message": message}, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_community_leaders(request, community_id):
+    """
+    Retrieves all users who are leaders of a specific community.
+    """
+    try:
+        community = get_object_or_404(Community, community_id=community_id)
+    except ValueError:
+        return Response({"error": "Invalid community ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Retrieve all CommunityLeader objects associated with the community
+    community_leaders = CommunityLeader.objects.filter(community=community)
+
+    # Extract the user objects from the CommunityLeader objects
+    leaders = [leader.user for leader in community_leaders]
+
+    # Serialize the leader data
+    leader_data = [
+        {
+            "user_id": leader.id,
+            "username": leader.username,
+            "email": leader.email,
+            "first_name": leader.first_name,
+            "last_name": leader.last_name,
+        }
+        for leader in leaders
+    ]
+
+    return Response(leader_data, status=status.HTTP_200_OK)
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_community_leader(request, community_id, leader_id):
+    """Deletes a community leader from a community"""
+    try:
+        community = get_object_or_404(Community, community_id=community_id)
+        leader_to_remove = get_object_or_404(User, id=leader_id)
+    except ValueError:
+        return Response({"error": "Invalid community or user ID format."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the requesting user is the owner of the community
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        community_leader = CommunityLeader.objects.get(community=community, user=leader_to_remove)
+        community_leader.delete()
+        message_leader = f"You are no longer a leader of {community.name}."
+        create_notification(leader_id, message_leader)
+        message_owner = f"User {leader_to_remove.username} is no longer a leader of {community.name}."
+        create_notification(request.user.id, message_owner)
+        return Response({"message": f"User {leader_to_remove.username} is no longer a leader of {community.name}."}, status=status.HTTP_200_OK)
+    except CommunityLeader.DoesNotExist:
+        return Response({"error": f"User {leader_to_remove.username} is not a leader of {community.name}."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def add_community_leader(request, community_id, username):
+    """
+    Adds a user as a leader to a community.
+    """
+    try:
+        community = get_object_or_404(Community, community_id=community_id)
+        user_to_add = get_object_or_404(User, username=username)
+    except ValueError:
+        return Response({"error": "Invalid community or user ID format."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the requesting user is the owner of the community
+    if community.owner_id != request.user.id:
+        return Response({"error": "You are not the owner of this community."}, status=status.HTTP_403_FORBIDDEN)
+
+    # Check if the user is already a leader
+    if CommunityLeader.objects.filter(community=community, user=user_to_add).exists():
+        return Response({"error": f"User {user_to_add.username} is already a leader of {community.name}."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        CommunityLeader.objects.create(community=community, user=user_to_add)
+        # Check if the user is already subscribed
+        if not Subscribed.objects.filter(community=community, user=user_to_add).exists():
+            # Subscribe the user to the community only if they are not already subscribed
+            Subscribed.objects.create(community=community, user=user_to_add)
+        message_leader = f"You are now a leader of {community.name}."
+        create_notification(user_to_add.id, message_leader) 
+        message_owner = f"User {user_to_add.username} is now a leader of {community.name}."
+        create_notification(request.user.id, message_owner)
+        return Response({"message": f"User {user_to_add.username} is now a leader of {community.name}."}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

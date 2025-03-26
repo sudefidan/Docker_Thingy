@@ -11,6 +11,7 @@
 	let customCategory = '';
 	let users = []; // List of users fetched from the API
 	let selectedUsers = [];
+	let selectedUsersManagement = [];
 	let usersList = []; // List of users for the MultiSelect component
 	let message = '';
 	let loggedInUserId; // ID of the logged-in user to avoid adding them as a community leader, they are automatically added as the owner
@@ -20,6 +21,9 @@
 	let new_community_name = null;
 	let new_community_description = null;
 	let new_community_category = null;
+	$: current_community_members = [];
+	let community_member_to_demote = null;
+	let community_member_to_promote = null;
 
 	// Sort the categories alphabetically
 	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())), 'Other'];
@@ -327,6 +331,104 @@
 			alert('An error occurred while deleting the community.');
 		}
 	};
+
+	const delete_community_leader = async () => {
+		if (!community_management_selected) {
+			console.error('No community selected for deletion.');
+			return;
+		}
+
+		if (!community_member_to_demote) {
+			console.error('No member selected.');
+			return;
+		}
+
+		const confirmation = confirm('Are you sure? This cannot be undone.');
+		if (!confirmation) return;
+
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/community/${community_management_selected}/leaders/${community_member_to_demote}/delete/`,
+				{
+					method: 'DELETE',
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				location.reload(); // Refresh the page to reflect the deletion
+			} else {
+				console.error(result.error);
+				alert(result.error); // Show the error to the user
+			}
+		} catch (error) {
+			console.error('Error demoting community leader:', error);
+			alert('An error occurred while demoting the community leader.');
+		}
+	};
+
+	const add_community_leader = async () => {
+		if (!community_management_selected) {
+			console.error('No community selected for deletion.');
+			return;
+		}
+
+		if (!community_member_to_promote) {
+			console.error('No member selected.');
+			return;
+		}
+
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/community/${community_management_selected}/leaders/${community_member_to_promote}/add/`,
+				{
+					method: 'POST',
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				location.reload(); // Refresh the page to reflect the deletion
+			} else {
+				console.error(result.error);
+				alert(result.error); // Show the error to the user
+			}
+		} catch (error) {
+			console.error('Error demoting community leader:', error);
+			alert('An error occurred while demoting the community leader.');
+		}
+	};
+
+	const get_community_leaders = async () => {
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/community/get_leaders/${community_management_selected}`,
+				{
+					method: 'GET',
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+
+			if (response.ok) {
+				const data = await response.json();
+				current_community_members = data;
+			} else {
+				console.error('Failed to fetch communities');
+			}
+		} catch (error) {
+			console.error('Network error:', error.message);
+		}
+	};
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -539,7 +641,7 @@
 			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Community Management</h1>
-					<div class="form-control mb-5 flex flex-col gap-3">
+					<div class="form-control mb-2 flex flex-col gap-3">
 						<div class="w-full">
 							<label for="name" class="label">
 								<span class="label-text">Communities you Own</span>
@@ -547,10 +649,10 @@
 							<div class="relative flex items-center">
 								<select
 									type="text"
-									id="name"
 									bind:value={community_management_selected}
 									required
 									class="select select-bordered custom-input flex-grow"
+									on:change={get_community_leaders}
 								>
 									<option value={null}>Select a Community</option>
 									{#each owned_communities as community}
@@ -560,7 +662,7 @@
 							</div>
 						</div>
 					</div>
-					<div class="form-control mb-5 flex flex-col gap-3">
+					<div class="form-control mb-2 flex flex-col gap-3">
 						<div class="w-full">
 							<label for="name" class="label">
 								<span class="label-text">Change Community Name</span>
@@ -568,7 +670,6 @@
 							<div class="relative flex items-center">
 								<input
 									type="text"
-									id="name"
 									bind:value={new_community_name}
 									required
 									class="input input-bordered custom-input flex-grow"
@@ -582,7 +683,7 @@
 							</div>
 						</div>
 					</div>
-					<div class="form-control mb-5 flex flex-col gap-3">
+					<div class="form-control mb-2 flex flex-col gap-3">
 						<div class="w-full">
 							<label for="name" class="label">
 								<span class="label-text">Change Community Description</span>
@@ -590,7 +691,6 @@
 							<div class="relative flex items-center">
 								<input
 									type="text"
-									id="name"
 									bind:value={new_community_description}
 									required
 									class="input input-bordered custom-input flex-grow"
@@ -604,7 +704,7 @@
 							</div>
 						</div>
 					</div>
-					<div class="form-control mb-5 flex flex-col gap-3">
+					<div class="form-control mb-2 flex flex-col gap-3">
 						<div class="w-full">
 							<label for="name" class="label">
 								<span class="label-text">Change Community Category</span>
@@ -612,12 +712,11 @@
 							<div class="relative flex items-center">
 								<select
 									type="text"
-									id="name"
 									bind:value={new_community_category}
 									required
 									class="select select-bordered custom-input flex-grow"
 								>
-									<option value={null} disabled selected></option>
+									<option value={null} disabled selected>Select a Category</option>
 									{#each categories as category}
 										<option value={category}>{category}</option>
 									{/each}
@@ -631,15 +730,60 @@
 							</div>
 						</div>
 					</div>
-					<div class="form-control mb-5 flex flex-col gap-3">
-						<div class="w-full text-center">
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<div class="w-full">
 							<label for="name" class="label">
-								<span class="label-text">Delete Community</span>
+								<span class="label-text">Demote a Community Leader</span>
 							</label>
-							<div class="relative flex items-center text-center justify-center">
-								<button class="btn btn-primary ml-2 text-center" on:click={delete_community}
-									>DELETE</button
+							<div class="relative flex items-center">
+								<select
+									type="text"
+									bind:value={community_member_to_demote}
+									required
+									class="select select-bordered custom-input flex-grow"
 								>
+									{#if current_community_members.length > 0}
+										<option value={null} disabled selected>Select a User</option>
+									{:else}
+										<option value={null} disabled selected>No Users to Select</option>
+									{/if}
+									{#each current_community_members as member}
+										<option value={member.user_id}>{member.username}</option>
+									{/each}
+								</select>
+								<button class="btn btn-primary ml-2" on:click={delete_community_leader}
+									>Submit</button
+								>
+							</div>
+						</div>
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="name" class="label">
+									<span class="label-text">Promote User to Community Leader</span>
+								</label>
+								<div class="relative flex items-center">
+									<input
+										type="text"
+										bind:value={community_member_to_promote}
+										required
+										class="input input-bordered custom-input flex-grow"
+									/>
+									<button class="btn btn-primary ml-2" on:click={add_community_leader}
+										>Submit</button
+									>
+								</div>
+							</div>
+						</div>
+						<div class="form-control mb-5 flex flex-col gap-3">
+							<div class="w-full text-center">
+								<label for="name" class="label">
+									<span class="label-text">Delete Community</span>
+								</label>
+								<div class="relative flex items-center text-center justify-center">
+									<button class="btn btn-primary ml-2 text-center" on:click={delete_community}
+										>DELETE</button
+									>
+								</div>
 							</div>
 						</div>
 					</div>
