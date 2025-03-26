@@ -29,5 +29,5 @@ urlpatterns = [
     path('api/your_communities/', fetch_your_communities, name="fetch_your_communities"),
     path("api/leave_community/", leave_community, name="leave_community")
     path('api/subscribed_communities/', views.SubscribedCommunities.as_view(), name='subscribed_communities'),
-    path('events/', EventListCreateView.as_view(), name='event-list-create')
+    path('api/events/', EventListCreateView.as_view(), name='event-list-create')
 ]
