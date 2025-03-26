@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, re_path, include
 from app import views
-from app.views import login_user, logout_user, user_profile_view
+from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests
 from rest_framework import routers, serializers, viewsets
 from app.views import get_users, join_community, fetch_communities, fetch_your_communities, leave_community
 from rest_framework_simplejwt.views import (
@@ -11,22 +11,38 @@ from rest_framework_simplejwt.views import (
 )
 
 urlpatterns = [
+    # admin interface
     path('admin/', admin.site.urls),
+    
+    # authentication endpoints
     path('api/token/', TokenObtainPairView.as_view()),
     path('api/token/refresh/', TokenRefreshView.as_view()),
     path('api/token/verify/', TokenVerifyView.as_view()),
+    
+    # user management endpoints
     path('api/register/', views.create_user.as_view()),
     path('api/login/', login_user.as_view()),
     path('api/logout/', logout_user.as_view()),
     path('api/protected/', views.protected_view.as_view()),
+    path('api/change-password/', change_password.as_view(), name='change_password'),
+    
+    # profile related endpoints
     path('api/user-profile/', user_profile_view.as_view(), name='user_profile'),
-    #path('api/upload-profile-picture/', views.protected_view.as_view()),
-    #path('api/get-profile-picture/', views.protected_view.as_view()),
+    path('api/update-profile/', update_user_profile.as_view(), name='update_profile'),
+    path('api/upload-profile-picture/', upload_profile_picture.as_view(), name='upload_profile_picture'),
+    path('api/get-profile-picture/', GetProfilePicture.as_view(), name='get_profile_picture'),
+    path('api/update-social-media/', update_social_media.as_view(), name='update_social_media'),
+    path('api/update-about/', update_user_about.as_view(), name='update_about'),
+    path('api/update-interests/', update_user_interests.as_view(), name='update_interests'),
+    
+    # users endpoint
     path('api/users/', get_users, name='get_users'),
+    
+    # community related endpoints
     path('api/create_community/', views.create_community.as_view()),
     path("api/communities/", fetch_communities, name="fetch_communities"),
     path("api/join_community/<int:community_id>/", join_community, name="join_community"),
     path('api/your_communities/', fetch_your_communities, name="fetch_your_communities"),
-    path("api/leave_community/", leave_community, name="leave_community")
+    path("api/leave_community/", leave_community, name="leave_community"),
     path('api/subscribed_communities/', views.SubscribedCommunities.as_view(), name='subscribed_communities'),
 ]
