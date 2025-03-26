@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -112,8 +113,29 @@ class user_profile_view(APIView):
             "surname": user.last_name,
             "email": user.email
         })
-        
-    
+
+@login_required
+def create_event(request):
+    # Checks whether a user is a community Leader or Owner
+    user_communities = Community.objects.filter(communityleader__user=request.user
+    ).filter(owner=request.user)
+
+    if not user__communities.exsists(): 
+        return redirect('home_page')
+
+        if request.method == 'POST':
+            form = EventForm(request.POST)
+            if form.is_valid():
+                event = form.save(commit=False)   
+                # Ensures that the event is linked to an already exsisting community that the user owns or leads
+                community = form.cleaned_data['community']
+                if community in user_communities: # Checks user is apart of selected community
+                    event.save()
+                    return redirect('event_list')
+        else:
+            form = EventForm()
+
+        return render(request, 'events/create_event.html', {'form': form})
     
 '''class upload_profile_picture(APIView):
     permission_classes = [IsAuthenticated]
