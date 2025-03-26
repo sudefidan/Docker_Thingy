@@ -5,25 +5,24 @@
 	import { MultiSelect, Badge } from 'flowbite-svelte';
 
 	let access_token;
-	let name = '';
-	let description = '';
-	let category = '';
-	let customCategory = '';
+	let name = ''; // Community name
+	let description = ''; // Community description
+	let category = ''; // Community category
+	let customCategory = ''; // Custom category if category is 'Other'
 	let users = []; // List of users fetched from the API
-	let selectedUsers = [];
-	let selectedUsersManagement = [];
+	let selectedUsers = []; // Selected users for the MultiSelect component
 	let usersList = []; // List of users for the MultiSelect component
 	let message = '';
 	let loggedInUserId; // ID of the logged-in user to avoid adding them as a community leader, they are automatically added as the owner
-	let communities = [];
-	let subscribedCommunities = [];
-	$: community_management_selected = null;
-	let new_community_name = null;
-	let new_community_description = null;
-	let new_community_category = null;
-	$: current_community_members = [];
-	let community_member_to_demote = null;
-	let community_member_to_promote = null;
+	let communities = []; // List of communities fetched from the API
+	let subscribedCommunities = []; // List of communities the user is subscribed to
+	$: community_management_selected = null; // The selected community for management
+	let new_community_name = null; // New name for the community
+	let new_community_description = null; // New description for the community
+	let new_community_category = null; // New category for the community
+	$: current_community_members = []; // Current members of the selected community
+	let community_member_to_demote = null; // Member to demote from leader
+	let community_member_to_promote = null; // Member to promote to leader
 
 	// Sort the categories alphabetically
 	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())), 'Other'];
@@ -438,6 +437,7 @@
 		<!-- Left Column -->
 		<div class="space-y-10">
 			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
+				<!-- Community Creation Card -->
 				<div class="card-body bg-secondary rounded-3xl">
 					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Create Community</h1>
 					<form id="community-form" class="space-y-4" on:submit={submitForm}>
@@ -564,7 +564,7 @@
 
 		<!-- Right Column -->
 		<div class="space-y-10">
-			<!-- Socials Section -->
+			<!-- Communities that User's Own -->
 			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
@@ -638,6 +638,7 @@
 			</div>
 		</div>
 		<div class="space-y-10">
+			<!-- Community Management -->
 			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Community Management</h1>
