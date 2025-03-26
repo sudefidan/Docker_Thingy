@@ -85,6 +85,11 @@ input::selection {
 	@apply text-lg font-bold ml-2;
 }
 
+.label-text::selection {
+	background: var(--color-primary);
+	color: var(--color-secondary);
+}
+
 .text-user-info {
 	@apply text-lg text-right mr-2 text-base-100;
 }
@@ -110,6 +115,21 @@ input::selection {
 	outline: var(--color-primary);
 }
 
+
+.text-area-input {
+	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2;
+	white-space: pre-wrap !important;
+	height: auto;
+	word-break: break-word !important;
+	overflow-wrap: break-word !important;
+	display: block;
+}
+
+.text-area-input::selection {
+	background: var(--color-primary);
+	color: var(--color-secondary);
+}
+
 .placeholder-selected {
 	color: #697282;
 	outline: var(--color-primary);
@@ -118,6 +138,26 @@ input::selection {
 select:not(.placeholder-selected) {
 	color: var(--color-base-100);
 	outline: var(--color-primary);
+}
+
+h1::selection {
+	background: var(--color-primary);
+	color: var(--color-secondary);
+}
+
+h2::selection {
+	background: var(--color-primary);
+	color: var(--color-secondary);
+}
+
+h3::selection {
+	background: var(--color-primary);
+	color: var(--color-secondary);
+}
+
+p::selection {
+	background: var(--color-primary);
+	color: var(--color-secondary);
 }
 
 
