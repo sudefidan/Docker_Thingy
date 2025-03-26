@@ -175,15 +175,18 @@
 				</li>
 			</ul>
 		</div>
-		<!-- Main content -->
+
+		<!-- Top panel for Search bar -->
 		<div class="top-panel bg-base">
 			<div class="p-4">
 				<input type="text" placeholder="Search..." class="input search-bar" />
 			</div>
-			<div class="main-content">
+			 <div class="main-content">
 				{@render children()}
 			</div>
-		</div>
+		 </div>
+
+
 	{:else}
 		<!-- If it is register or login page show: -->
 		<!-- Main content -->

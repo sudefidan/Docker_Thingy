@@ -8,15 +8,40 @@
 	let name = '';
 	let description = '';
 	let category = '';
-    let customCategory = '';
+	let customCategory = '';
 	let users = []; // List of users fetched from the API
 	let selectedUsers = [];
+	let selectedUsersManagement = [];
 	let usersList = []; // List of users for the MultiSelect component
 	let message = '';
-    let loggedInUserId; // ID of the logged-in user to avoid adding them as a community leader, they are automatically added as the owner
+	let loggedInUserId; // ID of the logged-in user to avoid adding them as a community leader, they are automatically added as the owner
+	let communities = [];
+	let subscribedCommunities = [];
+	$: community_management_selected = null;
+	let new_community_name = null;
+	let new_community_description = null;
+	let new_community_category = null;
+	$: current_community_members = [];
+	let community_member_to_demote = null;
+	let community_member_to_promote = null;
 
 	// Sort the categories alphabetically
-	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())),"Other"];
+	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())), 'Other'];
+
+	onMount(() => {
+		// Get the access token from localStorage
+		access_token = localStorage.getItem('access_token');
+
+		// If no token, redirect to login
+		if (!access_token) {
+			window.location.href = '/login'; // You can use Svelte's `goto()` if you have it imported
+		} else {
+			// Fetch communities when the page loads
+			fetch_your_communities();
+			// Fetch owned communities when the page loads
+			fetch_owned_communities();
+		}
+	});
 
 	// Placeholder color for option
 	function updateSelectClass(event) {
@@ -29,25 +54,47 @@
 	}
 
 	onMount(async () => {
-		// Retrieve the access token from localStorage
+		// Retrieve the access_token from localStorage
 		access_token = localStorage.getItem('access_token');
 
+		// If there's no access_token, redirect to the login page or home
 		if (!access_token) {
-			// Redirect to login if no access token found
-			goto('/login');
+			goto('http://localhost:5173/'); // Or wherever you want the user to go if they are not logged in
 		} else {
-            loggedInUserId = getLoggedInUserIdFromToken(access_token);
+			loggedInUserId = getLoggedInUserIdFromToken(access_token);
+
+			// Fetch users and subscribed communities on page load.
 			await fetchUsers();
+			await fetchSubscribedCommunities();
 		}
 	});
 
-    // Retrieve the logged-in user's ID from the access token
-    function getLoggedInUserIdFromToken(token) {
-        // Decode the token and extract the user ID (implementation depends on your token structure)
-        // For example, if using JWT:
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.user_id;
-    }
+	// fetches the subscribed communities that the current user is subscribed too
+	const fetchSubscribedCommunities = async () => {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/subscribed_communities/', {
+				method: 'GET',
+				headers: { Authorization: `Bearer ${access_token}` }
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				subscribedCommunities = data.subscribed_communities;
+			} else {
+				console.error('Failed to fetch subscribed communities');
+			}
+		} catch (error) {
+			console.error('Network error:', error.message);
+		}
+	};
+
+	// Retrieve the logged-in user's ID from the access token
+	function getLoggedInUserIdFromToken(token) {
+		// Decode the token and extract the user ID (implementation depends on your token structure)
+		// For example, if using JWT:
+		const payload = JSON.parse(atob(token.split('.')[1]));
+		return payload.user_id;
+	}
 
 	// Fetch users from the API
 	const fetchUsers = async () => {
@@ -61,10 +108,10 @@
 
 			if (response.ok) {
 				users = await response.json();
-                // Filter out the logged-in user and create a list of users for the MultiSelect component
-                usersList = users
-                    .filter((user) => user.id !== loggedInUserId)
-                    .map((user) => ({ value: user.id, name: user.username }));
+				// Filter out the logged-in user and create a list of users for the MultiSelect component
+				usersList = users
+					.filter((user) => user.id !== loggedInUserId)
+					.map((user) => ({ value: user.id, name: user.username }));
 			} else {
 				console.error('Failed to fetch users');
 			}
@@ -73,21 +120,80 @@
 		}
 	};
 
+	onMount(async () => {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/communities/');
+			if (!response.ok) {
+				throw new Error(`HTTP error! Status: ${response.status}`);
+			}
+			const data = await response.json();
+			communities = data;
+		} catch (error) {
+			console.error('Error fetching communities:', error);
+		}
+	});
+
+	let your_communities = [];
+	let owned_communities = [];
+
+	const fetch_owned_communities = async () => {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/fetch_owned_communities/', {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${access_token}`
+				}
+			});
+			if (response.ok) {
+				const data = await response.json();
+				console.log('Owned Communities:', data);
+				owned_communities = data;
+			} else {
+				console.error('Failed to fetch communities');
+			}
+		} catch (error) {
+			console.error('Network error:', error.message);
+		}
+	};
+
+	// Fetch your communities
+	const fetch_your_communities = async () => {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/your_communities/', {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${access_token}`
+				}
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				console.log('Fetched Your Communities:', data);
+				your_communities = data; // This will trigger reactivity in Svelte
+			} else {
+				console.error('Failed to fetch communities');
+			}
+		} catch (error) {
+			console.error('Network error:', error.message);
+		}
+	};
+
+	// submit form to create a new community
 	const submitForm = async (event) => {
 		event.preventDefault();
-
+		// checks if all fields are completed if not it will not submit
 		if (!name || !description || !category) {
 			console.log('All fields are required!');
 			return;
 		}
-
+		// data that will be passed through the api
 		const data = {
 			name,
 			description,
 			category: category === 'Other' ? customCategory : category,
 			leader_ids: selectedUsers
 		};
-
+		// the api call and post method
 		try {
 			const response = await fetch('http://127.0.0.1:8000/api/create_community/', {
 				method: 'POST',
@@ -99,7 +205,7 @@
 			});
 
 			const result = await response.json();
-
+			// if it worked and is okay display in the console log the data passed through and then reload the window
 			if (response.ok) {
 				//window.location.reload();
 				console.log('Community created:', result);
@@ -108,6 +214,7 @@
 				description = '';
 				category = '';
 				selectedUsers = [];
+				window.location.reload();
 			} else {
 				console.error('Error creating community:', result.error || 'Something went wrong');
 				message = 'Failed to create community!';
@@ -115,6 +222,211 @@
 		} catch (error) {
 			console.error('Network Error:', error.message);
 			message = 'An error occurred. Please try again!';
+		}
+	};
+
+	const join_community = async (communityId) => {
+		try {
+			const response = await fetch(`http://127.0.0.1:8000/api/join_community/${communityId}/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${access_token}`
+				}
+			});
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				await fetch_your_communities();
+			} else {
+				console.error(result.error);
+			}
+		} catch (error) {
+			console.error('Error joining community:', error);
+		}
+	};
+
+	const leave_community = async (communityId) => {
+		try {
+			const response = await fetch(`http://127.0.0.1:8000/api/leave_community/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${access_token}`
+				}
+			});
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				await fetch_your_communities();
+			} else {
+				console.error(result.error);
+			}
+		} catch (error) {
+			console.error('Error leaving community:', error);
+		}
+	};
+
+	const submit_community_management = async (type, value) => {
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/communities/update_community_${type}/`,
+				{
+					method: 'PUT',
+					headers: {
+						Authorization: `Bearer ${access_token}`,
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						value,
+						community_id: community_management_selected
+					})
+				}
+			);
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				location.reload();
+			} else {
+				console.error(result.error);
+			}
+		} catch (error) {
+			console.error('Error changing community settings: ', error);
+		}
+	};
+
+	const delete_community = async () => {
+		if (!community_management_selected) {
+			console.error('No community selected for deletion.');
+			return;
+		}
+
+		const confirmation = confirm('Are you sure? This cannot be undone.');
+		if (!confirmation) return;
+
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/communities/delete/${community_management_selected}`,
+				{
+					method: 'DELETE',
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				location.reload(); // Refresh the page to reflect the deletion
+			} else {
+				console.error(result.error);
+				alert(result.error); // Show the error to the user
+			}
+		} catch (error) {
+			console.error('Error deleting community:', error);
+			alert('An error occurred while deleting the community.');
+		}
+	};
+
+	const delete_community_leader = async () => {
+		if (!community_management_selected) {
+			console.error('No community selected for deletion.');
+			return;
+		}
+
+		if (!community_member_to_demote) {
+			console.error('No member selected.');
+			return;
+		}
+
+		const confirmation = confirm('Are you sure? This cannot be undone.');
+		if (!confirmation) return;
+
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/community/${community_management_selected}/leaders/${community_member_to_demote}/delete/`,
+				{
+					method: 'DELETE',
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				location.reload(); // Refresh the page to reflect the deletion
+			} else {
+				console.error(result.error);
+				alert(result.error); // Show the error to the user
+			}
+		} catch (error) {
+			console.error('Error demoting community leader:', error);
+			alert('An error occurred while demoting the community leader.');
+		}
+	};
+
+	const add_community_leader = async () => {
+		if (!community_management_selected) {
+			console.error('No community selected for deletion.');
+			return;
+		}
+
+		if (!community_member_to_promote) {
+			console.error('No member selected.');
+			return;
+		}
+
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/community/${community_management_selected}/leaders/${community_member_to_promote}/add/`,
+				{
+					method: 'POST',
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log(result.message);
+				location.reload(); // Refresh the page to reflect the deletion
+			} else {
+				console.error(result.error);
+				alert(result.error); // Show the error to the user
+			}
+		} catch (error) {
+			console.error('Error demoting community leader:', error);
+			alert('An error occurred while demoting the community leader.');
+		}
+	};
+
+	const get_community_leaders = async () => {
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/community/get_leaders/${community_management_selected}`,
+				{
+					method: 'GET',
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+
+			if (response.ok) {
+				const data = await response.json();
+				current_community_members = data;
+			} else {
+				console.error('Failed to fetch communities');
+			}
+		} catch (error) {
+			console.error('Network error:', error.message);
 		}
 	};
 </script>
@@ -187,22 +499,22 @@
 								</div>
 							</div>
 						</div>
-                        {#if category === 'Other'}
-                        <div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
-                            <div class="w-full">
-                                <div class="relative">
-                                    <input
-                                        type="text"
-                                        id="customCategory"
-                                        bind:value={customCategory}
-                                        required
-                                        class="input input-bordered validator custom-input"
-                                        placeholder="Enter your custom category"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    {/if}
+						{#if category === 'Other'}
+							<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+								<div class="w-full">
+									<div class="relative">
+										<input
+											type="text"
+											id="customCategory"
+											bind:value={customCategory}
+											required
+											class="input input-bordered validator custom-input"
+											placeholder="Enter your custom category"
+										/>
+									</div>
+								</div>
+							</div>
+						{/if}
 						<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
 							<div class="w-full">
 								<label for="name" class="label">
@@ -257,23 +569,226 @@
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
-							<h1 class="text-primary text-4xl font-bold">Your Communities</h1>
+							<h1 class="text-primary text-4xl font-bold">User created communities</h1>
 						</div>
 					</div>
 					<div class="flex flex-wrap justify-center space-y-2">
 						<!-- Your Community Card -->
 						<!-- TODO: We need to change this to user's created communities or if they are community leaders, we can subscribe them automatically? -->
-						{#each users as user}
-							<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
-								<p class="text-user-details pr-2">{user.email}</p>
 
-							</div>
-						{/each}
+						<form id="community-form" on:submit={submitForm}>
+							<!-- Form content goes here, similar to what you already have -->
+						</form>
 
+						<!-- List Communities and Join Button -->
+						<div class="flex flex-wrap justify-center gap-4">
+							{#each communities as community}
+								<div
+									class="flex items-center bg-base-200 px-6 py-3 rounded-lg shadow-md border border-gray-300"
+								>
+									<p class="text-lg font-semibold text-gray-800 pr-3">{community.name}</p>
+
+									<!-- Check if the user is neither the owner nor the leader before showing the Join button -->
+									{#if !community.is_owner && !community.is_leader}
+										<button
+											on:click={() => join_community(community.community_id)}
+											class="btn btn-accent px-4 py-2 text-white rounded-lg font-medium shadow hover:bg-accent-focus"
+										>
+											Join
+										</button>
+									{/if}
+								</div>
+							{/each}
+						</div>
 					</div>
 				</div>
 			</div>
-
+		</div>
+		<div class="space-y-10">
+			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
+				<div class="card-body bg-secondary rounded-3xl">
+					<h1 class="text-primary text-4xl font-bold text-center">Your Communities</h1>
+					<div class="flex flex-wrap justify-center space-x-2 space-y-2">
+						<form id="community-form" on:submit={submitForm}>
+							<!-- Form content goes here, similar to what you already have -->
+						</form>
+						{#each your_communities as community}
+							<div class="border-base-100 m-1 flex items-center space-x-2 rounded-lg border-2 p-2">
+								<p class="text-user-details pr-2">{community.name}</p>
+								<!-- Show "Leave" button for users who are members -->
+								{#if community.is_owner || community.is_leader}
+									<button
+										on:click={() => leave_community(community.community_id)}
+										class="bg-red-500 text-white px-4 py-2 rounded-lg"
+									>
+										X
+									</button>
+								{/if}
+							</div>
+						{/each}
+						{#each subscribedCommunities as community}
+							<div>
+								{community.name}
+								{community.description}
+								{community.category}
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="space-y-10">
+			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
+				<div class="card-body bg-secondary rounded-3xl">
+					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Community Management</h1>
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Communities you Own</span>
+							</label>
+							<div class="relative flex items-center">
+								<select
+									type="text"
+									bind:value={community_management_selected}
+									required
+									class="select select-bordered custom-input flex-grow"
+									on:change={get_community_leaders}
+								>
+									<option value={null}>Select a Community</option>
+									{#each owned_communities as community}
+										<option value={community.community_id}>{community.name}</option>
+									{/each}
+								</select>
+							</div>
+						</div>
+					</div>
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Change Community Name</span>
+							</label>
+							<div class="relative flex items-center">
+								<input
+									type="text"
+									bind:value={new_community_name}
+									required
+									class="input input-bordered custom-input flex-grow"
+								/>
+								<button
+									class="btn btn-primary ml-2"
+									on:click={() => {
+										submit_community_management('name', new_community_name);
+									}}>Submit</button
+								>
+							</div>
+						</div>
+					</div>
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Change Community Description</span>
+							</label>
+							<div class="relative flex items-center">
+								<input
+									type="text"
+									bind:value={new_community_description}
+									required
+									class="input input-bordered custom-input flex-grow"
+								/>
+								<button
+									class="btn btn-primary ml-2"
+									on:click={() => {
+										submit_community_management('description', new_community_description);
+									}}>Submit</button
+								>
+							</div>
+						</div>
+					</div>
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Change Community Category</span>
+							</label>
+							<div class="relative flex items-center">
+								<select
+									type="text"
+									bind:value={new_community_category}
+									required
+									class="select select-bordered custom-input flex-grow"
+								>
+									<option value={null} disabled selected>Select a Category</option>
+									{#each categories as category}
+										<option value={category}>{category}</option>
+									{/each}
+								</select>
+								<button
+									class="btn btn-primary ml-2"
+									on:click={() => {
+										submit_community_management('category', new_community_category);
+									}}>Submit</button
+								>
+							</div>
+						</div>
+					</div>
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Demote a Community Leader</span>
+							</label>
+							<div class="relative flex items-center">
+								<select
+									type="text"
+									bind:value={community_member_to_demote}
+									required
+									class="select select-bordered custom-input flex-grow"
+								>
+									{#if current_community_members.length > 0}
+										<option value={null} disabled selected>Select a User</option>
+									{:else}
+										<option value={null} disabled selected>No Users to Select</option>
+									{/if}
+									{#each current_community_members as member}
+										<option value={member.user_id}>{member.username}</option>
+									{/each}
+								</select>
+								<button class="btn btn-primary ml-2" on:click={delete_community_leader}
+									>Submit</button
+								>
+							</div>
+						</div>
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="name" class="label">
+									<span class="label-text">Promote User to Community Leader</span>
+								</label>
+								<div class="relative flex items-center">
+									<input
+										type="text"
+										bind:value={community_member_to_promote}
+										required
+										class="input input-bordered custom-input flex-grow"
+									/>
+									<button class="btn btn-primary ml-2" on:click={add_community_leader}
+										>Submit</button
+									>
+								</div>
+							</div>
+						</div>
+						<div class="form-control mb-5 flex flex-col gap-3">
+							<div class="w-full text-center">
+								<label for="name" class="label">
+									<span class="label-text">Delete Community</span>
+								</label>
+								<div class="relative flex items-center text-center justify-center">
+									<button class="btn btn-primary ml-2 text-center" on:click={delete_community}
+										>DELETE</button
+									>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 </main>
