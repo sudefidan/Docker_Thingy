@@ -98,6 +98,10 @@ input::selection {
 	@apply text-lg text-center text-base-100;
 }
 
+.text-community-category {
+	@apply text-center text-base-100;
+}
+
 .panel-item button svg {
 	stroke: var(--color-base-100);
 }
@@ -155,9 +159,56 @@ h3::selection {
 	color: var(--color-secondary);
 }
 
+.community-description {
+	@apply text-center;
+		/* Centers the text horizontally */
+		white-space: normal;
+		/* Allows text to wrap */
+		word-break: break-word;
+		/* Breaks long words if necessary */
+		overflow-wrap: break-word;
+		/* Ensures proper wrapping for long words */
+}
+p{
+	@apply text-base-100;
+}
 p::selection {
 	background: var(--color-primary);
 	color: var(--color-secondary);
+}
+
+/* Tooltip container */
+.tooltip-container {
+	position: relative;
+	display: inline-block;
+}
+
+/* Tooltip text */
+.tooltip {
+	visibility: hidden;
+	background-color: var(--color-primary);
+	/* Customize the background color */
+	color: var(--color-secondary);
+	/* Customize the text color */
+	text-align: center;
+	padding: 5px 10px;
+	border-radius: 5px;
+	position: absolute;
+	z-index: 1;
+	top: 125%;
+	/* Position below the button */
+	left: 50%;
+	transform: translateX(-50%);
+	opacity: 0;
+	transition: opacity 0.3s;
+	font-size: 0.875rem;
+	/* Adjust font size */
+}
+
+/* Show the tooltip on hover */
+.tooltip-container:hover .tooltip {
+	visibility: visible;
+	opacity: 1;
 }
 
 
