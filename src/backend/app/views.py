@@ -11,7 +11,7 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityMember, CommunityLeader, Subscribed, SocialType, Post
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
@@ -872,7 +872,8 @@ def get_notifications(request):
         ]
 
         return Response(notification_data, status=200)
-    except:
+    except Exception as e:
+        print(e)
         return Response({"message": "Could not get notifications."}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(["DELETE"])

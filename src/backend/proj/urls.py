@@ -37,6 +37,10 @@ urlpatterns = [
     
     # users endpoint
     path('api/users/', get_users, name='get_users'),
+
+    # posts endpoint
+    path('api/get_posts/', views.get_posts, name='get_posts'),
+    path('api/create_posts/', views.create_post, name='create_post'),
     
     # community related endpoints
     path('api/create_community/', views.create_community.as_view()),
@@ -45,5 +49,17 @@ urlpatterns = [
     path('api/your_communities/', fetch_your_communities, name="fetch_your_communities"),
     path("api/leave_community/", leave_community, name="leave_community"),
     path('api/subscribed_communities/', views.SubscribedCommunities.as_view(), name='subscribed_communities'),
-    path('events/', EventListCreateView.as_view(), name='event-list-create')
+    path('api/fetch_owned_communities/', fetch_owned_communities, name="fetch_owned_communities"),
+    path('api/communities/update_community_name/', update_community_name, name="update_community_name"),
+    path('api/communities/update_community_description/', update_community_description, name="update_community_description"),
+    path('api/communities/update_community_category/', update_community_category, name="update_community_category"),
+    path('api/communities/delete/<int:community_id>/', delete_community, name="delete_community"),
+    path('api/community/get_leaders/<int:community_id>/', get_community_leaders, name="get_community_leaders"),
+    path('api/community/<int:community_id>/leaders/<int:leader_id>/delete/', delete_community_leader, name="delete_community_leaders"),
+    path('api/community/<int:community_id>/leaders/<str:username>/add/', add_community_leader, name='add_community_leader'),
+    # path('events/', EventListCreateView.as_view(), name='event-list-create')
+
+    # notifications
+    path('api/notifications/', get_notifications, name="get_notifications"),
+    path('api/notifications/delete/<int:notification_id>/', delete_notification, name="delete_notification"),
 ]
