@@ -7,6 +7,7 @@
   let usersList = []; // List of users for MultiSelect component
   let communities = []; // Stores the user's owned/managed communities
   let allowedToCreate = false; // Controls form visibility
+  let submitEvent = '';
   let title = '';
   let description = '';
   let date = '';
@@ -141,7 +142,16 @@ onMount(fetchAllowedCommunities);
       
         <div class="form-group">
           <label for="community">Community:</label>
-          <input type="text" bind:value={community_id} id="community" class="form-input" required />
+          <select bind:value={community_id} id="community" class="form-input" required>
+            <option value="" disabled selected>-- Choose a community --</option>
+            {#if communities.length === 0}
+              <option disabled>No communities found</option>
+            {:else}
+              {#each communities as community}
+                <option value={community.id}>{community.name}</option>
+              {/each}
+            {/if}
+          </select>
         </div>
       
         <button type="submit" class="submit-btn">Create Event</button>
