@@ -402,7 +402,6 @@
 			<!-- Communities Section-->
 			<div class="flex flex-wrap justify-center space-y-2">
 				<!-- List Communities and Join Button -->
-
 				{#each communities as community}
 					<div class="card bg-base-100 w-full rounded-3xl">
 						<div class="card-body bg-secondary rounded-3xl">
