@@ -127,6 +127,7 @@
 	>
 		<!-- Left Column -->
 		<div class="space-y-10">
+			<!-- Profile Section -->
 			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
