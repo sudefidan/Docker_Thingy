@@ -399,6 +399,296 @@
 	>
 		<!-- Left Column -->
 		<div class="space-y-10">
+			<!-- Communities Section-->
+			<div class="flex flex-wrap justify-center space-y-2">
+				<!-- List Communities and Join Button -->
+
+				{#each communities as community}
+					<div class="card bg-base-100 w-full rounded-3xl">
+						<div class="card-body bg-secondary rounded-3xl">
+							<div class="mb-4 flex items-center justify-between">
+								<div class="flex-grow text-center">
+									<h1 class="text-primary text-4xl font-bold">{community.name}</h1>
+								</div>
+								<!-- Show "Leave" button if the user is subscribed and not the owner of the community -->
+								{#if subscribedCommunities.some((sub) => sub.id === community.community_id) && community.owner_id != loggedInUserId}
+									<div class="tooltip-container">
+										<button
+											on:click={() => leave_community(community.community_id)}
+											class="hover:text-primary"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												fill="currentColor"
+												class="bi bi-box-arrow-right size-6"
+												viewBox="0 0 16 16"
+											>
+												<path
+													fill-rule="evenodd"
+													d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"
+												/>
+												<path
+													fill-rule="evenodd"
+													d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"
+												/>
+											</svg>
+										</button>
+										<span class="tooltip">Leave this community</span>
+									</div>
+									<!-- Show "Join" button if the user is not subscribed, or leader or owner -->
+								{:else if !subscribedCommunities.some((sub) => sub.id === community.community_id)}
+									<div class="tooltip-container">
+										<button
+											on:click={() => join_community(community.community_id)}
+											class="hover:text-primary"
+											title="Join this community"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												width="16"
+												height="16"
+												fill="currentColor"
+												class="bi bi-plus-circle size-6"
+												viewBox="0 0 16 16"
+											>
+												<path
+													d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"
+												/>
+												<path
+													d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"
+												/>
+											</svg>
+										</button>
+										<span class="tooltip">Join this community</span>
+									</div>
+								{/if}
+							</div>
+							<div class="mb-4">
+								<p>Category: {community.category}</p>
+								<p class="community-description">{community.description}</p>
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+		<!-- Right Column -->
+		<div class="space-y-10">
+			<!-- Community Management -->
+			<div class="card bg-base-100 shadow-4xl w-full rounded-3xl">
+				<div class="card-body bg-secondary rounded-3xl">
+					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Community Management</h1>
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Which one of your communities do you want to change?</span>
+							</label>
+							<div class="relative flex items-center">
+								<select
+									type="text"
+									bind:value={community_management_selected}
+									required
+									class="select select-bordered custom-input flex-grow"
+									on:change={get_community_leaders}
+								>
+									<option value={null}>Select a Community</option>
+									{#each communities as community}
+										{#if community.owner_id === loggedInUserId}
+											<option value={community.community_id}>{community.name}</option>
+										{/if}
+									{/each}
+								</select>
+							</div>
+						</div>
+						{#if community_management_selected}
+							<div class="w-full">
+							<label for="action" class="label">
+								<span class="label-text">What would you like to do?</span>
+							</label>
+							<div class="relative flex items-center">
+								<select
+									id="action"
+									bind:value={selectedAction}
+									required
+									class="select select-bordered custom-input flex-grow"
+									on:change={handleActionChange}
+								>
+									<option value="" disabled selected>Select an Action</option>
+									<option value="changeName">Change Community Name</option>
+									<option value="changeDescription">Change Community Description</option>
+									<option value="changeCategory">Change Community Category</option>
+									<option value="demoteLeader">Demote a Community Leader</option>
+									<option value="promoteLeader">Promote User to Community Leader</option>
+									<option value="deleteCommunity">Delete Community</option>
+								</select>
+							</div>
+						</div>
+						{/if}
+
+					</div>
+					{#if selectedAction === 'changeName'}
+						<div class="form-control mb-2 flex flex-col gap-3 w-full">
+							<div class="w-full">
+								<label for="name" class="label">
+									<span class="label-text">Got a new name in mind?</span>
+								</label>
+								<div class="relative flex items-center">
+									<input
+										type="text"
+										bind:value={new_community_name}
+										required
+										class="input input-bordered validator custom-input"
+										placeholder="Type it here..."
+									/>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => {
+										submit_community_management('name', new_community_name);
+									}}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+					{#if selectedAction === 'changeDescription'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="name" class="label">
+									<span class="label-text">Want to give your community a fresh description?</span>
+								</label>
+								<div class="relative flex items-center">
+									<textarea
+										bind:value={new_community_description}
+										required
+										class="input input-bordered text-area-input"
+										placeholder="Type it here..."
+										on:input={adjustTextareaHeight}
+									/>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => {
+										submit_community_management('description', new_community_description);
+									}}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+					{#if selectedAction === 'changeCategory'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="category" class="label">
+									<span class="label-text">Want to change the category?</span>
+								</label>
+								<div class="relative flex items-center">
+									<select
+										id="category"
+										bind:value={new_community_category}
+										required
+										class="select select-bordered custom-input flex-grow"
+									>
+										<option value={null} disabled selected>Pick a new category</option>
+										{#each categories as category}
+											<option value={category}>{category}</option>
+										{/each}
+									</select>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => {
+										submit_community_management('category', new_community_category);
+									}}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+					{#if selectedAction === 'demoteLeader'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="demoteLeader" class="label">
+									<span class="label-text">Need to remove a community leader?</span>
+								</label>
+								<div class="relative flex items-center">
+									<select
+										id="demoteLeader"
+										bind:value={community_member_to_demote}
+										required
+										class="select select-bordered custom-input flex-grow"
+									>
+										{#if community_leaders.length > 0}
+											<option value={null} disabled selected>Select a User</option>
+										{:else}
+											<option value={null} disabled selected>No Users to Select</option>
+										{/if}
+										{#each community_leaders as member}
+											<option value={member.user_id}>{member.username}</option>
+										{/each}
+									</select>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={delete_community_leader}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+					{#if selectedAction === 'promoteLeader'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="promoteLeader" class="label">
+									<span class="label-text">Promote User to Community Leader</span>
+								</label>
+								<div class="relative flex items-center">
+									<select
+										id="promoteLeader"
+										bind:value={community_member_to_promote}
+										required
+										class="select select-bordered custom-input flex-grow"
+									>
+										{#if usersList.length > 0}
+											<option value={null} disabled selected>Select a User</option>
+											{#each usersList as user}
+												{#if !community_leaders.some((leader) => leader.user_id === user.value)}
+													<option value={user.value}>{user.name}</option>
+												{/if}
+											{/each}
+										{:else}
+											<option value={null} disabled selected>No Users Available</option>
+										{/if}
+									</select>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									type="submit"
+									on:click={add_community_leader}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+					{#if selectedAction === 'deleteCommunity'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="mb-2 mt-2 flex justify-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									type="submit"
+									on:click={delete_community}>Delete</button
+								>
+							</div>
+						</div>
+					{/if}
+				</div>
+			</div>
+			<!-- Community Creation Card -->
 			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Create Community</h1>
