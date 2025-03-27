@@ -50,7 +50,6 @@
 			loggedInUserId = getLoggedInUserIdFromToken(access_token);
 			await fetchUsers(); // Fetch users from the API
 			await fetchSubscribedCommunities(); // Fetch subscribed communities
-			console.log("User's List", usersList);
 		}
 	});
 
@@ -75,8 +74,6 @@
 			if (response.ok) {
 				const data = await response.json();
 				subscribedCommunities = data.subscribed_communities;
-				console.log('User ID:', loggedInUserId);
-				console.log('Subscribed Communities:', subscribedCommunities);
 			} else {
 				console.error('Failed to fetch subscribed communities');
 			}
@@ -105,7 +102,6 @@
 
 			if (response.ok) {
 				users = await response.json();
-				console.log('All Users:', users);
 				// Filter out the logged-in user and create a list of users for the MultiSelect component
 				usersList = users
 					.filter((user) => user.id !== loggedInUserId)
@@ -126,7 +122,6 @@
 			}
 			const data = await response.json();
 			communities = data;
-			console.log('communities:', communities);
 		} catch (error) {
 			console.error('Error fetching communities:', error);
 		}
@@ -147,6 +142,11 @@
 			category: category === 'Other' ? customCategory : category,
 			leader_ids: selectedUsersForCommunityCreation
 		};
+
+		const confirmation = confirm('Are you sure?');
+		if (!confirmation) return;
+
+
 		// the api call and post method
 		try {
 			const response = await fetch('http://127.0.0.1:8000/api/create_community/', {
@@ -162,7 +162,6 @@
 			// if it worked and is okay display in the console log the data passed through and then reload the window
 			if (response.ok) {
 				console.log('Community created:', result);
-				alert('Community created successfully!');
 				name = '';
 				description = '';
 				category = '';
@@ -191,12 +190,14 @@
 			const result = await response.json();
 			if (response.ok) {
 				console.log(result.message);
+				alert('You have successfully joined the community!');
 				await fetchSubscribedCommunities();
 			} else {
 				console.error(result.error);
 			}
 		} catch (error) {
 			console.error('Error joining community:', error);
+			alert('An error occurred while joining the community.');
 		}
 	};
 
@@ -213,12 +214,14 @@
 			const result = await response.json();
 			if (response.ok) {
 				console.log(result.message);
+				alert('You have successfully left the community!');
 				await fetch_your_communities();
 			} else {
 				console.error(result.error);
 			}
 		} catch (error) {
 			console.error('Error leaving community:', error);
+			alert('An error occurred while leaving the community.');
 		}
 	};
 
@@ -378,11 +381,9 @@
 					}
 				}
 			);
-
 			if (response.ok) {
 				const data = await response.json();
 				community_leaders = data;
-				console.log('Current Community Leaders:', community_leaders);
 			} else {
 				console.error('Failed to fetch communities');
 			}
