@@ -4,17 +4,18 @@ from django.http import JsonResponse, HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from app.models import User, UserSocial
+from app.models import User, UserSocial, Event
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityLeader, Subscribed, Notification, Post
+from .models import Community, CommunityLeader, Subscribed, Notification, Post, EventType
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
+from django.views import View
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -120,7 +121,90 @@ class user_profile_view(APIView):
             "email": user.email
         })
         
+@login_required
+def create_event(request):
+    # Checks whether a user is a community Leader or Owner
+    user_communities = Community.objects.filter(communityleader__user=request.user
+    ).filter(owner=request.user)
+
+    if not user__communities.exsists(): 
+        return redirect('home_page')
+
+        if request.method == 'POST':
+            form = EventForm(request.POST)
+            if form.is_valid():
+                event = form.save(commit=False)   
+                # Ensures that the event is linked to an already exsisting community that the user owns or leads
+                community = form.cleaned_data['community']
+                if community in user_communities: # Checks user is apart of selected community
+                    event.save()
+                    return redirect('event_list')
+        else:
+            form = EventForm()
+
+        return render(request, 'events/create_event.html', {'form': form})
+        
+class EventListCreateView(APIView):
     
+   ## A view to list and create events.
+    
+    def get(self, request):
+        # Retrieve all events
+        events = Event.objects.all()
+        serializer = EventSerializer(events, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        # Create a new event
+        serializer = EventSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+
+class EventDetailView(View):
+    
+    ## A view to retrieve, update, or delete a single event by its ID.
+    
+
+    def get(self, request, event_id):
+        try:
+            event = Event.objects.get(event_id=event_id)  # Fetch the event by its ID
+            event_data = {
+                "event_id": event.event_id,
+                "title": event.title,
+                "description": event.description,
+                "date": event.date,
+                "virtual_link": event.virtual_link,
+                "location": event.location,
+                "event_type": event.event_type.name if event.event_type else None,
+                "community": event.community.name if event.community else None
+            }
+            return JsonResponse(event_data, status=200)
+        except Event.DoesNotExist:
+            return JsonResponse({"error": "Event not found"}, status=404)   
+
+class EventTypeListView(View):
+    
+    ## A view to list all event types.
+    
+
+    def get(self, request):
+        try:
+            # Retrieve all event types
+            event_types = EventType.objects.all()
+
+            # Prepare the list of event types as a response
+            event_type_data = [
+                {"event_type_id": event_type.id, "name": event_type.name}
+                for event_type in event_types
+            ]
+            
+            # Return event types as a JSON response
+            return JsonResponse(event_type_data, safe=False, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
     
 '''class upload_profile_picture(APIView):
     permission_classes = [IsAuthenticated]
