@@ -4,17 +4,18 @@ from django.http import JsonResponse, HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from app.models import User, UserSocial
+from app.models import User, UserSocial, Event
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
+from django.views import View
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -147,6 +148,7 @@ class user_profile_view(APIView):
 # handles profile picture uploads and storage
 # accepts base64 encoded image data from frontend
 # converts and stores as binary data in database
+    
 class upload_profile_picture(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -942,3 +944,42 @@ def add_community_leader(request, community_id, user_id):
         return Response({"message": f"User {user_to_add.username} is now a leader of {community.name}."}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@csrf_exempt  # Remove if using Django's standard form handling
+@login_required
+def create_event(request):
+    if request.method == 'POST':
+        user = request.user
+        community_id = request.POST.get('community_id')
+        title = request.POST.get('title')
+        description = request.POST.get('description', '')
+        date = request.POST.get('date')
+        virtual_link = request.POST.get('virtual_link', None)
+        location = request.POST.get('location', None)
+        event_type_name = request.POST.get('event_type')
+
+        # Fetch community and event type
+        community = get_object_or_404(Community, pk=community_id)
+        event_type = get_object_or_404(EventType, pk=event_type_name)
+
+        # Check if the user is the owner or a leader of the community
+        is_owner = community.owner == user
+        is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
+
+        if not (is_owner or is_leader):
+            return JsonResponse({"error": "You do not have permission to create an event in this community."}, status=403)
+
+        # Create the event
+        event = Event.objects.create(
+            title=title,
+            description=description,
+            date=date,
+            virtual_link=virtual_link,
+            location=location,
+            event_type=event_type,
+            community=community
+        )
+
+        return JsonResponse({"message": "Event created successfully!", "event_id": event.event_id}, status=201)
+
+    return JsonResponse({"error": "Invalid request method."}, status=400)
