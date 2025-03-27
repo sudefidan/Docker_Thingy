@@ -1,158 +1,151 @@
 <script>
-    import { onMount } from "svelte";
-    import { goto } from "$app/navigation";
+  import { onMount } from "svelte";
 
-    let title = "";
-    let description = "";
-    let date = "";
-    let virtual_link = "";
-    let location = "";
-    let event_type = "";
-    let community = "";
+  let access_token;
+  let loggedInUserId = null;
+  let users = []; // List of users fetched from API
+  let usersList = []; // List of users for MultiSelect component
+  let communities = []; // Stores the user's owned/managed communities
+  let allowedToCreate = false; // Controls form visibility
+  let title = '';
+  let description = '';
+  let date = '';
+  let virtual_link = '';
+  let location = '';
+  let event_type = 'virtual';
+  let community_id = ''; 
 
-    let eventTypes = [];
-    let communities = [];
-    let users = [];
-    let allowedCommunities = [];
+  // Retrieve the logged-in user's ID from the JWT token
+  function getLoggedInUserIdFromToken(token) {
+      try {
+          const payload = JSON.parse(atob(token.split('.')[1])); // Decode JWT payload
+          return payload.user_id;
+      } catch (error) {
+          console.error("Invalid token:", error);
+          return null;
+      }
+  }
 
-    const fetchUsers = async () => {
-		try {
-			const response = await fetch('http://127.0.0.1:8000/api/users/', {
-				method: 'GET',
-				headers: {
-					Authorization: `Bearer ${access_token}`
-				}
-			});
+  // Fetch the list of users
+  async function fetchUsers() {
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/users/", {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${access_token}`,  // Add token
+                "Content-Type": "application/json",
+            },
+        });
 
-			if (response.ok) {
-				users = await response.json();
-				// Filter out the logged-in user and create a list of users for the MultiSelect component
-				usersList = users
-					.filter((user) => user.id !== loggedInUserId)
-					.map((user) => ({ value: user.id, name: user.username }));
-			} else {
-				console.error('Failed to fetch users');
-			}
-		} catch (error) {
-			console.error('Network error:', error.message);
-		}
-	};
-
-    const fetchEventData = async () => {
-        try {
-            const response = await Promise.all([
-			fetch("http://127.0.0.1:8000/api/event-types/", {
-				method: "GET",
-				headers: { Authorization: `Bearer ${access_token}` },
-			}),
-			fetch("http://127.0.0.1:8000/api/communities/", {
-				method: "GET",
-				headers: { Authorization: `Bearer ${access_token}` },
-			}),
-		]);
-
-        const eventTypesRes = await response [0].json();
-        const communityRes  = await response [1].json();
-
-        eventTypes = eventTypesRes;
-        communities = communityRes;
-
-        allowedCommunities = communities.filter(({id}) =>
-        users.owned_communities.concat(users.leader_communities).includes.id
-
-        );
-        }   catch (error) {
-			    console.error('Network error:', error.message);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch users: ${response.status}`);
         }
-    };
 
-    async function submitForm() {
-        if (!community || !allowedCommunities.some(({ id }) => id === community)) {
-            return("You are not allowed to create events in this community!");
+        const data = await response.json();
+        users = data.filter(user => user.id !== loggedInUserId);
+    } catch (error) {
+        console.error("Error fetching users:", error);
     }
+}
 
-    try{
-        const response = await fetch("http://127.0.0.1:8000/api/events/",{
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, description, date, virtual_link, location, event_type, community })
-      });
+  // Fetch communities where the user is an owner or leader
+  async function fetchAllowedCommunities() {
+    try {
+        // Retrieve access token from localStorage
+        const access_token = localStorage.getItem("access_token");
+        if (!access_token) {
+            console.error("No access token found! Redirecting...");
+            window.location.href = "/"; // Redirect if not authenticated
+            return;
+        }
 
-      if (response.ok) {
-        alert("Event Created Successfully!"); // Notify the user
-        goto("/events");  // Redirect to the events page
+        const response = await fetch("http://127.0.0.1:8000/api/fetch_owned_communities/", {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${access_token}`,  // Add token
+                "Content-Type": "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                console.error("Unauthorized! Token might be invalid or expired.");
+                window.location.href = "/"; // Redirect if token expired
+            }
+            throw new Error(`Failed to fetch communities: ${response.status}`);
+        }
+
+        const data = await response.json();
+        communities = data; // Store the fetched communities
+
+        // Check if user owns or leads at least one community
+        allowedToCreate = communities.length > 0;
+    } catch (error) {
+        console.error("Error fetching communities:", error);
+    }
+}
+
+// Run the function when the component loads
+onMount(fetchAllowedCommunities);
+
+  // Run the functions when the component loads
+  onMount(() => {
+    access_token = localStorage.getItem("access_token");
+    
+    if (!access_token) {
+        console.error("No access token found! Redirecting...");
+        window.location.href = "/"; // Redirect to login
     } else {
-        console.error("Failed to create event.");
-        }
-        } catch (error) {
-        console.error("Error creating event:", error);
-        }
+        loggedInUserId = getLoggedInUserIdFromToken(access_token);
+        fetchUsers();
+        fetchAllowedCommunities();
     }
+});
 </script>
 
-<!-- UI -->
-
-<div class="space-y-10">
-    <div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
-      <div class="card-body bg-secondary rounded-3xl">
-        <h1 class="text-primary text-4xl font-bold text-center">Create a New Event</h1>
-  
-        {#if users}
-          {#if allowedCommunities.length > 0}
-            <!-- Event Creation Form -->
-            <form id="event-form" on:submit|preventDefault={submitForm} class="flex flex-col space-y-4 p-6">
-              
-              <!-- Title Input -->
-                <label for="title" class="text-lg font-semibold text-primary">Title:</label>
-                <input id="title" type="text" bind:value={title} required class="input input-bordered w-full" />
-
-                <!-- Description Input -->
-                <label for="description" class="text-lg font-semibold text-primary">Description:</label>
-                <textarea id="description" bind:value={description} required class="textarea textarea-bordered w-full"></textarea>
-
-                <!-- Date Picker -->
-                <label for="date" class="text-lg font-semibold text-primary">Date:</label>
-                <input id="date" type="date" bind:value={date} required class="input input-bordered w-full" />
-
-                <!-- Virtual Link (Optional) -->
-                <label for="virtual_link" class="text-lg font-semibold text-primary">Virtual Link:</label>
-                <input id="virtual_link" type="url" bind:value={virtual_link} class="input input-bordered w-full" placeholder="https://enteryourlink.com" />
-
-                <!-- Location Input -->
-                <label for="location" class="text-lg font-semibold text-primary">Location:</label>
-                <input id="location" type="text" bind:value={location} required class="input input-bordered w-full" />
-
-                <!-- Event Type Dropdown -->
-                <label for="event_type" class="text-lg font-semibold text-primary">Event Type:</label>
-                <select id="event_type" bind:value={event_type} required class="select select-bordered w-full">
-                <option value="">Select Event Type</option>
-                {#each eventTypes as type}
-                    <option value={type.id}>{type.name}</option>
-                {/each}
-                </select>
-
-                <!-- Community Dropdown (Only allowed communities) -->
-                <label for="community" class="text-lg font-semibold text-primary">Community:</label>
-                <select id="community" bind:value={community} required class="select select-bordered w-full">
-                <option value="">Select Community</option>
-                {#each allowedCommunities as comm}
-                    <option value={comm.id}>{comm.name}</option>
-                {/each}
-                </select>
-  
-              <!-- Submit Button -->
-              <button type="submit" class="bg-blue-500 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-blue-600 transition">
-                Create Event
-              </button>
-            </form>
-          {:else}
-            <!-- If the user is not authorized to create events -->
-            <p class="text-center text-lg text-red-500">You are not authorized to create events.</p>
-          {/if}
-        {:else}
-          <!-- Loading message while fetching data -->
-          <p class="text-center text-lg text-gray-500">Loading...</p>
-        {/if}
-      </div>
-    </div>
-  </div>
+{#if allowedToCreate}
+      <!-- Your form fields here -->
+      <form on:submit={submitEvent} id="createEventForm" class="form-container">
+        <div class="form-group">
+          <label for="title">Title:</label>
+          <input type="text" bind:value={title} id="title" class="form-input" required />
+        </div>
+      
+        <div class="form-group">
+          <label for="description">Description:</label>
+          <textarea bind:value={description} id="description" class="form-input" required></textarea>
+        </div>
+      
+        <div class="form-group">
+          <label for="date">Date:</label>
+          <input type="date" bind:value={date} id="date" class="form-input" required />
+        </div>
+      
+        <div class="form-group">
+          <label for="virtual_link">Virtual Link:</label>
+          <input type="url" bind:value={virtual_link} id="virtual_link" class="form-input" />
+        </div>
+      
+        <div class="form-group">
+          <label for="location">Location:</label>
+          <input type="text" bind:value={location} id="location" class="form-input" />
+        </div>
+      
+        <div class="form-group">
+          <label for="event_type">Event Type:</label>
+          <select bind:value={event_type} id="event_type" class="form-input" required>
+            <option value="virtual">Virtual</option>
+            <option value="in-person">In-Person</option>
+          </select>
+        </div>
+      
+        <div class="form-group">
+          <label for="community">Community:</label>
+          <input type="text" bind:value={community_id} id="community" class="form-input" required />
+        </div>
+      
+        <button type="submit" class="submit-btn">Create Event</button>
+      </form>
+{:else}
+  <p>You do not have permission to create events.</p>
+{/if}

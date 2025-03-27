@@ -148,91 +148,6 @@ class user_profile_view(APIView):
 # handles profile picture uploads and storage
 # accepts base64 encoded image data from frontend
 # converts and stores as binary data in database
-@login_required
-def create_event(request):
-    # Checks whether a user is a community Leader or Owner
-    user_communities = Community.objects.filter(communityleader__user=request.user
-    ).filter(owner=request.user)
-
-    if not user__communities.exsists(): 
-        return redirect('home_page')
-
-        if request.method == 'POST':
-            form = EventForm(request.POST)
-            if form.is_valid():
-                event = form.save(commit=False)   
-                # Ensures that the event is linked to an already exsisting community that the user owns or leads
-                community = form.cleaned_data['community']
-                if community in user_communities: # Checks user is apart of selected community
-                    event.save()
-                    return redirect('event_list')
-        else:
-            form = EventForm()
-
-        return render(request, 'events/create_event.html', {'form': form})
-        
-class EventListCreateView(APIView):
-    
-   ## A view to list and create events.
-    
-    def get(self, request):
-        # Retrieve all events
-        events = Event.objects.all()
-        serializer = EventSerializer(events, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        # Create a new event
-        serializer = EventSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
-
-class EventDetailView(View):
-    
-    ## A view to retrieve, update, or delete a single event by its ID.
-    
-
-    def get(self, request, event_id):
-        try:
-            event = Event.objects.get(event_id=event_id)  # Fetch the event by its ID
-            event_data = {
-                "event_id": event.event_id,
-                "title": event.title,
-                "description": event.description,
-                "date": event.date,
-                "virtual_link": event.virtual_link,
-                "location": event.location,
-                "event_type": event.event_type.name if event.event_type else None,
-                "community": event.community.name if event.community else None
-            }
-            return JsonResponse(event_data, status=200)
-        except Event.DoesNotExist:
-            return JsonResponse({"error": "Event not found"}, status=404)   
-
-class EventTypeListView(View):
-    
-    ## A view to list all event types.
-    
-
-    def get(self, request):
-        try:
-            # Retrieve all event types
-            event_types = EventType.objects.all()
-
-            # Prepare the list of event types as a response
-            event_type_data = [
-                {"event_type_id": event_type.id, "name": event_type.name}
-                for event_type in event_types
-            ]
-            
-            # Return event types as a JSON response
-            return JsonResponse(event_type_data, safe=False, status=200)
-
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)    
-    
     
 class upload_profile_picture(APIView):
     permission_classes = [IsAuthenticated]
@@ -1071,3 +986,42 @@ def add_community_leader(request, community_id, username):
         return Response({"message": f"User {user_to_add.username} is now a leader of {community.name}."}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@csrf_exempt  # Remove if using Django's standard form handling
+@login_required
+def create_event(request):
+    if request.method == 'POST':
+        user = request.user
+        community_id = request.POST.get('community_id')
+        title = request.POST.get('title')
+        description = request.POST.get('description', '')
+        date = request.POST.get('date')
+        virtual_link = request.POST.get('virtual_link', None)
+        location = request.POST.get('location', None)
+        event_type_name = request.POST.get('event_type')
+
+        # Fetch community and event type
+        community = get_object_or_404(Community, pk=community_id)
+        event_type = get_object_or_404(EventType, pk=event_type_name)
+
+        # Check if the user is the owner or a leader of the community
+        is_owner = community.owner == user
+        is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
+
+        if not (is_owner or is_leader):
+            return JsonResponse({"error": "You do not have permission to create an event in this community."}, status=403)
+
+        # Create the event
+        event = Event.objects.create(
+            title=title,
+            description=description,
+            date=date,
+            virtual_link=virtual_link,
+            location=location,
+            event_type=event_type,
+            community=community
+        )
+
+        return JsonResponse({"message": "Event created successfully!", "event_id": event.event_id}, status=201)
+
+    return JsonResponse({"error": "Invalid request method."}, status=400)

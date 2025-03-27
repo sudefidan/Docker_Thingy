@@ -6,7 +6,6 @@ class User(AbstractUser):
     access_level = models.IntegerField(default=1)
     about = models.CharField(max_length=255, blank=True, null=True)
     profile_picture = models.BinaryField(blank=True, null=True)
-    interests = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return self.username
