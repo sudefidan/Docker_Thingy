@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,7 +11,7 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityLeader, Subscribed, Notification, Post
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
@@ -352,6 +353,261 @@ def leave_community(request):
         # except Subscribed.DoesNotExsist:
         #     return Response({"error": "You are not a member of this community"}, status=400)
 
+# handles user password changes
+# requires current password verification and new password
+class change_password(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            user = request.user
+            current_password = request.data.get('current_password')
+            new_password = request.data.get('new_password')
+
+            # validate that both passwords are provided
+            if not current_password or not new_password:
+                return Response({
+                    "error": "Both current and new passwords are required"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # verify current password is correct
+            if not user.check_password(current_password):
+                return Response({
+                    "error": "Current password is incorrect"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # validate new password length
+            if len(new_password) < 8:
+                return Response({
+                    "error": "New password must be at least 8 characters long"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # update password
+            user.set_password(new_password)
+            user.save()
+
+            return Response({
+                "message": "Password updated successfully"
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "error": "Failed to change password",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# handles user profile updates
+# allows updating username, first name, last name, and email
+class update_user_profile(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        try:
+            user = request.user
+            data = request.data
+
+            # validate required fields
+            if not all([data.get('username'), data.get('first_name'), data.get('last_name'), data.get('email')]):
+                return Response({
+                    "error": "All fields are required"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # validate username format and length
+            username = data['username']
+            if not username.isalnum() or len(username) < 3 or len(username) > 30:
+                return Response({
+                    "error": "Username must be 3-30 characters long and contain only letters and numbers"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # validate name fields
+            first_name = data['first_name']
+            last_name = data['last_name']
+            if not first_name.isalpha() or not last_name.isalpha():
+                return Response({
+                    "error": "First and last names must contain only letters"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if len(first_name) < 2 or len(last_name) < 2:
+                return Response({
+                    "error": "First and last names must be at least 2 characters long"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # validate email format
+            email = data['email']
+            if not '@' in email or not '.' in email:
+                return Response({
+                    "error": "Please enter a valid email address"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # check if username is already taken by another user
+            if User.objects.filter(username=username).exclude(id=user.id).exists():
+                return Response({
+                    "error": "Username is already taken"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # check if email is already taken by another user
+            if User.objects.filter(email=email).exclude(id=user.id).exists():
+                return Response({
+                    "error": "Email is already in use"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # update user information
+            user.username = username
+            user.first_name = first_name
+            user.last_name = last_name
+            user.email = email
+            user.save()
+
+            return Response({
+                "message": "Profile updated successfully",
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "error": "Failed to update profile",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class update_social_media(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            user = request.user
+            social_type = request.data.get('social_type')
+            social_username = request.data.get('social_username')
+
+            # validate required fields
+            if not social_type or not social_username:
+                return Response({
+                    "error": "Both social type and username are required"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # validate social type
+            valid_types = ['instagram', 'linkedin', 'twitter']
+            if social_type.lower() not in valid_types:
+                return Response({
+                    "error": f"Invalid social type. Must be one of: {', '.join(valid_types)}"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # get or create the social type
+            social_type_obj, _ = SocialType.objects.get_or_create(social_type=social_type.lower())
+
+            # get or create user social media entry
+            user_social, created = UserSocial.objects.get_or_create(
+                user=user,
+                social_type=social_type_obj,
+                defaults={'social_username': social_username}
+            )
+
+            if not created:
+                user_social.social_username = social_username
+                user_social.save()
+
+            return Response({
+                "message": "Social media updated successfully",
+                "social_type": user_social.social_type.social_type,
+                "social_username": user_social.social_username
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "error": "Failed to update social media",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request):
+        try:
+            user = request.user
+            social_type = request.data.get('social_type')
+
+            if not social_type:
+                return Response({
+                    "error": "Social type is required"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # get the social type object
+            try:
+                social_type_obj = SocialType.objects.get(social_type=social_type.lower())
+                # delete the social media entry
+                UserSocial.objects.filter(user=user, social_type=social_type_obj).delete()
+            except SocialType.DoesNotExist:
+                return Response({
+                    "error": "Invalid social type"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({
+                "message": "Social media removed successfully"
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "error": "Failed to remove social media",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# handles user's about section updates
+# allows users to add or modify their bio/about section
+# requires user to be authenticated
+class update_user_about(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        try:
+            user = request.user
+            about = request.data.get('about', '')
+
+            # update user's about section
+            user.about = about
+            user.save()
+
+            return Response({
+                "message": "About section updated successfully",
+                "about": user.about
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "error": "Failed to update about section",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# handles user's interests/hobbies updates
+# allows users to add, remove, or modify their interests
+# requires user to be authenticated
+class update_user_interests(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        try:
+            user = request.user
+            interests = request.data.get('interests', [])
+
+            # validate interests is a list
+            if not isinstance(interests, list):
+                return Response({
+                    "error": "Interests must be a list"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # update user's interests
+            user.interests = interests
+            user.save()
+
+            return Response({
+                "message": "Interests updated successfully",
+                "interests": user.interests
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "error": "Failed to update interests",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
 def update_community_name(request):
@@ -506,7 +762,8 @@ def get_notifications(request):
         ]
 
         return Response(notification_data, status=200)
-    except:
+    except Exception as e:
+        print(e)
         return Response({"message": "Could not get notifications."}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(["DELETE"])
