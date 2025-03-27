@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { fetchUserProfile, type UserProfile, updateProfilePicture, updateProfile, updateSocialMedia, removeSocialMedia, socialMedias, updateAbout, updateInterests } from '$lib/api/profile';
-	import { changePassword } from '$lib/api/password';
+	import { fetchUserProfile, type UserProfile, updateProfilePicture, updateProfile, updateSocialMedia, removeSocialMedia, socialMedias, updateAbout, updateInterests } from '../../api/profile';
+	import { changePassword } from '../../api/password';
 
 	let userProfile: UserProfile = {
 		profile_picture: '',
