@@ -55,6 +55,10 @@ urlpatterns = [
     path('api/community/get_leaders/<int:community_id>/', get_community_leaders, name="get_community_leaders"),
     path('api/community/<int:community_id>/leaders/<int:leader_id>/delete/', delete_community_leader, name="delete_community_leaders"),
     path('api/community/<int:community_id>/leaders/<int:user_id>/add/', add_community_leader, name='add_community_leader'),
+
+    # notifications
+    path('api/notifications/', get_notifications, name="get_notifications"),
+    path('api/notifications/delete/<int:notification_id>/', delete_notification, name="delete_notification"),
   
     # event endpoints
     path('api/events/', create_event, name='create-event'),
