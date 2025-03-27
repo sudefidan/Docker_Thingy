@@ -57,9 +57,9 @@ class Post(models.Model):
     post_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255)
     content = models.TextField()
-    date = models.DateField()
+    date = models.DateTimeField(auto_now_add=True)  # Change DateField to DateTimeField
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
-    community = models.ForeignKey(Community, on_delete=models.CASCADE, blank=True, null=True)
+    community = models.ForeignKey('Community', on_delete=models.CASCADE, blank=True, null=True)
 
     class Meta:
         db_table = 'Post'
@@ -114,15 +114,6 @@ class CommunityLeader(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.community.name}"
-
-class CommunityMember(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    community = models.ForeignKey(Community, on_delete=models.CASCADE)
-    joined_at = models.DateTimeField(auto_now_add = True)
-
-    class Meta:
-        db_table = 'CommunityMember'
-        unique_together = ('user', 'community')
 
 class EventParticipant(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE)

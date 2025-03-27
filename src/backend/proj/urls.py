@@ -3,7 +3,7 @@ from django.urls import path, re_path, include
 from app import views
 from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests
 from rest_framework import routers, serializers, viewsets
-from app.views import get_users, join_community, fetch_communities, fetch_your_communities, leave_community
+from app.views import get_users, join_community, fetch_communities, fetch_your_communities, leave_community, fetch_owned_communities, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -45,4 +45,5 @@ urlpatterns = [
     path('api/your_communities/', fetch_your_communities, name="fetch_your_communities"),
     path("api/leave_community/", leave_community, name="leave_community"),
     path('api/subscribed_communities/', views.SubscribedCommunities.as_view(), name='subscribed_communities'),
+    path('events/', EventListCreateView.as_view(), name='event-list-create')
 ]
