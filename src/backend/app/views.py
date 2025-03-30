@@ -148,7 +148,7 @@ class user_profile_view(APIView):
 # handles profile picture uploads and storage
 # accepts base64 encoded image data from frontend
 # converts and stores as binary data in database
-    
+
 class upload_profile_picture(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -556,15 +556,9 @@ class update_social_media(APIView):
                     "error": "Both social type and username are required"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # validate social type
-            valid_types = ['instagram', 'linkedin', 'twitter']
-            if social_type.lower() not in valid_types:
-                return Response({
-                    "error": f"Invalid social type. Must be one of: {', '.join(valid_types)}"
-                }, status=status.HTTP_400_BAD_REQUEST)
 
             # get or create the social type
-            social_type_obj, _ = SocialType.objects.get_or_create(social_type=social_type.lower())
+            social_type_obj, _ = SocialType.objects.get_or_create(social_type=social_type)
 
             # get or create user social media entry
             user_social, created = UserSocial.objects.get_or_create(
@@ -944,7 +938,7 @@ def add_community_leader(request, community_id, user_id):
         return Response({"message": f"User {user_to_add.username} is now a leader of {community.name}."}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 @csrf_exempt  # Remove if using Django's standard form handling
 @login_required
 def create_event(request):
