@@ -150,7 +150,7 @@ class UserInterest(models.Model):
     interest = models.TextField(null=False)
 
     class Meta:
-        db_table ='UserInterest
+        db_table ='UserInterest'
         
 class PostImage(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=False)
