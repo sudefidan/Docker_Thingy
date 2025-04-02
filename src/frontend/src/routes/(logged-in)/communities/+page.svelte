@@ -1,5 +1,5 @@
 <script>
-	import { CATEGORIES } from '../../assets/categories.json';
+	import { CATEGORIES } from '../../../assets/categories.json';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { MultiSelect, Badge } from 'flowbite-svelte';
@@ -145,7 +145,6 @@
 
 		const confirmation = confirm('Are you sure?');
 		if (!confirmation) return;
-
 
 		// the api call and post method
 		try {
@@ -502,29 +501,28 @@
 						</div>
 						{#if community_management_selected}
 							<div class="w-full">
-							<label for="action" class="label">
-								<span class="label-text">What would you like to do?</span>
-							</label>
-							<div class="relative flex items-center">
-								<select
-									id="action"
-									bind:value={selectedAction}
-									required
-									class="select select-bordered custom-input flex-grow"
-									on:change={handleActionChange}
-								>
-									<option value="" disabled selected>Select an Action</option>
-									<option value="changeName">Change Community Name</option>
-									<option value="changeDescription">Change Community Description</option>
-									<option value="changeCategory">Change Community Category</option>
-									<option value="demoteLeader">Demote a Community Leader</option>
-									<option value="promoteLeader">Promote User to Community Leader</option>
-									<option value="deleteCommunity">Delete Community</option>
-								</select>
+								<label for="action" class="label">
+									<span class="label-text">What would you like to do?</span>
+								</label>
+								<div class="relative flex items-center">
+									<select
+										id="action"
+										bind:value={selectedAction}
+										required
+										class="select select-bordered custom-input flex-grow"
+										on:change={handleActionChange}
+									>
+										<option value="" disabled selected>Select an Action</option>
+										<option value="changeName">Change Community Name</option>
+										<option value="changeDescription">Change Community Description</option>
+										<option value="changeCategory">Change Community Category</option>
+										<option value="demoteLeader">Demote a Community Leader</option>
+										<option value="promoteLeader">Promote User to Community Leader</option>
+										<option value="deleteCommunity">Delete Community</option>
+									</select>
+								</div>
 							</div>
-						</div>
 						{/if}
-
 					</div>
 					{#if selectedAction === 'changeName'}
 						<div class="form-control mb-2 flex flex-col gap-3 w-full">

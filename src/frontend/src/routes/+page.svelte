@@ -1,47 +1,50 @@
 <script>
-    import { goto } from '$app/navigation';
+	import { goto } from '$app/navigation';
 
-    let username = '';
-    let password = '';
-    let message = '';
-    let showPassword = false;
+	let username = '';
+	let password = '';
+	let message = '';
+	let showPassword = false;
 
-    async function login() {
-        try {
-            const res = await fetch('http://127.0.0.1:8000/api/login/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username, password })
-            });
+	async function login() {
+		try {
+			const res = await fetch('http://127.0.0.1:8000/api/login/', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ username, password })
+			});
 
-            if (res.ok) {
-                const data = await res.json();
+			if (res.ok) {
+				const data = await res.json();
+				console.log(data);
 
-                // Assuming the response contains the access token in data.access
-                if (data.access) {
-                    // Store the access token in localStorage
-                    localStorage.setItem('access_token', data.access);
-                    console.log("Access token saved:", data.access);
+				// Assuming the response contains the access token in data.access
+				if (data.access) {
+					// Store the access token in localStorage
+					localStorage.setItem('access_token', data.access);
 
-                    // After successful login, forward to homepage
-                    goto('/home');  // Redirect to the home page or another protected route
-                } else {
-                    message = 'Failed to login! No access token received.';
-                }
-            } else {
-                const data = await res.json();
-                message = 'Invalid username or password!';
-                // Clear the form inputs
-                username = '';
-                password = '';
-            }
-        } catch (error) {
-            console.error(error);
-            message = 'An error occurred. Please try again!';
-        }
-    }
+					// After successful login, forward to homepage
+					goto('/home'); // Redirect to the home page or another protected route
+					if (data.refresh) {
+						localStorage.setItem('refresh_token', data.refresh);
+					}
+				} else {
+					message = 'Failed to login! No access token received.';
+				}
+			} else {
+				const data = await res.json();
+				message = 'Invalid username or password!';
+				// Clear the form inputs
+				username = '';
+				password = '';
+			}
+		} catch (error) {
+			console.error(error);
+			message = 'An error occurred. Please try again!';
+		}
+	}
 </script>
 
 <main class="flex items-center justify-center">
