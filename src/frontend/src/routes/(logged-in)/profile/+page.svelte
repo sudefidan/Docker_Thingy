@@ -49,10 +49,14 @@
 	};
 
 	// Icon for the edit button
-	let pencil =
+	let pencilIcon =
 		'<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>';
 
-	// Validation errors for profile editing
+	// Icon for the add button
+	let addIcon =
+		'<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-6" viewBox="0 0 16 17"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>';
+
+		// Validation errors for profile editing
 	let validationErrors = {
 		username: '',
 		first_name: '',
@@ -75,6 +79,7 @@
 	let isEditingInterests = false;
 	let isUpdatingInterests = false;
 	let newInterest = '';
+	let editedInterests: string[] = []; // Define editedInterests as an array
 
 	// Function to handle profile information validation
 	function validateProfile() {
@@ -307,43 +312,47 @@
 		}
 	}
 
-	// Function to start editing interests
-	function startEditingInterests() {
-		editedInterests = [...(userProfile?.interests || [])];
-		isEditingInterests = true;
-	}
-
-	// Function to handle interests update
+	// Function to cancel editing interests
 	function cancelEditingInterests() {
 		isEditingInterests = false;
 		newInterest = '';
 	}
 
+	// Function to handle adding a new interest
+	async function addInterest(event: Event) {
+		event.preventDefault();
+
+		if (!newInterest) {
+			alert('Please select an interest!');
+			return;
+		}
+
+		try {
+			isUpdatingInterests = true;
+
+			// Add the new interest to the list
+			editedInterests = [...editedInterests, newInterest];
+
+			// Update the backend
+			const result = await updateInterests(editedInterests);
+
+			// Update the user profile
+			userProfile = { ...userProfile, interests: result.interests };
+
+			// Reset the form
+			newInterest = '';
+			isEditingInterests = false;
+		} catch (error) {
+			console.error('Failed to add interest:', error);
+			alert('Failed to add interest. Please try again!');
+		} finally {
+			isUpdatingInterests = false;
+		}
+	}
 
 	// Function to handle removing an interest
 	function removeInterest(index: number) {
 		editedInterests = editedInterests.filter((_, i) => i !== index);
-	}
-
-	// Function to handle interests update
-	async function handleInterestsUpdate() {
-		if (editedInterests.length === 0) {
-			alert('Please select a category!');
-			return;
-		}
-
-		isUpdatingInterests = true;
-
-		try {
-			const result = await updateInterests(editedInterests);
-			userProfile = { ...userProfile, interests: result.interests };
-			isEditingInterests = false;
-		} catch (error) {
-			let errorMessage = error instanceof Error ? error.message : 'Failed to update interests';
-			alert(errorMessage + '. Please try again!');
-		} finally {
-			isUpdatingInterests = false;
-		}
 	}
 
 	onMount(async () => {
@@ -369,7 +378,7 @@
 							class="hover:text-primary ml-auto"
 							on:click={isEditingProfile ? cancelEditingProfile : startEditingProfile}
 						>
-							{@html pencil}
+							{@html pencilIcon}
 						</button>
 					</div>
 					<!-- Profile Image Container -->
@@ -757,7 +766,7 @@
 							style="visibility: {isAddingSocial ? 'hidden' : 'visible'};"
 							on:click={() => (isAddingSocial = true)}
 						>
-							{@html pencil}
+							{@html addIcon}
 						</button>
 					</div>
 					{#if isAddingSocial}
@@ -880,7 +889,7 @@
 							style="visibility: {isEditingAbout ? 'hidden' : 'visible'};"
 							on:click={isEditingAbout ? cancelEditingAbout : startEditingAbout}
 						>
-							{@html pencil}
+							{@html pencilIcon}
 						</button>
 					</div>
 					{#if isEditingAbout}
@@ -920,6 +929,7 @@
 					{/if}
 				</div>
 			</div>
+
 			<!-- Interests Section -->
 			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
@@ -932,59 +942,63 @@
 							style="visibility: {isEditingInterests ? 'hidden' : 'visible'};"
 							on:click={() => (isEditingInterests = true)}
 						>
-							{@html pencil}
+							{@html addIcon}
 						</button>
 					</div>
+
 					{#if isEditingInterests}
-						<form class="form-control mb-2 flex flex-col gap-3 space-y-4" on:submit={addInterest}>
+						<!-- Form to Add Interests -->
+						<form class="form-control mb-2 flex flex-col gap-3" on:submit={addInterest}>
 							<div class="w-full">
 								<label class="label">
-									<span class="label-text">Select Category</span>
+									<span class="label-text">Select an interest</span>
 								</label>
 								<div class="relative flex items-center">
 									<select
-										id="interest"
+										class="select select-bordered custom-input flex-grow"
 										bind:value={newInterest}
 										required
-										class="select select-bordered custom-input flex-grow"
 									>
-										<option value="" disabled selected>Pick a new interest</option>
+										<option value="" disabled selected>Pick a hobby</option>
 										{#each categories as category}
-											<option value={category}>{category}</option>
+											{#if !editedInterests.includes(category)}
+												<option value={category}>{category}</option>
+											{/if}
 										{/each}
 									</select>
 								</div>
 							</div>
-							<div class="flex justify-end space-x-3">
+							<div class="flex justify-end gap-2">
 								<button
-									on:click={cancelEditingInterests}
+									type="button"
 									class="btn btn-ghost"
+									on:click={cancelEditingInterests}
 									disabled={isUpdatingInterests}
 								>
 									Cancel
 								</button>
 								<button
-									on:click={handleInterestsUpdate}
-									class="btn btn-primary"
+									type="submit"
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
 									disabled={isUpdatingInterests}
 								>
 									{#if isUpdatingInterests}
 										<span class="loading loading-spinner loading-xs"></span>
-										Updating...
+										Adding...
 									{:else}
-										Save
+										Add
 									{/if}
 								</button>
 							</div>
 						</form>
 					{:else if userProfile?.interests.length === 0}
-						<!-- Message when no interests is found -->
+						<!-- Message when no interests are found -->
 						<div class="flex flex-wrap justify-center space-y-2">
-							<p class="text-user-details text-center">No interest added yet.</p>
+							<p class="text-user-details text-center">No interests added yet.</p>
 						</div>
 					{:else}
+						<!-- Display Interests -->
 						<div class="flex flex-wrap justify-center space-y-2">
-							<!-- Loop through interests -->
 							{#each userProfile.interests as interest, index}
 								<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
 									<p class="text-user-details pr-2">{interest}</p>
