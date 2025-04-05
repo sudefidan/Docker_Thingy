@@ -224,7 +224,7 @@ class GetProfilePicture(APIView):
 
 
 class create_community(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     # post request to send off the following variables
     def post(self, request):
         name = request.data.get('name')
@@ -343,7 +343,7 @@ def create_post(request):
         }, status=201)
 
 class CreateCommunity(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         name = request.data.get('name')

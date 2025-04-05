@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { CATEGORIES } from '../../assets/categories.json';
+	import { CATEGORIES } from '../../../assets/categories.json';
 	import { page } from '$app/stores';
 	import {
 		fetchUserProfile,

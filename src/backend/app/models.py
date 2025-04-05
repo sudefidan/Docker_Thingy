@@ -144,3 +144,17 @@ class Comment(models.Model):
 
     class Meta:
         db_table = 'Comment'
+
+class UserInterest(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+    interest = models.TextField(null=False)
+
+    class Meta:
+        db_table ='UserInterest'
+        
+class PostImage(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, null=False)
+    image = models.BinaryField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'PostImage'
