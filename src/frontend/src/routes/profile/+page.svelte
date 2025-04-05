@@ -1,9 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { CATEGORIES } from '../../assets/categories.json';
 	import { page } from '$app/stores';
-	import { fetchUserProfile, type UserProfile, updateProfilePicture, updateProfile, updateSocialMedia, removeSocialMedia, socialMedias, updateAbout, updateInterests } from '$lib/api/profile';
+	import {
+		fetchUserProfile,
+		type UserProfile,
+		updateProfilePicture,
+		updateProfile,
+		updateSocialMedia,
+		removeSocialMedia,
+		socialMedias,
+		updateAbout,
+		updateInterests
+	} from '$lib/api/profile';
 	import { changePassword } from '$lib/api/password';
 
+	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())), 'Other']; // Sort the categories alphabetically
+
+	// Fetch the user profile from the API
 	let userProfile: UserProfile = {
 		profile_picture: '',
 		username: '',
@@ -16,11 +30,10 @@
 		interests: []
 	};
 
+	// Initialise variables for profile editing
 	let showCurrentPassword = false;
 	let showNewPassword = false;
 	let showConfirmPassword = false;
-	let errorMessage: string | null = null;
-	let successMessage: string | null = null;
 	let isUploading = false;
 	let isChangingPassword = false;
 	let isUpdatingProfile = false;
@@ -35,9 +48,11 @@
 		email: ''
 	};
 
+	// Icon for the edit button
 	let pencil =
 		'<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>';
 
+	// Validation errors for profile editing
 	let validationErrors = {
 		username: '',
 		first_name: '',
@@ -45,22 +60,23 @@
 		email: ''
 	};
 
+	// Social media section editing
 	let isAddingSocial = false;
 	let selectedSocialType = '';
 	let socialUsername = '';
 	let isUpdatingSocial = false;
 
+	// About section editing
 	let isEditingAbout = false;
 	let editedAbout = '';
 	let isUpdatingAbout = false;
-	let aboutError = '';
 
+	// Interests section editing
 	let isEditingInterests = false;
-	let editedInterests: string[] = [];
 	let isUpdatingInterests = false;
-	let interestsError = '';
 	let newInterest = '';
 
+	// Function to handle profile information validation
 	function validateProfile() {
 		validationErrors = {
 			username: '',
@@ -75,7 +91,8 @@
 			validationErrors.username = 'Username is required';
 			isValid = false;
 		} else if (!/^[a-zA-Z0-9]{3,30}$/.test(editedProfile.username)) {
-			validationErrors.username = 'Username must be 3-30 characters long and contain only letters and numbers';
+			validationErrors.username =
+				'Username must be 3-30 characters long and contain only letters and numbers';
 			isValid = false;
 		}
 
@@ -84,7 +101,8 @@
 			validationErrors.first_name = 'First name is required';
 			isValid = false;
 		} else if (!/^[a-zA-Z]{2,}$/.test(editedProfile.first_name)) {
-			validationErrors.first_name = 'First name must be at least 2 characters long and contain only letters';
+			validationErrors.first_name =
+				'First name must be at least 2 characters long and contain only letters';
 			isValid = false;
 		}
 
@@ -93,7 +111,8 @@
 			validationErrors.last_name = 'Last name is required';
 			isValid = false;
 		} else if (!/^[a-zA-Z]{2,}$/.test(editedProfile.last_name)) {
-			validationErrors.last_name = 'Last name must be at least 2 characters long and contain only letters';
+			validationErrors.last_name =
+				'Last name must be at least 2 characters long and contain only letters';
 			isValid = false;
 		}
 
@@ -109,14 +128,13 @@
 		return isValid;
 	}
 
+	// Function to handle profile picture upload
 	async function handleProfilePictureUpload(event: Event) {
 		const input = event.target as HTMLInputElement;
 		if (!input.files || !input.files[0]) return;
 
 		try {
 			isUploading = true;
-			errorMessage = null;
-			successMessage = null;
 
 			const file = input.files[0];
 			const reader = new FileReader();
@@ -125,82 +143,81 @@
 				const base64Image = e.target?.result as string;
 				await updateProfilePicture(base64Image);
 				userProfile.profile_picture = base64Image;
-				successMessage = 'Profile picture updated successfully!';
+				alert('Profile picture updated successfully!');
 			};
 
 			reader.onerror = () => {
-				errorMessage = 'Failed to read the image file';
+				alert('Failed to read the image file');
 			};
 
 			reader.readAsDataURL(file);
 		} catch (error) {
 			console.error('Failed to upload profile picture:', error);
-			errorMessage = 'Failed to upload profile picture. Please try again.';
+			alert('Failed to upload profile picture. Please try again.');
 		} finally {
 			isUploading = false;
 		}
 	}
 
+	// Function to handle password change
 	async function handlePasswordChange(event: Event) {
 		event.preventDefault();
-		
+
 		// validate passwords match
 		if (newPassword !== confirmPassword) {
-			errorMessage = 'New passwords do not match';
+			alert('New passwords do not match!');
 			return;
 		}
 
 		try {
 			isChangingPassword = true;
-			errorMessage = null;
-			successMessage = null;
 
 			await changePassword(currentPassword, newPassword);
-			successMessage = 'Password changed successfully!';
-			
+			alert('Password changed successfully!');
+
 			// clear form
 			currentPassword = '';
 			newPassword = '';
 			confirmPassword = '';
 		} catch (error) {
 			console.error('Failed to change password:', error);
-			errorMessage = error instanceof Error ? error.message : 'Failed to change password';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to change password';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isChangingPassword = false;
 		}
 	}
 
+	// Function to handle profile update
 	async function handleProfileUpdate(event: Event) {
 		event.preventDefault();
-		
+
 		if (!validateProfile()) {
-			errorMessage = 'Please fix the validation errors before submitting';
+			alert('Please fix the validation errors before submitting!');
 			return;
 		}
-		
+
 		try {
 			isUpdatingProfile = true;
-			errorMessage = null;
-			successMessage = null;
 
 			await updateProfile(editedProfile);
-			
+
 			// update local profile data
 			userProfile.username = editedProfile.username;
 			userProfile.first_name = editedProfile.first_name;
 			userProfile.last_name = editedProfile.last_name;
 			userProfile.email = editedProfile.email;
-			
-			successMessage = 'Profile updated successfully!';
 			isEditingProfile = false;
 		} catch (error) {
 			console.error('Failed to update profile:', error);
-			errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingProfile = false;
 		}
 	}
 
+	// Function to start editing profile
 	function startEditingProfile() {
 		editedProfile = {
 			username: userProfile.username,
@@ -211,134 +228,119 @@
 		isEditingProfile = true;
 	}
 
+	// Function to cancel editing profile
 	function cancelEditingProfile() {
 		isEditingProfile = false;
-		errorMessage = null;
 	}
 
+	// Function to handle social media addition
 	async function handleAddSocial(event: Event) {
 		event.preventDefault();
-		
+
 		if (!selectedSocialType || !socialUsername) {
-			errorMessage = 'Please select a social media type and enter a username';
+			alert('Please select a social media type and enter a username!');
 			return;
 		}
-		
+
 		try {
 			isUpdatingSocial = true;
-			errorMessage = null;
-			successMessage = null;
 
 			await updateSocialMedia(selectedSocialType, socialUsername);
-			
+
 			// refresh profile data
 			userProfile = await fetchUserProfile();
-			
-			successMessage = 'Social media added successfully!';
 			isAddingSocial = false;
 			selectedSocialType = '';
 			socialUsername = '';
 		} catch (error) {
 			console.error('Failed to add social media:', error);
-			errorMessage = error instanceof Error ? error.message : 'Failed to add social media';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to add social media';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingSocial = false;
 		}
 	}
 
+	// Function to handle social media removal
 	async function handleRemoveSocial(socialType: string) {
 		try {
 			isUpdatingSocial = true;
-			errorMessage = null;
-			successMessage = null;
 
 			await removeSocialMedia(socialType);
-			
+
 			// refresh profile data
 			userProfile = await fetchUserProfile();
-			
-			successMessage = 'Social media removed successfully!';
 		} catch (error) {
 			console.error('Failed to remove social media:', error);
-			errorMessage = error instanceof Error ? error.message : 'Failed to remove social media';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to remove social media';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingSocial = false;
 		}
 	}
 
+	// Function to start editing about section
 	function startEditingAbout() {
 		editedAbout = userProfile?.about || '';
 		isEditingAbout = true;
-		aboutError = '';
 	}
 
+	// Function to handle about section update
 	function cancelEditingAbout() {
 		isEditingAbout = false;
 		editedAbout = '';
-		aboutError = '';
 	}
 
+	// Function to handle about section update
 	async function handleAboutUpdate() {
-		if (!editedAbout.trim()) {
-			aboutError = 'About section cannot be empty';
-			return;
-		}
-		
 		isUpdatingAbout = true;
-		aboutError = '';
-		
+
 		try {
 			const result = await updateAbout(editedAbout);
 			userProfile = { ...userProfile, about: result.about };
 			isEditingAbout = false;
-			successMessage = 'About section updated successfully';
 		} catch (error) {
-			aboutError = error instanceof Error ? error.message : 'Failed to update about section';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to update about section';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingAbout = false;
 		}
 	}
 
+	// Function to start editing interests
 	function startEditingInterests() {
 		editedInterests = [...(userProfile?.interests || [])];
 		isEditingInterests = true;
-		interestsError = '';
 	}
 
+	// Function to handle interests update
 	function cancelEditingInterests() {
 		isEditingInterests = false;
-		editedInterests = [];
 		newInterest = '';
-		interestsError = '';
 	}
 
-	function addInterest() {
-		if (newInterest.trim()) {
-			editedInterests = [...editedInterests, newInterest.trim()];
-			newInterest = '';
-		}
-	}
 
+	// Function to handle removing an interest
 	function removeInterest(index: number) {
 		editedInterests = editedInterests.filter((_, i) => i !== index);
 	}
 
+	// Function to handle interests update
 	async function handleInterestsUpdate() {
 		if (editedInterests.length === 0) {
-			interestsError = 'Please add at least one interest';
+			alert('Please select a category!');
 			return;
 		}
-		
+
 		isUpdatingInterests = true;
-		interestsError = '';
-		
+
 		try {
 			const result = await updateInterests(editedInterests);
 			userProfile = { ...userProfile, interests: result.interests };
 			isEditingInterests = false;
-			successMessage = 'Interests updated successfully';
 		} catch (error) {
-			interestsError = error instanceof Error ? error.message : 'Failed to update interests';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to update interests';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingInterests = false;
 		}
@@ -346,34 +348,14 @@
 
 	onMount(async () => {
 		try {
-			errorMessage = null;
 			userProfile = await fetchUserProfile();
 		} catch (error) {
 			console.error('Failed to fetch user profile:', error);
-			errorMessage = 'Failed to load profile. Please try again later.';
 		}
 	});
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
-	{#if errorMessage}
-		<div class="alert alert-error mb-4 w-full max-w-2xl">
-			<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-			</svg>
-			<span>{errorMessage}</span>
-		</div>
-	{/if}
-
-	{#if successMessage}
-		<div class="alert alert-success mb-4 w-full max-w-2xl">
-			<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-			</svg>
-			<span>{successMessage}</span>
-		</div>
-	{/if}
-
 	<div
 		class="gap-13 flex grid w-full max-w-full grid-cols-1 flex-col justify-center md:grid-cols-2"
 	>
@@ -383,7 +365,10 @@
 			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
-						<button class="hover:text-primary ml-auto" on:click={isEditingProfile ? cancelEditingProfile : startEditingProfile}>
+						<button
+							class="hover:text-primary ml-auto"
+							on:click={isEditingProfile ? cancelEditingProfile : startEditingProfile}
+						>
 							{@html pencil}
 						</button>
 					</div>
@@ -443,7 +428,9 @@
 											type="text"
 											id="username"
 											bind:value={editedProfile.username}
-											class="input input-bordered input-sm {validationErrors.username ? 'input-error' : ''}"
+											class="input input-bordered input-sm {validationErrors.username
+												? 'input-error'
+												: ''}"
 											required
 										/>
 										{#if validationErrors.username}
@@ -451,7 +438,7 @@
 										{/if}
 									</div>
 								{:else}
-								<p class="text-user-info">{userProfile.username}</p>
+									<p class="text-user-info">{userProfile.username}</p>
 								{/if}
 							</div>
 							<div class="mb-2 flex">
@@ -466,7 +453,9 @@
 													type="text"
 													id="first_name"
 													bind:value={editedProfile.first_name}
-													class="input input-bordered input-sm {validationErrors.first_name ? 'input-error' : ''}"
+													class="input input-bordered input-sm {validationErrors.first_name
+														? 'input-error'
+														: ''}"
 													required
 												/>
 												{#if validationErrors.first_name}
@@ -478,7 +467,9 @@
 													type="text"
 													id="last_name"
 													bind:value={editedProfile.last_name}
-													class="input input-bordered input-sm {validationErrors.last_name ? 'input-error' : ''}"
+													class="input input-bordered input-sm {validationErrors.last_name
+														? 'input-error'
+														: ''}"
 													required
 												/>
 												{#if validationErrors.last_name}
@@ -488,7 +479,7 @@
 										</div>
 									</div>
 								{:else}
-								<p class="text-user-info">{userProfile.first_name} {userProfile.last_name}</p>
+									<p class="text-user-info">{userProfile.first_name} {userProfile.last_name}</p>
 								{/if}
 							</div>
 							<div class="mb-2 flex">
@@ -501,7 +492,9 @@
 											type="email"
 											id="email"
 											bind:value={editedProfile.email}
-											class="input input-bordered input-sm {validationErrors.email ? 'input-error' : ''}"
+											class="input input-bordered input-sm {validationErrors.email
+												? 'input-error'
+												: ''}"
 											required
 										/>
 										{#if validationErrors.email}
@@ -509,7 +502,7 @@
 										{/if}
 									</div>
 								{:else}
-								<p class="text-user-info">{userProfile.email}</p>
+									<p class="text-user-info">{userProfile.email}</p>
 								{/if}
 							</div>
 							{#if isEditingProfile}
@@ -524,7 +517,8 @@
 									<button
 										class="btn btn-sm btn-primary"
 										on:click={handleProfileUpdate}
-										disabled={isUpdatingProfile || Object.values(validationErrors).some(error => error)}
+										disabled={isUpdatingProfile ||
+											Object.values(validationErrors).some((error) => error)}
 									>
 										{#if isUpdatingProfile}
 											<span class="loading loading-spinner loading-xs"></span>
@@ -758,73 +752,52 @@
 						<div class="flex-grow text-center">
 							<h1 class="text-primary text-4xl font-bold">Socials</h1>
 						</div>
-						<button class="hover:text-primary" on:click={() => isAddingSocial = true}>
+						<button
+							class="hover:text-primary"
+							style="visibility: {isAddingSocial ? 'hidden' : 'visible'};"
+							on:click={() => (isAddingSocial = true)}
+						>
 							{@html pencil}
 						</button>
 					</div>
-					<div class="flex flex-wrap justify-center space-y-2">
-						{#each userProfile.social_type as type, index}
-							{#each socialMedias as social (social.name)}
-								{#if social.name === type}
-									<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
-										<div>{@html social.svg}</div>
-										<p class="text-user-details pr-2">{userProfile.social_username[index]}</p>
-										<button 
-											class="hover:text-primary"
-											on:click={() => handleRemoveSocial(type)}
-											disabled={isUpdatingSocial}
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="1.5"
-												stroke="currentColor"
-												class="size-6"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M15 12H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-												/>
-											</svg>
-										</button>
-									</div>
-								{/if}
-							{/each}
-						{/each}
-					</div>
-
 					{#if isAddingSocial}
-						<form class="mt-4 space-y-4" on:submit={handleAddSocial}>
-							<div class="form-control">
+						<form class="form-control mb-2 flex flex-col gap-3" on:submit={handleAddSocial}>
+							<div class="w-full">
 								<label class="label">
 									<span class="label-text">Select Social Media</span>
 								</label>
-								<select 
-									class="select select-bordered w-full"
-									bind:value={selectedSocialType}
-									required
-								>
-									<option value="">Choose a platform</option>
-									{#each socialMedias as social}
-										{#if !userProfile.social_type.includes(social.name)}
-											<option value={social.name}>{social.name.charAt(0).toUpperCase() + social.name.slice(1)}</option>
-										{/if}
-									{/each}
-								</select>
+								<div class="relative flex items-center">
+									<select
+										class="select select-bordered custom-input flex-grow"
+										bind:value={selectedSocialType}
+										required
+									>
+										<option value="">Choose a platform</option>
+										{#each socialMedias.sort((a, b) => a.name.localeCompare(b.name)) as social}
+											{#if !userProfile.social_type.includes(social.name)}
+												<option value={social.name}>
+													{social.name.charAt(0).toUpperCase() + social.name.slice(1)}
+												</option>
+											{/if}
+										{/each}
+									</select>
+								</div>
 							</div>
-							<div class="form-control">
-								<label class="label">
-									<span class="label-text">Username</span>
-								</label>
-								<input
-									type="text"
-									class="input input-bordered"
-									bind:value={socialUsername}
-									required
-									placeholder="Enter your username"
-								/>
+							<div class="form-control mb-2 flex flex-col gap-3">
+								<div class="w-full">
+									<label class="label">
+										<span class="label-text">Username</span>
+									</label>
+									<div class="relative flex items-center">
+										<input
+											type="text"
+											class="input input-bordered validator custom-input"
+											bind:value={socialUsername}
+											required
+											placeholder="What's your username?"
+										/>
+									</div>
+								</div>
 							</div>
 							<div class="flex justify-end gap-2">
 								<button
@@ -841,18 +814,57 @@
 								</button>
 								<button
 									type="submit"
-									class="btn btn-primary"
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
 									disabled={isUpdatingSocial}
 								>
 									{#if isUpdatingSocial}
 										<span class="loading loading-spinner loading-xs"></span>
 										Adding...
 									{:else}
-										Add Social Media
+										Add
 									{/if}
 								</button>
 							</div>
 						</form>
+					{:else if userProfile.social_type.length === 0}
+						<!-- Message when no social media is found -->
+						<div class="flex flex-wrap justify-center space-y-2">
+							<p class="text-user-details text-center">No socials connected yet.</p>
+						</div>
+					{:else}
+						<div class="flex flex-wrap justify-center space-y-2">
+							<!-- Loop through social media accounts -->
+							{#each userProfile.social_type as type, index}
+								{#each socialMedias as social (social.name)}
+									{#if social.name === type}
+										<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
+											<div>{@html social.svg}</div>
+											<p class="text-user-details pr-2">{userProfile.social_username[index]}</p>
+											<button
+												class="hover:text-primary"
+												on:click={() => handleRemoveSocial(type)}
+												disabled={isUpdatingSocial}
+											>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke-width="1.5"
+													stroke="currentColor"
+													class="size-6"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														d="M15 12H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+													/>
+												</svg>
+											</button>
+										</div>
+									{/if}
+								{/each}
+							{/each}
+						</div>
 					{/if}
 				</div>
 			</div>
@@ -863,21 +875,22 @@
 						<div class="flex-grow text-center">
 							<h1 class="text-primary text-4xl font-bold">About</h1>
 						</div>
-						<button class="hover:text-primary" on:click={isEditingAbout ? cancelEditingAbout : startEditingAbout}>
+						<button
+							class="hover:text-primary"
+							style="visibility: {isEditingAbout ? 'hidden' : 'visible'};"
+							on:click={isEditingAbout ? cancelEditingAbout : startEditingAbout}
+						>
 							{@html pencil}
 						</button>
 					</div>
 					{#if isEditingAbout}
-						<div class="space-y-4">
+						<div class="form-control mb-2 flex flex-col gap-3 space-y-4 w-full">
 							<textarea
 								bind:value={editedAbout}
-								rows="4"
-								class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {aboutError ? 'border-red-500' : ''}"
+								rows="5"
+								class="input input-bordered text-area-input"
 								placeholder="Tell us about yourself..."
 							></textarea>
-							{#if aboutError}
-								<p class="text-red-500 text-sm">{aboutError}</p>
-							{/if}
 							<div class="flex justify-end space-x-3">
 								<button
 									on:click={cancelEditingAbout}
@@ -888,20 +901,22 @@
 								</button>
 								<button
 									on:click={handleAboutUpdate}
-									class="btn btn-primary"
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
 									disabled={isUpdatingAbout}
 								>
 									{#if isUpdatingAbout}
 										<span class="loading loading-spinner loading-xs"></span>
 										Updating...
 									{:else}
-										Save Changes
+										Save
 									{/if}
 								</button>
 							</div>
 						</div>
 					{:else}
-						<p class="text-user-details whitespace-pre-wrap">{userProfile?.about || 'No bio available.'}</p>
+						<p class="text-user-details whitespace-pre-wrap">
+							{userProfile?.about || 'No bio available.'}
+						</p>
 					{/if}
 				</div>
 			</div>
@@ -912,43 +927,34 @@
 						<div class="flex-grow text-center">
 							<h1 class="text-primary text-4xl font-bold">Interests</h1>
 						</div>
-						<button class="hover:text-primary" on:click={isEditingInterests ? cancelEditingInterests : startEditingInterests}>
+						<button
+							class="hover:text-primary"
+							style="visibility: {isEditingInterests ? 'hidden' : 'visible'};"
+							on:click={() => (isEditingInterests = true)}
+						>
 							{@html pencil}
 						</button>
 					</div>
 					{#if isEditingInterests}
-						<div class="space-y-4">
-							<div class="flex gap-2">
-								<input
-									type="text"
-									bind:value={newInterest}
-									class="input input-bordered flex-grow"
-									placeholder="Add a new interest..."
-									on:keydown={(e) => e.key === 'Enter' && addInterest()}
-								/>
-								<button
-									class="btn btn-primary"
-									on:click={addInterest}
-								>
-									Add
-								</button>
+						<form class="form-control mb-2 flex flex-col gap-3 space-y-4" on:submit={addInterest}>
+							<div class="w-full">
+								<label class="label">
+									<span class="label-text">Select Category</span>
+								</label>
+								<div class="relative flex items-center">
+									<select
+										id="interest"
+										bind:value={newInterest}
+										required
+										class="select select-bordered custom-input flex-grow"
+									>
+										<option value="" disabled selected>Pick a new interest</option>
+										{#each categories as category}
+											<option value={category}>{category}</option>
+										{/each}
+									</select>
+								</div>
 							</div>
-							<div class="flex flex-wrap gap-2">
-								{#each editedInterests as interest, index}
-									<div class="badge badge-primary gap-2">
-										{interest}
-										<button
-											class="hover:text-error"
-											on:click={() => removeInterest(index)}
-										>
-											×
-								</button>
-							</div>
-						{/each}
-							</div>
-							{#if interestsError}
-								<p class="text-error text-sm">{interestsError}</p>
-							{/if}
 							<div class="flex justify-end space-x-3">
 								<button
 									on:click={cancelEditingInterests}
@@ -966,19 +972,44 @@
 										<span class="loading loading-spinner loading-xs"></span>
 										Updating...
 									{:else}
-										Save Changes
+										Save
 									{/if}
-						</button>
-					</div>
+								</button>
+							</div>
+						</form>
+					{:else if userProfile?.interests.length === 0}
+						<!-- Message when no interests is found -->
+						<div class="flex flex-wrap justify-center space-y-2">
+							<p class="text-user-details text-center">No interest added yet.</p>
 						</div>
 					{:else}
-						<div class="flex flex-wrap gap-2">
-							{#each userProfile?.interests || [] as interest}
-								<div class="badge badge-primary">{interest}</div>
+						<div class="flex flex-wrap justify-center space-y-2">
+							<!-- Loop through interests -->
+							{#each userProfile.interests as interest, index}
+								<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
+									<p class="text-user-details pr-2">{interest}</p>
+									<button
+										class="hover:text-primary"
+										on:click={() => removeInterest(index)}
+										disabled={isUpdatingInterests}
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="1.5"
+											stroke="currentColor"
+											class="size-6"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M15 12H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+											/>
+										</svg>
+									</button>
+								</div>
 							{/each}
-							{#if !userProfile?.interests?.length}
-								<p class="text-user-details">No interests added yet.</p>
-							{/if}
 						</div>
 					{/if}
 				</div>

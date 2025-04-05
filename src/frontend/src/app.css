@@ -98,6 +98,10 @@ input::selection {
 	@apply text-lg text-center text-base-100;
 }
 
+.text-add-more {
+	@apply text-lg text-center;
+}
+
 .text-community-category {
 	@apply text-center text-base-100;
 }
