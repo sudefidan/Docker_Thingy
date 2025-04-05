@@ -198,7 +198,7 @@ p::selection {
 	padding: 5px 10px;
 	border-radius: 5px;
 	position: absolute;
-	z-index: 1;
+	z-index: 9999;
 	top: 125%;
 	/* Position below the button */
 	left: 50%;
@@ -215,5 +215,9 @@ p::selection {
 	opacity: 1;
 }
 
+
+.upload-button {
+	@apply bg-base-100/75 text-gray-800 rounded-full p-2 absolute inset-0 flex items-center justify-center;
+}
 
 @source "../node_modules/flowbite-svelte/dist";

@@ -47,6 +47,7 @@
 		last_name: '',
 		email: ''
 	};
+	let tempProfilePicture = ''; // Temporary variable for profile picture upload
 
 	// Icon for the edit button
 	let pencilIcon =
@@ -56,7 +57,7 @@
 	let addIcon =
 		'<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="size-6" viewBox="0 0 16 17"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>';
 
-		// Validation errors for profile editing
+	// Validation errors for profile editing
 	let validationErrors = {
 		username: '',
 		first_name: '',
@@ -146,9 +147,7 @@
 
 			reader.onload = async (e) => {
 				const base64Image = e.target?.result as string;
-				await updateProfilePicture(base64Image);
-				userProfile.profile_picture = base64Image;
-				alert('Profile picture updated successfully!');
+				tempProfilePicture = base64Image;
 			};
 
 			reader.onerror = () => {
@@ -205,6 +204,13 @@
 		try {
 			isUpdatingProfile = true;
 
+			// Update the profile picture if a new one was uploaded
+			if (tempProfilePicture) {
+				await updateProfilePicture(tempProfilePicture);
+				userProfile.profile_picture = tempProfilePicture; // Save the uploaded image
+				tempProfilePicture = ''; // Clear the temporary variable
+			}
+
 			await updateProfile(editedProfile);
 
 			// update local profile data
@@ -236,6 +242,7 @@
 	// Function to cancel editing profile
 	function cancelEditingProfile() {
 		isEditingProfile = false;
+		tempProfilePicture = ''; // Clear the temporary image
 	}
 
 	// Function to handle social media addition
@@ -330,8 +337,12 @@
 		try {
 			isUpdatingInterests = true;
 
+			// TODO: John -> this should be adding the interest to the backend
+
 			// Add the new interest to the list
-			editedInterests = [...editedInterests, newInterest];
+			editedInterests = [...editedInterests, newInterest]; // TODO: John -> this won't be necessary, for the dropdown under interests section, user shouldn't see the the interest that they already have which comes from the database
+
+			//TODO: John -> Think as the same way as the social media section, we are not creating a new list in the page as socialMedias we are handling on the backend
 
 			// Update the backend
 			const result = await updateInterests(editedInterests);
@@ -353,6 +364,7 @@
 	// Function to handle removing an interest
 	function removeInterest(index: number) {
 		editedInterests = editedInterests.filter((_, i) => i !== index);
+		// TODO: To John -> this should be removed from UserInterest in the backend instead of edited Interests?
 	}
 
 	onMount(async () => {
@@ -383,47 +395,63 @@
 					</div>
 					<!-- Profile Image Container -->
 					<div class="flex flex-col items-center">
-						<div class="w-50 h-50 mb-4 overflow-hidden rounded-full">
+						<div class="relative w-50 h-50 mb-4">
 							<!-- Profile Image or Placeholder -->
-							{#if userProfile.profile_picture}
+							{#if tempProfilePicture || userProfile.profile_picture}
 								<img
-									src={userProfile.profile_picture}
+									src={tempProfilePicture || userProfile.profile_picture}
 									alt="Profile Picture"
-									class="h-full w-full object-cover"
+									class="h-full w-full object-cover rounded-full"
 								/>
 							{:else}
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="1.5"
-									stroke="currentColor"
-									class="h-full w-full object-cover"
+									viewBox="0 0 338 338"
+									fill="#DDD"
+									class="h-full w-full object-cover object-center rounded-full"
 								>
 									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+										d="m169,.5a169,169 0 1,0 2,0zm0,86a76,76 0 1 1-2,0zM57,287q27-35 67-35h92q40,0 67,35a164,164 0 0,1-226,0"
 									/>
 								</svg>
 							{/if}
-						</div>
-						<div class="flex flex-col items-center gap-2">
-							<label class="btn btn-primary btn-sm">
-								{#if isUploading}
-									<span class="loading loading-spinner loading-xs"></span>
-									Uploading...
-								{:else}
-									Change Picture
-								{/if}
-								<input
-									type="file"
-									accept="image/*"
-									class="hidden"
-									on:change={handleProfilePictureUpload}
-									disabled={isUploading}
-								/>
-							</label>
+
+							<!-- Text Overlay -->
+							{#if isEditingProfile}
+								<div
+									class="w-50 h-50 upload-button"
+								>
+									<label class="flex items-center justify-center cursor-pointer" for="file-upload">
+										<svg
+											class="size-12"
+											aria-hidden="true"
+											xmlns="http://www.w3.org/2000/svg"
+											fill="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												fill-rule="evenodd"
+												d="M13 10a1 1 0 0 1 1-1h.01a1 1 0 1 1 0 2H14a1 1 0 0 1-1-1Z"
+												clip-rule="evenodd"
+											/>
+											<path
+												fill-rule="evenodd"
+												d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12c0 .556-.227 1.06-.593 1.422A.999.999 0 0 1 20.5 20H4a2.002 2.002 0 0 1-2-2V6Zm6.892 12 3.833-5.356-3.99-4.322a1 1 0 0 0-1.549.097L4 12.879V6h16v9.95l-3.257-3.619a1 1 0 0 0-1.557.088L11.2 18H8.892Z"
+												clip-rule="evenodd"
+											/>
+										</svg>
+									</label>
+									<!-- Hidden File Input -->
+									<input
+										id="file-upload"
+										type="file"
+										accept="image/*"
+										class="absolute inset-0 opacity-0 cursor-pointer"
+										on:change={handleProfilePictureUpload}
+										disabled={isUploading}
+									/>
+								</div>
+							{/if}
 						</div>
 						<!-- Profile Information Section -->
 						<div class="mb-4 w-full">
