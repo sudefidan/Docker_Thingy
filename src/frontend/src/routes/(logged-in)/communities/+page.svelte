@@ -40,18 +40,34 @@
 	}
 
 	onMount(async () => {
-		// Retrieve the access_token from localStorage
-		access_token = localStorage.getItem('access_token');
+        try {
+            // Retrieve the access_token from localStorage
+            access_token = localStorage.getItem('access_token');
 
-		// If there's no access_token, redirect to the login page or home
-		if (!access_token) {
-			goto('http://localhost:5173/'); // Or wherever you want the user to go if they are not logged in
-		} else {
-			loggedInUserId = getLoggedInUserIdFromToken(access_token);
-			await fetchUsers(); // Fetch users from the API
-			await fetchSubscribedCommunities(); // Fetch subscribed communities
-		}
-	});
+            // If there's no access_token, redirect to the login page or home
+            if (!access_token) {
+                goto('http://localhost:5173/'); // Or wherever you want the user to go if they are not logged in
+                return;
+            }
+
+            // Decode the logged-in user's ID from the token
+            loggedInUserId = getLoggedInUserIdFromToken(access_token);
+
+            // Fetch users and subscribed communities
+            await fetchUsers();
+            await fetchSubscribedCommunities();
+
+            // Fetch all communities
+            const response = await fetch('http://127.0.0.1:8000/api/communities/');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            communities = data;
+        } catch (error) {
+            console.error('Error during initialization:', error);
+        }
+    });
 
 	// Placeholder color for option
 	function updateSelectClass(event) {
@@ -113,19 +129,6 @@
 			console.error('Network error:', error.message);
 		}
 	};
-
-	onMount(async () => {
-		try {
-			const response = await fetch('http://127.0.0.1:8000/api/communities/');
-			if (!response.ok) {
-				throw new Error(`HTTP error! Status: ${response.status}`);
-			}
-			const data = await response.json();
-			communities = data;
-		} catch (error) {
-			console.error('Error fetching communities:', error);
-		}
-	});
 
 	// submit form to create a new community
 	const submitForm = async (event) => {
