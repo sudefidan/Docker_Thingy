@@ -1,5 +1,6 @@
 <script>
 	import { CATEGORIES } from '../../../assets/categories.json';
+	import AddIcon from '../../../assets/AddIcon.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { MultiSelect, Badge } from 'flowbite-svelte';
@@ -40,18 +41,35 @@
 	}
 
 	onMount(async () => {
-		// Retrieve the access_token from localStorage
-		access_token = localStorage.getItem('access_token');
+        try {
+            // Retrieve the access_token from localStorage
+            access_token = localStorage.getItem('access_token');
 
-		// If there's no access_token, redirect to the login page or home
-		if (!access_token) {
-			goto('http://localhost:5173/'); // Or wherever you want the user to go if they are not logged in
-		} else {
-			loggedInUserId = getLoggedInUserIdFromToken(access_token);
-			await fetchUsers(); // Fetch users from the API
-			await fetchSubscribedCommunities(); // Fetch subscribed communities
-		}
-	});
+            // If there's no access_token, redirect to the login page or home
+            if (!access_token) {
+                goto('http://localhost:5173/'); // Or wherever you want the user to go if they are not logged in
+                return;
+            }
+
+            // Decode the logged-in user's ID from the token
+            loggedInUserId = getLoggedInUserIdFromToken(access_token);
+
+            // Fetch users and subscribed communities
+            await fetchUsers();
+            await fetchSubscribedCommunities();
+
+            // Fetch all communities
+            const response = await fetch('http://127.0.0.1:8000/api/communities/');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            communities = data;
+        } catch (error) {
+            console.error('Error during initialization:', error);
+        }
+    });
+
 
 	// Placeholder color for option
 	function updateSelectClass(event) {
@@ -113,19 +131,6 @@
 			console.error('Network error:', error.message);
 		}
 	};
-
-	onMount(async () => {
-		try {
-			const response = await fetch('http://127.0.0.1:8000/api/communities/');
-			if (!response.ok) {
-				throw new Error(`HTTP error! Status: ${response.status}`);
-			}
-			const data = await response.json();
-			communities = data;
-		} catch (error) {
-			console.error('Error fetching communities:', error);
-		}
-	});
 
 	// submit form to create a new community
 	const submitForm = async (event) => {
@@ -419,7 +424,8 @@
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
 												fill="currentColor"
-												class="bi bi-box-arrow-right size-6"
+												class="bi bi-box-arrow-right size-7"
+
 												viewBox="0 0 16 16"
 											>
 												<path
@@ -440,23 +446,8 @@
 										<button
 											on:click={() => join_community(community.community_id)}
 											class="hover:text-primary"
-											title="Join this community"
 										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="16"
-												height="16"
-												fill="currentColor"
-												class="bi bi-plus-circle size-6"
-												viewBox="0 0 16 16"
-											>
-												<path
-													d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"
-												/>
-												<path
-													d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"
-												/>
-											</svg>
+											<AddIcon/>
 										</button>
 										<span class="tooltip">Join this community</span>
 									</div>

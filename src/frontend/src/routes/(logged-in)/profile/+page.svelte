@@ -1,9 +1,27 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { CATEGORIES } from '../../../assets/categories.json';
+	import AddIcon from '../../../assets/AddIcon.svelte';
+	import EditIcon from '../../../assets/EditIcon.svelte';
+	import ShowPasswordIcon from '../../../assets/ShowPasswordIcon.svelte';
 	import { page } from '$app/stores';
-	import { fetchUserProfile, type UserProfile, updateProfilePicture, updateProfile, updateSocialMedia, removeSocialMedia, socialMedias, updateAbout, updateInterests } from '$lib/api/profile';
+	import {
+		fetchUserProfile,
+		type UserProfile,
+		updateProfilePicture,
+		updateProfile,
+		updateSocialMedia,
+		removeSocialMedia,
+		socialMedias,
+		updateAbout,
+		updateInterests
+	} from '$lib/api/profile';
 	import { changePassword } from '$lib/api/password';
+	import RemoveIcon from '../../../assets/RemoveIcon.svelte';
 
+	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())), 'Other']; // Sort the categories alphabetically
+
+	// Fetch the user profile from the API
 	let userProfile: UserProfile = {
 		profile_picture: '',
 		username: '',
@@ -16,11 +34,10 @@
 		interests: []
 	};
 
+	// Initialise variables for profile editing
 	let showCurrentPassword = false;
 	let showNewPassword = false;
 	let showConfirmPassword = false;
-	let errorMessage: string | null = null;
-	let successMessage: string | null = null;
 	let isUploading = false;
 	let isChangingPassword = false;
 	let isUpdatingProfile = false;
@@ -35,172 +52,113 @@
 		email: ''
 	};
 
-	let pencil =
-		'<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>';
+	let tempProfilePicture = ''; // Temporary variable for profile picture upload
 
-	let validationErrors = {
-		username: '',
-		first_name: '',
-		last_name: '',
-		email: ''
-	};
-
+	// Social media section editing
 	let isAddingSocial = false;
 	let selectedSocialType = '';
 	let socialUsername = '';
 	let isUpdatingSocial = false;
 
+	// About section editing
 	let isEditingAbout = false;
 	let editedAbout = '';
 	let isUpdatingAbout = false;
-	let aboutError = '';
 
+	// Interests section editing
 	let isEditingInterests = false;
-	let editedInterests: string[] = [];
 	let isUpdatingInterests = false;
-	let interestsError = '';
 	let newInterest = '';
+	let editedInterests: string[] = []; // Define editedInterests as an array
 
-	function validateProfile() {
-		validationErrors = {
-			username: '',
-			first_name: '',
-			last_name: '',
-			email: ''
-		};
-		let isValid = true;
-
-		// Username validation
-		if (!editedProfile.username) {
-			validationErrors.username = 'Username is required';
-			isValid = false;
-		} else if (!/^[a-zA-Z0-9]{3,30}$/.test(editedProfile.username)) {
-			validationErrors.username = 'Username must be 3-30 characters long and contain only letters and numbers';
-			isValid = false;
-		}
-
-		// First name validation
-		if (!editedProfile.first_name) {
-			validationErrors.first_name = 'First name is required';
-			isValid = false;
-		} else if (!/^[a-zA-Z]{2,}$/.test(editedProfile.first_name)) {
-			validationErrors.first_name = 'First name must be at least 2 characters long and contain only letters';
-			isValid = false;
-		}
-
-		// Last name validation
-		if (!editedProfile.last_name) {
-			validationErrors.last_name = 'Last name is required';
-			isValid = false;
-		} else if (!/^[a-zA-Z]{2,}$/.test(editedProfile.last_name)) {
-			validationErrors.last_name = 'Last name must be at least 2 characters long and contain only letters';
-			isValid = false;
-		}
-
-		// Email validation
-		if (!editedProfile.email) {
-			validationErrors.email = 'Email is required';
-			isValid = false;
-		} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editedProfile.email)) {
-			validationErrors.email = 'Please enter a valid email address';
-			isValid = false;
-		}
-
-		return isValid;
-	}
-
+	// Function to handle profile picture upload
 	async function handleProfilePictureUpload(event: Event) {
 		const input = event.target as HTMLInputElement;
 		if (!input.files || !input.files[0]) return;
 
 		try {
 			isUploading = true;
-			errorMessage = null;
-			successMessage = null;
-
 			const file = input.files[0];
 			const reader = new FileReader();
 
 			reader.onload = async (e) => {
 				const base64Image = e.target?.result as string;
-				await updateProfilePicture(base64Image);
-				userProfile.profile_picture = base64Image;
-				successMessage = 'Profile picture updated successfully!';
+				tempProfilePicture = base64Image;
 			};
 
 			reader.onerror = () => {
-				errorMessage = 'Failed to read the image file';
+				alert('Failed to read the image file');
 			};
 
 			reader.readAsDataURL(file);
 		} catch (error) {
 			console.error('Failed to upload profile picture:', error);
-			errorMessage = 'Failed to upload profile picture. Please try again.';
+			alert('Failed to upload profile picture. Please try again.');
 		} finally {
 			isUploading = false;
 		}
 	}
 
+	// Function to handle password change
 	async function handlePasswordChange(event: Event) {
 		event.preventDefault();
-		
+
 		// validate passwords match
 		if (newPassword !== confirmPassword) {
-			errorMessage = 'New passwords do not match';
+			alert('New passwords do not match!');
 			return;
 		}
 
 		try {
 			isChangingPassword = true;
-			errorMessage = null;
-			successMessage = null;
 
 			await changePassword(currentPassword, newPassword);
-			successMessage = 'Password changed successfully!';
-			
+			alert('Password changed successfully!');
+
 			// clear form
 			currentPassword = '';
 			newPassword = '';
 			confirmPassword = '';
 		} catch (error) {
 			console.error('Failed to change password:', error);
-			errorMessage = error instanceof Error ? error.message : 'Failed to change password';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to change password';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isChangingPassword = false;
 		}
 	}
 
+	// Function to handle profile update
 	async function handleProfileUpdate(event: Event) {
 		event.preventDefault();
-		
-		if (!validateProfile()) {
-			errorMessage = 'Please fix the validation errors before submitting';
-			return;
-		}
-		
+
 		try {
 			isUpdatingProfile = true;
-			errorMessage = null;
-			successMessage = null;
+
+			// Update the profile picture if a new one was uploaded
+			if (tempProfilePicture) {
+				await updateProfilePicture(tempProfilePicture);
+				userProfile.profile_picture = tempProfilePicture; // Save the uploaded image
+				tempProfilePicture = ''; // Clear the temporary variable
+			}
 
 			await updateProfile(editedProfile);
-			
 			// update local profile data
 			userProfile.username = editedProfile.username;
 			userProfile.first_name = editedProfile.first_name;
 			userProfile.last_name = editedProfile.last_name;
 			userProfile.email = editedProfile.email;
-			
-			successMessage = 'Profile updated successfully!';
 			isEditingProfile = false;
 		} catch (error) {
 			console.error('Failed to update profile:', error);
-			errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingProfile = false;
 		}
 	}
 
+	// Function to start editing profile
 	function startEditingProfile() {
 		editedProfile = {
 			username: userProfile.username,
@@ -211,169 +169,145 @@
 		isEditingProfile = true;
 	}
 
+	// Function to cancel editing profile
 	function cancelEditingProfile() {
 		isEditingProfile = false;
-		errorMessage = null;
+		tempProfilePicture = ''; // Clear the temporary image
 	}
 
+	// Function to handle social media addition
 	async function handleAddSocial(event: Event) {
 		event.preventDefault();
-		
+
 		if (!selectedSocialType || !socialUsername) {
-			errorMessage = 'Please select a social media type and enter a username';
+			alert('Please select a social media type and enter a username!');
 			return;
 		}
-		
+
 		try {
 			isUpdatingSocial = true;
-			errorMessage = null;
-			successMessage = null;
 
 			await updateSocialMedia(selectedSocialType, socialUsername);
-			
+
 			// refresh profile data
 			userProfile = await fetchUserProfile();
-			
-			successMessage = 'Social media added successfully!';
 			isAddingSocial = false;
 			selectedSocialType = '';
 			socialUsername = '';
 		} catch (error) {
 			console.error('Failed to add social media:', error);
-			errorMessage = error instanceof Error ? error.message : 'Failed to add social media';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to add social media';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingSocial = false;
 		}
 	}
 
+	// Function to handle social media removal
 	async function handleRemoveSocial(socialType: string) {
 		try {
 			isUpdatingSocial = true;
-			errorMessage = null;
-			successMessage = null;
 
 			await removeSocialMedia(socialType);
-			
+
 			// refresh profile data
 			userProfile = await fetchUserProfile();
-			
-			successMessage = 'Social media removed successfully!';
 		} catch (error) {
 			console.error('Failed to remove social media:', error);
-			errorMessage = error instanceof Error ? error.message : 'Failed to remove social media';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to remove social media';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingSocial = false;
 		}
 	}
 
+	// Function to start editing about section
 	function startEditingAbout() {
 		editedAbout = userProfile?.about || '';
 		isEditingAbout = true;
-		aboutError = '';
 	}
 
+	// Function to handle about section update
 	function cancelEditingAbout() {
 		isEditingAbout = false;
 		editedAbout = '';
-		aboutError = '';
 	}
 
+	// Function to handle about section update
 	async function handleAboutUpdate() {
-		if (!editedAbout.trim()) {
-			aboutError = 'About section cannot be empty';
-			return;
-		}
-		
 		isUpdatingAbout = true;
-		aboutError = '';
-		
+
 		try {
 			const result = await updateAbout(editedAbout);
 			userProfile = { ...userProfile, about: result.about };
 			isEditingAbout = false;
-			successMessage = 'About section updated successfully';
 		} catch (error) {
-			aboutError = error instanceof Error ? error.message : 'Failed to update about section';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to update about section';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingAbout = false;
 		}
 	}
 
-	function startEditingInterests() {
-		editedInterests = [...(userProfile?.interests || [])];
-		isEditingInterests = true;
-		interestsError = '';
-	}
-
+	// Function to cancel editing interests
 	function cancelEditingInterests() {
 		isEditingInterests = false;
-		editedInterests = [];
 		newInterest = '';
-		interestsError = '';
 	}
 
-	function addInterest() {
-		if (newInterest.trim()) {
-			editedInterests = [...editedInterests, newInterest.trim()];
-			newInterest = '';
-		}
-	}
+	// Function to handle adding a new interest
+	async function addInterest(event: Event) {
+		event.preventDefault();
 
-	function removeInterest(index: number) {
-		editedInterests = editedInterests.filter((_, i) => i !== index);
-	}
-
-	async function handleInterestsUpdate() {
-		if (editedInterests.length === 0) {
-			interestsError = 'Please add at least one interest';
+		if (!newInterest) {
+			alert('Please select an interest!');
 			return;
 		}
-		
-		isUpdatingInterests = true;
-		interestsError = '';
-		
+
 		try {
+			isUpdatingInterests = true;
+
+			// TODO: John -> this should be adding the interest to the backend
+
+			// Add the new interest to the list
+			editedInterests = [...editedInterests, newInterest]; // TODO: John -> this won't be necessary, for the dropdown under interests section, user shouldn't see the the interest that they already have which comes from the database
+
+			//TODO: John -> Think as the same way as the social media section, we are not creating a new list in the page as socialMedias we are handling on the backend
+
+			// Update the backend
 			const result = await updateInterests(editedInterests);
+
+			// Update the user profile
 			userProfile = { ...userProfile, interests: result.interests };
+
+			// Reset the form
+			newInterest = '';
 			isEditingInterests = false;
-			successMessage = 'Interests updated successfully';
 		} catch (error) {
-			interestsError = error instanceof Error ? error.message : 'Failed to update interests';
+			console.error('Failed to add interest:', error);
+      let errorMessage = error instanceof Error ? error.message : 'Failed to update interests';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingInterests = false;
 		}
 	}
 
+	// Function to handle removing an interest
+	function removeInterest(index: number) {
+		editedInterests = editedInterests.filter((_, i) => i !== index);
+		// TODO: To John -> this should be removed from UserInterest in the backend instead of edited Interests?
+	}
+
 	onMount(async () => {
 		try {
-			errorMessage = null;
 			userProfile = await fetchUserProfile();
 		} catch (error) {
 			console.error('Failed to fetch user profile:', error);
-			errorMessage = 'Failed to load profile. Please try again later.';
 		}
 	});
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
-	{#if errorMessage}
-		<div class="alert alert-error mb-4 w-full max-w-2xl">
-			<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-			</svg>
-			<span>{errorMessage}</span>
-		</div>
-	{/if}
-
-	{#if successMessage}
-		<div class="alert alert-success mb-4 w-full max-w-2xl">
-			<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-			</svg>
-			<span>{successMessage}</span>
-		</div>
-	{/if}
-
 	<div
 		class="gap-13 flex grid w-full max-w-full grid-cols-1 flex-col justify-center md:grid-cols-2"
 	>
@@ -382,168 +316,182 @@
 			<!-- Profile Section -->
 			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
-					<div class="mb-4 flex items-center justify-between">
-						<button class="hover:text-primary ml-auto" on:click={isEditingProfile ? cancelEditingProfile : startEditingProfile}>
-							{@html pencil}
-						</button>
+					<div class="flex flex-end justify-end">
+						<div class="tooltip-container">
+							<button
+								class="hover:text-primary flex items-center"
+								style="visibility: {isEditingProfile ? 'hidden' : 'visible'};"
+								on:click={isEditingProfile ? cancelEditingProfile : startEditingProfile}
+							>
+								<EditIcon />
+								<span class="tooltip" style="visibility: {isEditingProfile ? 'hidden' : 'visible'};"
+									>Edit details</span
+								>
+							</button>
+						</div>
 					</div>
 					<!-- Profile Image Container -->
 					<div class="flex flex-col items-center">
-						<div class="w-50 h-50 mb-4 overflow-hidden rounded-full">
+						<div class="relative w-50 h-50 mb-5">
 							<!-- Profile Image or Placeholder -->
-							{#if userProfile.profile_picture}
+							{#if tempProfilePicture || userProfile.profile_picture}
 								<img
-									src={userProfile.profile_picture}
+									src={tempProfilePicture || userProfile.profile_picture}
 									alt="Profile Picture"
-									class="h-full w-full object-cover"
+									class="h-full w-full object-cover rounded-full"
 								/>
 							{:else}
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="1.5"
-									stroke="currentColor"
-									class="h-full w-full object-cover"
+									viewBox="0 0 338 338"
+									fill="#DDD"
+									class="h-full w-full object-cover object-center rounded-full"
 								>
 									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+										d="m169,.5a169,169 0 1,0 2,0zm0,86a76,76 0 1 1-2,0zM57,287q27-35 67-35h92q40,0 67,35a164,164 0 0,1-226,0"
 									/>
 								</svg>
 							{/if}
-						</div>
-						<div class="flex flex-col items-center gap-2">
-							<label class="btn btn-primary btn-sm">
-								{#if isUploading}
-									<span class="loading loading-spinner loading-xs"></span>
-									Uploading...
-								{:else}
-									Change Picture
-								{/if}
-								<input
-									type="file"
-									accept="image/*"
-									class="hidden"
-									on:change={handleProfilePictureUpload}
-									disabled={isUploading}
-								/>
-							</label>
+							<!-- Text Overlay -->
+							{#if isEditingProfile}
+								<div class="w-50 h-50 upload-button">
+									<label class="flex items-center justify-center cursor-pointer" for="file-upload">
+										<svg
+											class="size-12"
+											aria-hidden="true"
+											xmlns="http://www.w3.org/2000/svg"
+											fill="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												fill-rule="evenodd"
+												d="M13 10a1 1 0 0 1 1-1h.01a1 1 0 1 1 0 2H14a1 1 0 0 1-1-1Z"
+												clip-rule="evenodd"
+											/>
+											<path
+												fill-rule="evenodd"
+												d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12c0 .556-.227 1.06-.593 1.422A.999.999 0 0 1 20.5 20H4a2.002 2.002 0 0 1-2-2V6Zm6.892 12 3.833-5.356-3.99-4.322a1 1 0 0 0-1.549.097L4 12.879V6h16v9.95l-3.257-3.619a1 1 0 0 0-1.557.088L11.2 18H8.892Z"
+												clip-rule="evenodd"
+											/>
+										</svg>
+									</label>
+									<!-- Hidden File Input -->
+									<input
+										id="file-upload"
+										type="file"
+										accept="image/*"
+										class="absolute inset-0 opacity-0 cursor-pointer"
+										on:change={handleProfilePictureUpload}
+										disabled={isUploading}
+									/>
+								</div>
+							{/if}
 						</div>
 						<!-- Profile Information Section -->
-						<div class="mb-4 w-full">
-							<div class="mb-2 flex">
+						<div class="w-full">
+							<div class="mb-2 flex justify-between items-center">
 								<label for="user_name" class="label text-primary">
 									<p class="label-text">Username:</p>
 								</label>
 								{#if isEditingProfile}
-									<div class="flex flex-col ml-2">
+									<div>
 										<input
 											type="text"
 											id="username"
 											bind:value={editedProfile.username}
-											class="input input-bordered input-sm {validationErrors.username ? 'input-error' : ''}"
+											class="input input-bordered validator custom-input-profile"
 											required
+											pattern="[A-Za-z][A-Za-z0-9\-_]*"
+											minlength="3"
+											maxlength="30"
 										/>
-										{#if validationErrors.username}
-											<p class="text-error text-xs mt-1">{validationErrors.username}</p>
-										{/if}
 									</div>
 								{:else}
-								<p class="text-user-info">{userProfile.username}</p>
+									<p class="text-user-info">{userProfile.username}</p>
 								{/if}
 							</div>
-							<div class="mb-2 flex">
+							<div class="mb-2 flex justify-between items-center">
 								<label for="name" class="label text-primary">
 									<p class="label-text">Name:</p>
 								</label>
 								{#if isEditingProfile}
 									<div class="flex flex-col ml-2">
 										<div class="flex gap-2">
-											<div class="flex flex-col">
+											<div class="flex flex-col ml-auto justify-center">
 												<input
 													type="text"
 													id="first_name"
 													bind:value={editedProfile.first_name}
-													class="input input-bordered input-sm {validationErrors.first_name ? 'input-error' : ''}"
+													class="input input-bordered validator custom-input-profile"
 													required
+													pattern="[A-Za-z]+"
+													minlength="1"
 												/>
-												{#if validationErrors.first_name}
-													<p class="text-error text-xs mt-1">{validationErrors.first_name}</p>
-												{/if}
 											</div>
-											<div class="flex flex-col">
+											<div class="flex flex-col ml-auto justify-center">
 												<input
 													type="text"
 													id="last_name"
 													bind:value={editedProfile.last_name}
-													class="input input-bordered input-sm {validationErrors.last_name ? 'input-error' : ''}"
+													class="input input-bordered validator custom-input-profile"
 													required
+													pattern="[A-Za-z]+"
 												/>
-												{#if validationErrors.last_name}
-													<p class="text-error text-xs mt-1">{validationErrors.last_name}</p>
-												{/if}
 											</div>
 										</div>
 									</div>
 								{:else}
-								<p class="text-user-info">{userProfile.first_name} {userProfile.last_name}</p>
+									<p class="text-user-info">{userProfile.first_name} {userProfile.last_name}</p>
 								{/if}
 							</div>
-							<div class="mb-2 flex">
+							<div class="mb-2 flex justify-between items-center">
 								<label for="email" class="label text-primary">
 									<p class="label-text">Email:</p>
 								</label>
 								{#if isEditingProfile}
-									<div class="flex flex-col ml-2">
+									<div class="ml-auto justify-center">
 										<input
 											type="email"
 											id="email"
 											bind:value={editedProfile.email}
-											class="input input-bordered input-sm {validationErrors.email ? 'input-error' : ''}"
+											class="input input-bordered validator custom-input-profile"
 											required
 										/>
-										{#if validationErrors.email}
-											<p class="text-error text-xs mt-1">{validationErrors.email}</p>
-										{/if}
 									</div>
 								{:else}
-								<p class="text-user-info">{userProfile.email}</p>
+									<p class="text-user-info">{userProfile.email}</p>
 								{/if}
 							</div>
-							{#if isEditingProfile}
-								<div class="flex justify-end gap-2 mt-4">
-									<button
-										class="btn btn-sm btn-ghost"
-										on:click={cancelEditingProfile}
-										disabled={isUpdatingProfile}
-									>
-										Cancel
-									</button>
-									<button
-										class="btn btn-sm btn-primary"
-										on:click={handleProfileUpdate}
-										disabled={isUpdatingProfile || Object.values(validationErrors).some(error => error)}
-									>
-										{#if isUpdatingProfile}
-											<span class="loading loading-spinner loading-xs"></span>
-											Updating...
-										{:else}
-											Save Changes
-										{/if}
-									</button>
-								</div>
-							{/if}
+							<div class="flex justify-end gap-2 mt-4" class:invisible={!isEditingProfile}>
+								<button
+									class="btn btn-ghost"
+									on:click={cancelEditingProfile}
+									disabled={isUpdatingProfile}
+								>
+									Cancel
+								</button>
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
+									on:click={handleProfileUpdate}
+									disabled={isUpdatingProfile}
+								>
+									{#if isUpdatingProfile}
+										<span class="loading loading-spinner loading-xs"></span>
+										Updating...
+									{:else}
+										Save
+									{/if}
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 			<!-- Change Password Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-1/2 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Change Password</h1>
-					<form class="space-y-4" on:submit={handlePasswordChange}>
+					<form class="space-y-3" on:submit={handlePasswordChange}>
 						<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
 							<div class="w-full">
 								<label for="current_password" class="label">
@@ -566,25 +514,7 @@
 										on:click={() => (showCurrentPassword = !showCurrentPassword)}
 									>
 										{#if showCurrentPassword}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="1.5"
-												stroke="currentColor"
-												class="size-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-												/>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-												/>
-											</svg>
+											<ShowPasswordIcon />
 										{:else}
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
@@ -628,25 +558,7 @@
 										on:click={() => (showNewPassword = !showNewPassword)}
 									>
 										{#if showNewPassword}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="1.5"
-												stroke="currentColor"
-												class="size-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-												/>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-												/>
-											</svg>
+											<ShowPasswordIcon />
 										{:else}
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
@@ -668,7 +580,7 @@
 								</div>
 							</div>
 						</div>
-						<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
+						<div class="form-control flex flex-col gap-3 sm:flex-row mb-0">
 							<div class="w-full">
 								<label for="confirm_password" class="label">
 									<span class="label-text">Confirm Password</span>
@@ -690,25 +602,7 @@
 										on:click={() => (showConfirmPassword = !showConfirmPassword)}
 									>
 										{#if showConfirmPassword}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="1.5"
-												stroke="currentColor"
-												class="size-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-												/>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-												/>
-											</svg>
+											<ShowPasswordIcon />
 										{:else}
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
@@ -730,9 +624,9 @@
 								</div>
 							</div>
 						</div>
-						<div class="form-control mb-4 flex justify-center">
+						<div class="form-control flex justify-center mt-3 mb-0">
 							<button
-								class="btn btn-primary text-secondary hover:bg-primary-focus w-1/5"
+								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
 								type="submit"
 								disabled={isChangingPassword}
 							>
@@ -751,6 +645,63 @@
 
 		<!-- Right Column -->
 		<div class="space-y-10">
+			<!-- About Section -->
+			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
+				<div class="card-body bg-secondary rounded-3xl">
+					<div class="mb-4 flex items-center justify-between">
+						<div class="flex-grow text-center">
+							<h1 class="text-primary text-4xl font-bold">About</h1>
+						</div>
+						<div class="tooltip-container">
+							<button
+								class="hover:text-primary"
+								style="visibility: {isEditingAbout ? 'hidden' : 'visible'};"
+								on:click={isEditingAbout ? cancelEditingAbout : startEditingAbout}
+							>
+								<EditIcon />
+								<span class="tooltip" style="visibility: {isEditingAbout ? 'hidden' : 'visible'};"
+									>Edit bio</span
+								>
+							</button>
+						</div>
+					</div>
+					{#if isEditingAbout}
+						<div class="form-control mb-2 flex flex-col gap-3 w-full">
+							<textarea
+								bind:value={editedAbout}
+								rows="5"
+								class="input input-bordered text-area-input"
+								placeholder="Tell us about yourself..."
+							></textarea>
+							<div class="flex justify-end space-x-3">
+								<button
+									on:click={cancelEditingAbout}
+									class="btn btn-ghost"
+									disabled={isUpdatingAbout}
+								>
+									Cancel
+								</button>
+								<button
+									on:click={handleAboutUpdate}
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
+									disabled={isUpdatingAbout}
+								>
+									{#if isUpdatingAbout}
+										<span class="loading loading-spinner loading-xs"></span>
+										Updating...
+									{:else}
+										Save
+									{/if}
+								</button>
+							</div>
+						</div>
+					{:else}
+						<p class="text-user-details whitespace-pre-wrap">
+							{userProfile?.about || 'No bio available.'}
+						</p>
+					{/if}
+				</div>
+			</div>
 			<!-- Socials Section -->
 			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
@@ -758,73 +709,57 @@
 						<div class="flex-grow text-center">
 							<h1 class="text-primary text-4xl font-bold">Socials</h1>
 						</div>
-						<button class="hover:text-primary" on:click={() => isAddingSocial = true}>
-							{@html pencil}
-						</button>
+						<div class="tooltip-container">
+							<button
+								on:click={() => (isAddingSocial = true)}
+								class="hover:text-primary"
+								style="visibility: {isAddingSocial ? 'hidden' : 'visible'};"
+							>
+								<AddIcon />
+							</button>
+							<span class="tooltip" style="visibility: {isAddingSocial ? 'hidden' : 'visible'};"
+								>Connect social media account</span
+							>
+						</div>
 					</div>
-					<div class="flex flex-wrap justify-center space-y-2">
-						{#each userProfile.social_type as type, index}
-							{#each socialMedias as social (social.name)}
-								{#if social.name === type}
-									<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
-										<div>{@html social.svg}</div>
-										<p class="text-user-details pr-2">{userProfile.social_username[index]}</p>
-										<button 
-											class="hover:text-primary"
-											on:click={() => handleRemoveSocial(type)}
-											disabled={isUpdatingSocial}
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="1.5"
-												stroke="currentColor"
-												class="size-6"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M15 12H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-												/>
-											</svg>
-										</button>
-									</div>
-								{/if}
-							{/each}
-						{/each}
-					</div>
-
 					{#if isAddingSocial}
-						<form class="mt-4 space-y-4" on:submit={handleAddSocial}>
-							<div class="form-control">
+						<form class="form-control mb-2 flex flex-col gap-3" on:submit={handleAddSocial}>
+							<div class="w-full">
 								<label class="label">
 									<span class="label-text">Select Social Media</span>
 								</label>
-								<select 
-									class="select select-bordered w-full"
-									bind:value={selectedSocialType}
-									required
-								>
-									<option value="">Choose a platform</option>
-									{#each socialMedias as social}
-										{#if !userProfile.social_type.includes(social.name)}
-											<option value={social.name}>{social.name.charAt(0).toUpperCase() + social.name.slice(1)}</option>
-										{/if}
-									{/each}
-								</select>
+								<div class="relative flex items-center">
+									<select
+										class="select select-bordered custom-input flex-grow"
+										bind:value={selectedSocialType}
+										required
+									>
+										<option value="">Choose a platform</option>
+										{#each socialMedias.sort((a, b) => a.name.localeCompare(b.name)) as social}
+											{#if !userProfile.social_type.includes(social.name)}
+												<option value={social.name}>
+													{social.name.charAt(0).toUpperCase() + social.name.slice(1)}
+												</option>
+											{/if}
+										{/each}
+									</select>
+								</div>
 							</div>
-							<div class="form-control">
-								<label class="label">
-									<span class="label-text">Username</span>
-								</label>
-								<input
-									type="text"
-									class="input input-bordered"
-									bind:value={socialUsername}
-									required
-									placeholder="Enter your username"
-								/>
+							<div class="form-control flex flex-col gap-3">
+								<div class="w-full">
+									<label class="label">
+										<span class="label-text">Username</span>
+									</label>
+									<div class="relative flex items-center">
+										<input
+											type="text"
+											class="input input-bordered validator custom-input"
+											bind:value={socialUsername}
+											required
+											placeholder="What's your username?"
+										/>
+									</div>
+								</div>
 							</div>
 							<div class="flex justify-end gap-2">
 								<button
@@ -841,67 +776,44 @@
 								</button>
 								<button
 									type="submit"
-									class="btn btn-primary"
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
 									disabled={isUpdatingSocial}
 								>
 									{#if isUpdatingSocial}
 										<span class="loading loading-spinner loading-xs"></span>
 										Adding...
 									{:else}
-										Add Social Media
+										Add
 									{/if}
 								</button>
 							</div>
 						</form>
-					{/if}
-				</div>
-			</div>
-			<!-- About Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
-				<div class="card-body bg-secondary rounded-3xl">
-					<div class="mb-4 flex items-center justify-between">
-						<div class="flex-grow text-center">
-							<h1 class="text-primary text-4xl font-bold">About</h1>
-						</div>
-						<button class="hover:text-primary" on:click={isEditingAbout ? cancelEditingAbout : startEditingAbout}>
-							{@html pencil}
-						</button>
-					</div>
-					{#if isEditingAbout}
-						<div class="space-y-4">
-							<textarea
-								bind:value={editedAbout}
-								rows="4"
-								class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {aboutError ? 'border-red-500' : ''}"
-								placeholder="Tell us about yourself..."
-							></textarea>
-							{#if aboutError}
-								<p class="text-red-500 text-sm">{aboutError}</p>
-							{/if}
-							<div class="flex justify-end space-x-3">
-								<button
-									on:click={cancelEditingAbout}
-									class="btn btn-ghost"
-									disabled={isUpdatingAbout}
-								>
-									Cancel
-								</button>
-								<button
-									on:click={handleAboutUpdate}
-									class="btn btn-primary"
-									disabled={isUpdatingAbout}
-								>
-									{#if isUpdatingAbout}
-										<span class="loading loading-spinner loading-xs"></span>
-										Updating...
-									{:else}
-										Save Changes
-									{/if}
-								</button>
-							</div>
+					{:else if userProfile.social_type.length === 0}
+						<!-- Message when no social media is found -->
+						<div class="flex flex-wrap justify-center space-y-2">
+							<p class="text-user-details text-center">No socials connected yet.</p>
 						</div>
 					{:else}
-						<p class="text-user-details whitespace-pre-wrap">{userProfile?.about || 'No bio available.'}</p>
+						<div class="flex flex-wrap justify-center space-y-2">
+							<!-- Loop through social media accounts -->
+							{#each userProfile.social_type as type, index}
+								{#each socialMedias as social (social.name)}
+									{#if social.name === type}
+										<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
+											<div>{@html social.svg}</div>
+											<p class="text-user-details pr-2">{userProfile.social_username[index]}</p>
+											<button
+												class="hover:text-primary"
+												on:click={() => handleRemoveSocial(type)}
+												disabled={isUpdatingSocial}
+											>
+												<RemoveIcon />
+											</button>
+										</div>
+									{/if}
+								{/each}
+							{/each}
+						</div>
 					{/if}
 				</div>
 			</div>
@@ -912,73 +824,86 @@
 						<div class="flex-grow text-center">
 							<h1 class="text-primary text-4xl font-bold">Interests</h1>
 						</div>
-						<button class="hover:text-primary" on:click={isEditingInterests ? cancelEditingInterests : startEditingInterests}>
-							{@html pencil}
-						</button>
+						<div class="tooltip-container">
+							<button
+								on:click={() => (isEditingInterests = true)}
+								class="hover:text-primary"
+								style="visibility: {isEditingInterests ? 'hidden' : 'visible'};"
+							>
+								<AddIcon />
+							</button>
+							<span class="tooltip" style="visibility: {isEditingInterests ? 'hidden' : 'visible'};"
+								>Add interest</span
+							>
+						</div>
 					</div>
+
 					{#if isEditingInterests}
-						<div class="space-y-4">
-							<div class="flex gap-2">
-								<input
-									type="text"
-									bind:value={newInterest}
-									class="input input-bordered flex-grow"
-									placeholder="Add a new interest..."
-									on:keydown={(e) => e.key === 'Enter' && addInterest()}
-								/>
+						<!-- Form to Add Interests -->
+						<form class="form-control mb-2 flex flex-col gap-3" on:submit={addInterest}>
+							<div class="w-full">
+								<label class="label">
+									<span class="label-text">Select an interest</span>
+								</label>
+								<div class="relative flex items-center">
+									<select
+										class="select select-bordered custom-input flex-grow"
+										bind:value={newInterest}
+										required
+									>
+										<option value="" disabled selected>Pick a hobby</option>
+										{#each categories as category}
+											{#if !editedInterests.includes(category)}
+												<option value={category}>{category}</option>
+											{/if}
+										{/each}
+									</select>
+								</div>
+							</div>
+							<div class="flex justify-end gap-2">
 								<button
-									class="btn btn-primary"
-									on:click={addInterest}
-								>
-									Add
-								</button>
-							</div>
-							<div class="flex flex-wrap gap-2">
-								{#each editedInterests as interest, index}
-									<div class="badge badge-primary gap-2">
-										{interest}
-										<button
-											class="hover:text-error"
-											on:click={() => removeInterest(index)}
-										>
-											×
-								</button>
-							</div>
-						{/each}
-							</div>
-							{#if interestsError}
-								<p class="text-error text-sm">{interestsError}</p>
-							{/if}
-							<div class="flex justify-end space-x-3">
-								<button
-									on:click={cancelEditingInterests}
+									type="button"
 									class="btn btn-ghost"
+									on:click={cancelEditingInterests}
 									disabled={isUpdatingInterests}
 								>
 									Cancel
 								</button>
 								<button
-									on:click={handleInterestsUpdate}
-									class="btn btn-primary"
+									type="submit"
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
 									disabled={isUpdatingInterests}
 								>
 									{#if isUpdatingInterests}
 										<span class="loading loading-spinner loading-xs"></span>
-										Updating...
+										Adding...
 									{:else}
-										Save Changes
+										Add
 									{/if}
-						</button>
-					</div>
+								</button>
+							</div>
+						</form>
+					{:else if userProfile?.interests.length === 0}
+						<!-- Message when no interests are found -->
+						<div class="flex flex-wrap justify-center space-y-2">
+							<p class="text-user-details text-center">No interests added yet.</p>
 						</div>
 					{:else}
-						<div class="flex flex-wrap gap-2">
-							{#each userProfile?.interests || [] as interest}
-								<div class="badge badge-primary">{interest}</div>
+						<!-- Display Interests -->
+						<div class="flex flex-wrap justify-center space-y-2">
+							{#each userProfile.interests as interest, index}
+								<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
+									<p class="text-user-details pr-2">{interest}</p>
+									<button
+										class="hover:text-primary"
+										on:click={() => removeInterest(index)}
+										disabled={isUpdatingInterests}
+									>
+										<RemoveIcon />
+									</button>
+								</div>
 							{/each}
-							{#if !userProfile?.interests?.length}
-								<p class="text-user-details">No interests added yet.</p>
-							{/if}
+
 						</div>
 					{/if}
 				</div>

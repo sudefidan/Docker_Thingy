@@ -90,12 +90,20 @@ input::selection {
 	color: var(--color-secondary);
 }
 
+.custom-input-profile {
+	@apply text-base focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2 p-1 h-auto pl-2;
+}
+
 .text-user-info {
-	@apply text-lg text-right mr-2 text-base-100;
+	@apply text-lg text-right mr-2 text-base-100 w-full mb-1.75;
 }
 
 .text-user-details {
 	@apply text-lg text-center text-base-100;
+}
+
+.text-add-more {
+	@apply text-lg text-center;
 }
 
 .text-community-category {
@@ -111,8 +119,10 @@ input::selection {
 }
 
 .custom-input {
-	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2
+	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2  w-full;
 }
+
+
 
 .placeholder-selected option[value=""] {
 	color: #697282;
@@ -194,7 +204,7 @@ p::selection {
 	padding: 5px 10px;
 	border-radius: 5px;
 	position: absolute;
-	z-index: 1;
+	z-index: 9999;
 	top: 125%;
 	/* Position below the button */
 	left: 50%;
@@ -211,5 +221,9 @@ p::selection {
 	opacity: 1;
 }
 
+/* Upload Image button */
+.upload-button {
+	@apply bg-base-100/75 text-gray-800 rounded-full p-2 absolute inset-0 flex items-center justify-center;
+}
 
 @source "../node_modules/flowbite-svelte/dist";

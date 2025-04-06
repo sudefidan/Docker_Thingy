@@ -11,11 +11,13 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
+import re
 from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
 from django.views import View
+
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -148,7 +150,7 @@ class user_profile_view(APIView):
 # handles profile picture uploads and storage
 # accepts base64 encoded image data from frontend
 # converts and stores as binary data in database
-    
+
 class upload_profile_picture(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -484,21 +486,34 @@ class update_user_profile(APIView):
 
             # validate username format and length
             username = data['username']
-            if not username.isalnum() or len(username) < 3 or len(username) > 30:
+            if not re.fullmatch(r'[A-Za-z][A-Za-z0-9\-_]*', username) or len(username) < 3 or len(username) > 30:
                 return Response({
-                    "error": "Username must be 3-30 characters long and contain only letters and numbers"
+                    "error": "Username must be 3-30 characters long, start with a letter, and contain only letters, numbers, hyphens, or underscores"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # validate name fields
+            # validate first name
             first_name = data['first_name']
-            last_name = data['last_name']
-            if not first_name.isalpha() or not last_name.isalpha():
+            if not re.fullmatch(r'[A-Za-z]+', first_name):
                 return Response({
-                    "error": "First and last names must contain only letters"
+                    "error": "First name must contain only letters"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            if len(first_name) < 2 or len(last_name) < 2:
+
+            if len(first_name) < 1:
                 return Response({
-                    "error": "First and last names must be at least 2 characters long"
+                    "error": "First name must be at least 1 character long"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+
+            # validate last name
+            last_name = data['last_name']
+            if not re.fullmatch(r'[A-Za-z]+', last_name):
+                return Response({
+                    "error": "Last name must contain only letters"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if len(last_name) < 1:
+                return Response({
+                    "error": "Last name must be at least 1 character long"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # validate email format
@@ -556,15 +571,9 @@ class update_social_media(APIView):
                     "error": "Both social type and username are required"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # validate social type
-            valid_types = ['instagram', 'linkedin', 'twitter']
-            if social_type.lower() not in valid_types:
-                return Response({
-                    "error": f"Invalid social type. Must be one of: {', '.join(valid_types)}"
-                }, status=status.HTTP_400_BAD_REQUEST)
 
             # get or create the social type
-            social_type_obj, _ = SocialType.objects.get_or_create(social_type=social_type.lower())
+            social_type_obj, _ = SocialType.objects.get_or_create(social_type=social_type)
 
             # get or create user social media entry
             user_social, created = UserSocial.objects.get_or_create(
@@ -944,7 +953,7 @@ def add_community_leader(request, community_id, user_id):
         return Response({"message": f"User {user_to_add.username} is now a leader of {community.name}."}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 @csrf_exempt  # Remove if using Django's standard form handling
 @login_required
 def create_event(request):
