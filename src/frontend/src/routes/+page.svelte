@@ -1,5 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
+	import ShowPasswordIcon from '../assets/ShowPasswordIcon.svelte';
 
 	let username = '';
 	let password = '';
@@ -63,10 +64,10 @@
 							name="username"
 							class="input input-bordered validator custom-input"
 							required
-							pattern="[A-Za-z][A-Za-z0-9\-]*"
+							pattern="[A-Za-z][A-Za-z0-9\-_]*"
 							minlength="3"
 							maxlength="30"
-							title="Only letters, numbers or dash"
+							title="Must contain only letters, numbers or dash,or underscores!"
 							autocomplete="email"
 							placeholder="Enter your username"
 						/>
@@ -94,25 +95,7 @@
 								on:click={() => (showPassword = !showPassword)}
 							>
 								{#if showPassword}
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="1.5"
-										stroke="currentColor"
-										class="size-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-										/>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-										/>
-									</svg>
+									<ShowPasswordIcon />
 								{:else}
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
