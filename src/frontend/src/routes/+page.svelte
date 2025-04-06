@@ -1,7 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
 	import ShowPasswordIcon from '../assets/ShowPasswordIcon.svelte';
-
 	let username = '';
 	let password = '';
 	let message = '';

@@ -51,6 +51,7 @@
 		last_name: '',
 		email: ''
 	};
+
 	let tempProfilePicture = ''; // Temporary variable for profile picture upload
 
 	// Social media section editing
@@ -77,7 +78,6 @@
 
 		try {
 			isUploading = true;
-
 			const file = input.files[0];
 			const reader = new FileReader();
 
@@ -143,7 +143,6 @@
 			}
 
 			await updateProfile(editedProfile);
-
 			// update local profile data
 			userProfile.username = editedProfile.username;
 			userProfile.first_name = editedProfile.first_name;
@@ -286,7 +285,8 @@
 			isEditingInterests = false;
 		} catch (error) {
 			console.error('Failed to add interest:', error);
-			alert('Failed to add interest. Please try again!');
+      let errorMessage = error instanceof Error ? error.message : 'Failed to update interests';
+			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingInterests = false;
 		}
@@ -903,6 +903,7 @@
 									</button>
 								</div>
 							{/each}
+
 						</div>
 					{/if}
 				</div>

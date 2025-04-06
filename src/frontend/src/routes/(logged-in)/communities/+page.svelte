@@ -70,6 +70,7 @@
         }
     });
 
+
 	// Placeholder color for option
 	function updateSelectClass(event) {
 		const selectElement = event.target;
@@ -424,6 +425,7 @@
 												xmlns="http://www.w3.org/2000/svg"
 												fill="currentColor"
 												class="bi bi-box-arrow-right size-7"
+
 												viewBox="0 0 16 16"
 											>
 												<path
@@ -444,7 +446,6 @@
 										<button
 											on:click={() => join_community(community.community_id)}
 											class="hover:text-primary"
-
 										>
 											<AddIcon/>
 										</button>
