@@ -11,11 +11,13 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
+import re
 from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
 from django.views import View
+
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -484,21 +486,34 @@ class update_user_profile(APIView):
 
             # validate username format and length
             username = data['username']
-            if not username.isalnum() or len(username) < 3 or len(username) > 30:
+            if not re.fullmatch(r'[A-Za-z][A-Za-z0-9\-_]*', username) or len(username) < 3 or len(username) > 30:
                 return Response({
-                    "error": "Username must be 3-30 characters long and contain only letters and numbers"
+                    "error": "Username must be 3-30 characters long, start with a letter, and contain only letters, numbers, hyphens, or underscores"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # validate name fields
+            # validate first name
             first_name = data['first_name']
-            last_name = data['last_name']
-            if not first_name.isalpha() or not last_name.isalpha():
+            if not re.fullmatch(r'[A-Za-z]+', first_name):
                 return Response({
-                    "error": "First and last names must contain only letters"
+                    "error": "First name must contain only letters"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            if len(first_name) < 2 or len(last_name) < 2:
+
+            if len(first_name) < 1:
                 return Response({
-                    "error": "First and last names must be at least 2 characters long"
+                    "error": "First name must be at least 1 character long"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+
+            # validate last name
+            last_name = data['last_name']
+            if not re.fullmatch(r'[A-Za-z]+', last_name):
+                return Response({
+                    "error": "Last name must contain only letters"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if len(last_name) < 1:
+                return Response({
+                    "error": "Last name must be at least 1 character long"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # validate email format
