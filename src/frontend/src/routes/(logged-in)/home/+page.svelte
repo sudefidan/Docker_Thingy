@@ -257,7 +257,7 @@
 			  {#if p.userProfile.profile_picture}
 				<img src={`data:image/jpeg;base64,${p.userProfile.profile_picture}`} alt="Profile Picture" class="profile-picture" />
 			  {:else}
-				<img src="/path/to/default-profile-picture.jpg" alt="Profile Picture" class="profile-picture" />
+				<!-- show the default picture -->
 			  {/if}
 			</div>
 			<p class="text-accent text-sm mb-2">Posted by: {p.userProfile.username}</p>
