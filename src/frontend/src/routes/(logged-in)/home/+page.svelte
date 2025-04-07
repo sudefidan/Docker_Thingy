@@ -87,7 +87,7 @@
 		const data = await response.json();
 		if (response.ok) {
 			posts = data;
-			filterPosts();
+
 		} else {
 			console.error('Failed to fetch posts:', data);
 		}
