@@ -178,6 +178,7 @@
 
 		<!-- Top panel for Search bar -->
 		<div class="top-panel bg-base">
+
 			 <div class="main-content">
 				{@render children()}
 			</div>
