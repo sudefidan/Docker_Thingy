@@ -12,7 +12,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
 import re
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
@@ -1025,3 +1025,47 @@ def create_event(request):
         return JsonResponse({"message": "Event created successfully!", "event_id": event.event_id}, status=201)
 
     return JsonResponse({"error": "Invalid request method."}, status=400)
+
+
+# get user profile for any user, allows for users to see other users profile.
+class GetUserProfile(APIView):
+    permission_classes = []
+
+    def get(self, request, user_id):
+        try:
+            # Fetch user by ID
+            user = User.objects.get(id=user_id)
+
+            # Fetch social links associated with the user
+            social_links = UserSocial.objects.filter(user=user).values('social_type__social_type', 'social_username')
+
+            # Prepare the profile picture as Base64 string
+            profile_picture_base64 = None
+            if user.profile_picture:
+                # Convert binary profile picture to Base64
+                profile_picture_base64 = base64.b64encode(user.profile_picture).decode('utf-8')
+
+            # Retrieve user profile data
+            user_profile_data = {
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "about": user.about, 
+                "profile_picture": profile_picture_base64, 
+                "social_links": [
+                    {"social_type": link['social_type__social_type'], "social_username": link['social_username']}
+                    for link in social_links
+                ],
+            }
+
+            # Return profile data
+            return Response(user_profile_data, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+    
+            return Response({"error": "An error occurred.", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

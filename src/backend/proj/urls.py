@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, re_path, include
 from app import views
-from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests
+from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests, GetUserProfile
 from rest_framework import routers, serializers, viewsets
 from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event
 from rest_framework_simplejwt.views import (
@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/update-profile/', update_user_profile.as_view(), name='update_profile'),
     path('api/upload-profile-picture/', upload_profile_picture.as_view(), name='upload_profile_picture'),
     path('api/get-profile-picture/', GetProfilePicture.as_view(), name='get_profile_picture'),
+    path('api/user-profile/<int:user_id>/', GetUserProfile.as_view(), name='get_user_profile'),
     path('api/update-social-media/', update_social_media.as_view(), name='update_social_media'),
     path('api/update-about/', update_user_about.as_view(), name='update_about'),
     path('api/update-interests/', update_user_interests.as_view(), name='update_interests'),
