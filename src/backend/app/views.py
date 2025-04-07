@@ -310,17 +310,22 @@ def get_users(request):
 @permission_classes([IsAuthenticated])
 def get_posts(request):
     posts = Post.objects.all().order_by('-date')
-    posts_data = [
-        {
+    
+    posts_data = []
+    for post in posts:
+        community_id = post.community.community_id if post.community else None
+        community_name = post.community.name if post.community else 'No Community'
+        posts_data.append({
             'id': post.post_id,
             'title': post.title,
             'content': post.content,
             'date': post.date.isoformat(),
             'user_id': post.user.id,
             'username': post.user.username,
-        }
-        for post in posts
-    ]
+            'community_id': community_id,
+            'community_name': community_name,
+        })
+    
     return JsonResponse(posts_data, safe=False, status=200)
 
 
@@ -330,20 +335,33 @@ def get_posts(request):
 def create_post(request):
     if request.method == 'POST':
         data = request.data
+        print(data)  # Log incoming data to check what is sent from the frontend
 
         title = data.get('title')
         content = data.get('content')
         date = data.get('date')
+        community_id = data.get('community_id')
 
         if not title or not content:
             return Response({'error': 'Title and content are required!'}, status=400)
+
+        # If no community_id is provided (or it's empty), set community to None
+        if not community_id:
+            community = None
+        else:
+            try:
+                # Ensure the community exists
+                community = Community.objects.get(community_id=community_id)
+            except Community.DoesNotExist:
+                return Response({'error': 'Community not found!'}, status=404)
 
         # Create a new post
         post = Post.objects.create(
             title=title,
             content=content,
-            date = date,
-            user=request.user
+            date=date,
+            user=request.user,
+            community=community  # If community is None, post will have no community
         )
 
         return Response({
@@ -351,8 +369,13 @@ def create_post(request):
             'title': post.title,
             'content': post.content,
             'user_id': post.user.id,
-            'username': post.user.username
+            'username': post.user.username,
+            'community_id': post.community.community_id if post.community else None,
+            'community_name': post.community.name if post.community else None
         }, status=201)
+
+
+
 
 class CreateCommunity(APIView):
     permission_classes = [IsAuthenticated]

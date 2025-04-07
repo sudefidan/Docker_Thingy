@@ -3,13 +3,15 @@
 	import { goto } from '$app/navigation';
 
 	let access_token;
-	let users = [];
 	let loggedInUserId;
 	let postContent = '';
 	let posts = [];
 	let title = '';
 	let filteredPosts = [];
 	let searchTerm = ''; // Search term for filtering
+	let subscribedCommunities = [];
+	let selectedCommunityId = '';
+
 
 	// Function to adjust the height of the textarea dynamically
 	function adjustTextareaHeight(event) {
@@ -32,8 +34,41 @@
 			loggedInUserId = getLoggedInUserIdFromToken(access_token);
 			await fetchUsers();
 			await fetchPosts();
+			// await fetchCommunities();
+			await fetchSubscribedCommunities();
 		}
 	});
+
+	const fetchCommunities = async () => {
+	try {
+		const response = await fetch('http://127.0.0.1:8000/api/communities/');
+		if (!response.ok) {
+			throw new Error(`HTTP error! Status: ${response.status}`);
+		}
+		const data = await response.json();
+		communities = data;
+	} catch (error) {
+		console.error('Failed to fetch communities:', error);
+	}
+};
+const fetchSubscribedCommunities = async () => {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/subscribed_communities/', {
+				method: 'GET',
+				headers: { Authorization: `Bearer ${access_token}` }
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				subscribedCommunities = [...data.subscribed_communities];
+				console.log('Fetched subscribed communities:', subscribedCommunities);
+			} else {
+				console.error('Failed to fetch subscribed communities');
+			}
+		} catch (error) {
+			console.error('Network error:', error.message);
+		}
+	};
 
 	// Retrieve the logged-in user's ID from the access token
 	function getLoggedInUserIdFromToken(token) {
@@ -87,46 +122,54 @@
 		const data = await response.json();
 		if (response.ok) {
 			posts = data;
-
 		} else {
 			console.error('Failed to fetch posts:', data);
 		}
 	};
 	// create post function to push the form data to the backend api
 	const createPost = async () => {
-		if (!title.trim() || !postContent.trim()) return;
+	if (!title.trim() || !postContent.trim()) return;
 
-		const todayDate = new Date().toISOString().split('T')[0];
+	const todayDate = new Date().toISOString().split('T')[0];
 
-		const response = await fetch('http://127.0.0.1:8000/api/create_posts/', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${access_token}`
-			},
-			body: JSON.stringify({
-				title: title,
-				content: postContent,
-				date: todayDate,
-				user_id: loggedInUserId
-			})
-		});
-		if (response.ok) {
-			const newPost = await response.json();
-			posts.push(newPost);
-			title = '';
-			postContent = '';
-			window.location.reload();
-		} else {
-			console.error('Failed to create post:', await response.json());
-		}
-	};
-	// the function that will filter the post and will search for a post based of the input of the user
-	$: filteredPosts = posts.filter(
+	const communityId = selectedCommunityId || null;
+
+	const response = await fetch('http://127.0.0.1:8000/api/create_posts/', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${access_token}`
+		},
+		body: JSON.stringify({
+			title: title,
+			content: postContent,
+			date: todayDate,
+			user_id: loggedInUserId,
+			community_id: selectedCommunityId
+		})
+	});
+	if (response.ok) {
+		const newPost = await response.json();
+		posts.push(newPost);
+		title = '';
+		postContent = '';
+		selectedCommunityId = '';
+		window.location.reload();
+	} else {
+		console.error('Failed to create post:', await response.json());
+	}
+};
+// filters posts from the search bar
+$: filteredPosts = posts.filter(
 	(p) =>
 		p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
 		p.content.toLowerCase().includes(searchTerm.toLowerCase())
 	);
+
+	function getCommunityName(communityId) {
+    const community = subscribedCommunities.find(c => c.id === communityId);
+    return community ? community.name : 'N/A'; 
+  }
 
 </script>
 
@@ -141,6 +184,21 @@
 			<form id="post-form" class="space-y-4" on:submit|preventDefault={createPost}>
 				<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
 					<div class="w-full">
+						<label for="community" class="label">
+							<span class="label-text">Select Community</span>
+						</label>
+						<div class="relative">
+							<select
+								id="community"
+								bind:value={selectedCommunityId}
+								class="select select-bordered custom-input"
+							>
+								<option value="" disabled selected>Select a community</option>
+								{#each subscribedCommunities as community}
+									<option value={community.id}>{community.name}</option>
+								{/each}
+							</select>
+						</div>
 						<label for="title" class="label">
 							<span class="label-text">Title</span>
 						</label>
@@ -174,9 +232,9 @@
 					</div>
 				</div>
 				<div class="form-control mb-2 flex justify-end">
-					<button class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10" type="submit"
-						>Post</button
-					>
+					<button class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10" type="submit">
+						Post
+					</button>
 				</div>
 			</form>
 		</div>
@@ -187,6 +245,10 @@
 			<div class="card bg-base-100 mb-10 shadow-4xl min-h-1/3 w-full rounded-3xl mb-4">
 				<div class="card-body bg-secondary rounded-3xl">
 					<h3 class="text-primary text-2xl font-bold">{p.title}</h3>
+					<!-- display the community name if one has been given -->
+					<p class="text-accent text-sm italic mb-2">
+						Community posted in: {getCommunityName(p.community_id)}
+					</p>
 					<p
 						class="text-base-100 pr-10 overflow-auto text-ellipsis"
 						style="word-break: break-word;"
