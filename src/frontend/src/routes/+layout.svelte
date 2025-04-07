@@ -175,16 +175,10 @@
 				</li>
 			</ul>
 		</div>
-
-		<!-- Top panel for Search bar -->
-		<div class="top-panel bg-base">
-
-			 <div class="main-content">
-				{@render children()}
-			</div>
-		 </div>
-
-
+		<!-- Main content -->
+		<div class="main-content">
+			{@render children()}
+		</div>
 	{:else}
 		<!-- If it is register or login page show: -->
 		<!-- Main content -->

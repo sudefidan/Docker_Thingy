@@ -20,6 +20,7 @@
 	import RemoveIcon from '../../../assets/RemoveIcon.svelte';
 
 	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())), 'Other']; // Sort the categories alphabetically
+	let searchTerm = ''; // Search term for filtering
 
 	// Fetch the user profile from the API
 	let userProfile: UserProfile = {
@@ -308,6 +309,11 @@
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
+	<!-- Top panel with search bar -->
+	<div class="top-panel">
+		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
+	</div>
+	<!-- Main content area -->
 	<div
 		class="gap-13 flex grid w-full max-w-full grid-cols-1 flex-col justify-center md:grid-cols-2"
 	>
