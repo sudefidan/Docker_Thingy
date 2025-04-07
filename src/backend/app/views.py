@@ -74,8 +74,18 @@ class login_user(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        username = request.data.get('username')
+        identifier = request.data.get('identifier')
         password = request.data.get('password')
+
+        #this determines whether the user has inputted email or password.
+        try:
+            if '@' in identifier:
+                user_obj = User.objects.get(email=identifier)
+                username = user_obj.username
+            else:
+                username = identifier
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)    
 
         user = authenticate(username=username, password=password)
         if user:

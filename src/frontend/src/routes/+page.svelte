@@ -5,6 +5,8 @@
 	let password = '';
 	let message = '';
 	let showPassword = false;
+	let identifier = "";
+	
 
 	async function login() {
 		try {
@@ -13,7 +15,7 @@
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({ username, password })
+				body: JSON.stringify({ identifier, password })
 			});
 
 			if (res.ok) {
@@ -37,7 +39,7 @@
 				const data = await res.json();
 				message = 'Invalid username or password!';
 				// Clear the form inputs
-				username = '';
+				identifier = '';
 				password = '';
 			}
 		} catch (error) {
@@ -54,21 +56,17 @@
 			<form on:submit|preventDefault={login}>
 				<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
 					<div class="w-full">
-						<label for="username" class="label">
-							<span class="label-text">Username</span>
+						<label for="identifier" class="label">
+							<span class="label-text">Username or Email</span>
 						</label>
 						<input
 							type="text"
-							bind:value={username}
-							name="username"
+							bind:value={identifier}
+							name="identifier"
 							class="input input-bordered validator custom-input"
 							required
-							pattern="[A-Za-z][A-Za-z0-9\-_]*"
-							minlength="3"
-							maxlength="30"
-							title="Must contain only letters, numbers or dash,or underscores!"
 							autocomplete="email"
-							placeholder="Enter your username"
+							placeholder="Enter your username or email"
 						/>
 					</div>
 				</div>
