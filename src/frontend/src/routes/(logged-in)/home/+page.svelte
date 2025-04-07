@@ -9,7 +9,7 @@
 	let posts = [];
 	let title = '';
 	let filteredPosts = [];
-	let searchTerm = '';
+	let searchTerm = ''; // Search term for filtering
 
 	// Function to adjust the height of the textarea dynamically
 	function adjustTextareaHeight(event) {
@@ -131,10 +131,9 @@
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
-	<div class="top-panel bg-base">
-		<div class="p-4">
-			<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
-		</div>
+	<!-- Top panel with search bar -->
+	<div class="top-panel">
+		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
 	</div>
 	<!-- Create Post -->
 	<div class="card bg-base-100 w-full rounded-3xl mb-10">
@@ -183,7 +182,7 @@
 		</div>
 	</div>
 	<!-- Posts Section -->
-	<div class="grid grid-cols-1 gap-4 w-full">
+	<div class="grid grid-cols-1 w-full space-y-10">
 		{#each filteredPosts as p}
 			<div class="card bg-base-100 mb-10 shadow-4xl min-h-1/3 w-full rounded-3xl mb-4">
 				<div class="card-body bg-secondary rounded-3xl">

@@ -28,6 +28,8 @@
 	let community_member_to_promote = null; // Member to promote to leader
 	let selectedAction = ''; // Variable to store the selected action
 
+	let searchTerm = ''; // Search term for filtering
+
 	// Function to adjust the height of the textarea dynamically
 	function adjustTextareaHeight(event) {
 		const textarea = event.target;
@@ -398,15 +400,19 @@
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
+	<!-- Top panel with search bar -->
+	<div class="top-panel">
+		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
+	</div>
+	<!-- Main Section -->
 	<div
 		class="gap-13 flex grid w-full max-w-full grid-cols-1 flex-col justify-center md:grid-cols-2"
 	>
 		<!-- Left Column -->
 		<div class="space-y-10">
 			<!-- Communities Section-->
-			<div class="flex flex-wrap justify-center space-y-2">
+			<div class="flex flex-wrap justify-center space-y-10">
 				<!-- List Communities and Join Button -->
-
 				{#each communities as community}
 					<div class="card bg-base-100 w-full rounded-3xl">
 						<div class="card-body bg-secondary rounded-3xl">
@@ -465,7 +471,7 @@
 		<!-- Right Column -->
 		<div class="space-y-10">
 			<!-- Community Management -->
-			<div class="card bg-base-100 shadow-4xl w-full rounded-3xl">
+			<div class="card bg-base-100 w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Community Management</h1>
 					<div class="form-control mb-2 flex flex-col gap-3">
