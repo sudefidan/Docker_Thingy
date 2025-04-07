@@ -107,7 +107,7 @@
   
 	// Function to create a new post
 	const createPost = async () => {
-	  if (!title.trim() || !postContent.trim() || !selectedCommunityId) return;
+	  if (!title.trim() || !postContent.trim()) return;
   
 	  const todayDate = new Date().toISOString().split('T')[0];
   
@@ -123,7 +123,7 @@
 			content: postContent,
 			date: todayDate,
 			user_id: loggedInUserId,
-			community_id: selectedCommunityId,
+			community_id: selectedCommunityId || null,
 		  }),
 		});
   
