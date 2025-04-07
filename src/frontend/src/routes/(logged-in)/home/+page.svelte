@@ -116,23 +116,26 @@
 			posts.push(newPost);
 			title = '';
 			postContent = '';
-			filterPosts();
 			window.location.reload();
 		} else {
 			console.error('Failed to create post:', await response.json());
 		}
 	};
 	// the function that will filter the post and will search for a post based of the input of the user
-	function filterPosts() {
-		filteredPosts = posts.filter(
-			(p) =>
-				p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				p.content.toLowerCase().includes(searchTerm.toLowerCase())
-		);
-	}
+	$: filteredPosts = posts.filter(
+	(p) =>
+		p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+		p.content.toLowerCase().includes(searchTerm.toLowerCase())
+	);
+
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
+	<div class="top-panel bg-base">
+		<div class="p-4">
+			<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
+		</div>
+	</div>
 	<!-- Create Post -->
 	<div class="card bg-base-100 w-full rounded-3xl mb-10">
 		<div class="card-body bg-secondary rounded-3xl">
