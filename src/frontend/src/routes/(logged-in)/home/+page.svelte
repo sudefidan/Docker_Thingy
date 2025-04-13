@@ -13,7 +13,8 @@
 	let selectedCommunityId = '';
 	let postCreationError = null;
 	let postCreationSuccess = false;
-  
+	// let allCommunities = [];
+
 	let userProfile = {
 	  profile_picture: '',
 	  username: '',
@@ -42,6 +43,7 @@
 		loggedInUserId = getLoggedInUserIdFromToken(access_token);
 		await fetchPosts();
 		await fetchSubscribedCommunities();
+		// await fetchAllCommunities();
 	  }
 	});
   
@@ -63,23 +65,47 @@
 		console.error('Network error:', error.message);
 	  }
 	};
+
+// 	const fetchAllCommunities = async () => {
+//   try {
+//     const response = await fetch('http://127.0.0.1:8000/api/communities/', {
+//       method: 'GET',
+//       headers: { Authorization: `Bearer ${access_token}` }
+//     });
+
+//     if (response.ok) {
+//       const data = await response.json();
+//       allCommunities = data; // Store communities in the allCommunities array
+//       console.log("All communities:", allCommunities);
+//     } else {
+//       console.error('Failed to fetch all communities');
+//     }
+//   } catch (error) {
+//     console.error('Error fetching all communities:', error);
+//   }
+// };
+
+
   
 	// Fetch all posts made
+
 	const fetchPosts = async () => {
-	  const response = await fetch('http://127.0.0.1:8000/api/get_posts/', {
-		method: 'GET',
-		headers: { Authorization: `Bearer ${access_token}` }
-	  });
-	  const data = await response.json();
-	  if (response.ok) {
-		posts = await Promise.all(data.map(async (post) => {
-		  const userProfile = await fetchUserProfileForPost(post.user_id);
-		  return { ...post, userProfile }; // Add user profile with picture
-		}));
-	  } else {
-		console.error('Failed to fetch posts:', data);
-	  }
+  		const response = await fetch('http://127.0.0.1:8000/api/get_posts/', {
+    		method: 'GET',
+   			headers: { Authorization: `Bearer ${access_token}` }
+  		});
+
+  		const data = await response.json();
+  		if (response.ok) {
+    		posts = await Promise.all(data.map(async (post) => {
+      		const userProfile = await fetchUserProfileForPost(post.user_id);
+      		return { ...post, userProfile };
+    	}));
+  		} else {
+    		console.error('Failed to fetch posts:', data);
+  		}
 	};
+
   
 	// Fetch the user's profile for a given post
 	const fetchUserProfileForPost = async (userId) => {
@@ -154,17 +180,41 @@
 		p.content.toLowerCase().includes(searchTerm.toLowerCase())
 	);
   
-	// Helper function to get the community name by ID
-	function getCommunityName(communityId) {
-	  const community = subscribedCommunities.find(c => c.id === communityId);
-	  return community ? community.name : 'N/A';
-	}
-  
 	// Retrieve the logged-in user's ID from the access token
 	function getLoggedInUserIdFromToken(token) {
 	  const payload = JSON.parse(atob(token.split('.')[1]));
 	  return payload.user_id;
 	}
+	// allows users to delete the posts
+	const deletePost = async (postId) => {
+  	const confirmDelete = confirm('Are you sure you want to delete this post?');
+  	if (!confirmDelete) return;
+
+  		try {
+		const response = await fetch(`http://127.0.0.1:8000/api/delete_post/${postId}/`, {
+	  	method: 'DELETE',
+	  	headers: {
+		Authorization: `Bearer ${access_token}`,
+	  },
+	});
+
+	if (response.ok) {
+	  posts = posts.filter(post => post.id !== postId); 
+	} else {
+	  console.error('Failed to delete post');
+	  alert('Failed to delete post');
+	}
+  	} catch (error) {
+	console.error('Error deleting post:', error);
+	alert('An error occurred while deleting the post');
+  	}
+	};
+
+
+
+
+
+
   </script>
   
   <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -252,7 +302,7 @@
 		<div class="card bg-base-100 mb-10 shadow-4xl min-h-1/3 w-full rounded-3xl mb-4">
 		  <div class="card-body bg-secondary rounded-3xl">
 			<h3 class="text-primary text-2xl font-bold">{p.title}</h3>
-			<p class="text-accent text-sm italic mb-2">Community posted in: {getCommunityName(p.community_id)}</p>
+			<p class="text-accent text-sm italic mb-2">Community posted in: {p.community_name}</p>
 			<div class="profile">
 			  {#if p.userProfile.profile_picture}
 				<img src={`data:image/jpeg;base64,${p.userProfile.profile_picture}`} alt="Profile Picture" class="profile-picture" />
@@ -264,6 +314,14 @@
 			<p class="text-base-100 pr-10 overflow-auto text-ellipsis" style="word-break: break-word;">
 			  {p.content}
 			</p>
+
+			{#if p.user_id === loggedInUserId}
+			<button
+			  on:click={() => deletePost(p.id)}
+			  class="btn btn-error text-white mt-3">
+			  Delete Post
+			</button>
+		  {/if}
 		  </div>
 		</div>
 	  {/each}
