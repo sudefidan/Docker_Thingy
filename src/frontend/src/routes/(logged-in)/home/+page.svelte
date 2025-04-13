@@ -119,7 +119,7 @@
 		  const profileData = await response.json();
 		  return {
 			username: profileData.username,
-			profile_picture: profileData.profile_picture || '', // Ensure the Base64 profile picture is set
+			profile_picture: profileData.profile_picture || '', 
 			first_name: profileData.first_name,
 			last_name: profileData.last_name,
 			email: profileData.email
