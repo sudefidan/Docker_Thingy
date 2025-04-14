@@ -1072,3 +1072,16 @@ class GetUserProfile(APIView):
     
             return Response({"error": "An error occurred.", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class DeletePostView(APIView):
+
+    def delete(self, request, post_id):
+        try:
+            post = Post.objects.get(pk=post_id)
+            if post.user.id != request.user.id:
+                return Response({"detail": "Not authorized to delete this post."}, status=status.HTTP_403_FORBIDDEN)
+            
+            post.delete()
+            return Response({"detail": "Post deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+        except Post.DoesNotExist:
+            return Response({"detail": "Post not found."}, status=status.HTTP_404_NOT_FOUND)

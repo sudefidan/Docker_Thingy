@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, re_path, include
 from app import views
-from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests, GetUserProfile
+from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests, GetUserProfile, DeletePostView
 from rest_framework import routers, serializers, viewsets
 from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event
 from rest_framework_simplejwt.views import (
@@ -42,6 +42,8 @@ urlpatterns = [
     # posts endpoint
     path('api/get_posts/', views.get_posts, name='get_posts'),
     path('api/create_posts/', views.create_post, name='create_post'),
+    path('api/delete_post/<int:post_id>/', DeletePostView.as_view(), name='delete_post'),
+
 
     # community related endpoints
     path('api/create_community/', views.create_community.as_view()),
