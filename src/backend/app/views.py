@@ -449,6 +449,9 @@ def leave_community(request):
 
         try:
             membership = Subscribed.objects.get(user=user, community_id=community_id)
+
+            CommunityLeader.objects.filter(user=user, community_id=community_id).delete()
+
             membership.delete()
             return Response({"error": "Successfully left the community"})
 
