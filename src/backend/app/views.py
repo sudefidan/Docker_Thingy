@@ -12,7 +12,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
 import re
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, Event
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
@@ -990,44 +990,77 @@ def add_community_leader(request, community_id, user_id):
     except Exception as e:
         return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
+
+
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
-def create_event(request):
-	user = request.user
-	data = request.data
+def event_handler(request):
+    # Handle POST method (Create Event)
+    if request.method == 'POST':
+        # Extract data from the request body
+        data = request.data
+        user = request.user
 
-	# Extract fields
-	title = data.get('title')
-	description = data.get('description', '')
-	date = data.get('date')
-	virtual_link = data.get('virtual_link')
-	location = data.get('location')
-	event_type_name = data.get('event_type')
-	community_id = data.get('community_id')
+        print(" Incoming Event Data:", data)
 
-	# Validate community and permissions
-	community = get_object_or_404(Community, pk=community_id)
-	event_type = get_object_or_404(EventType, pk=event_type_name)
+        # Extract fields
+        title = data.get('title')
+        description = data.get('description', '')
+        date = data.get('date')
+        virtual_link = data.get('virtual_link')
+        location = data.get('location')
+        event_type_name = data.get('event_type')
+        community_id = data.get('community_id')
 
-	is_owner = community.owner == user
-	is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
+        # Validate community and permissions
+        community = get_object_or_404(Community, pk=community_id)
 
-	if not (is_owner or is_leader):
-		return Response({"error": "Permission denied."}, status=403)
+        try:
+            event_type = EventType.objects.get(name=event_type_name)
+        except EventType.DoesNotExist:
+            return Response({"error": f"EventType '{event_type_name}' not found."}, status=400)
 
-	# Create event
-	event = Event.objects.create(
-		title=title,
-		description=description,
-		date=date,
-		virtual_link=virtual_link,
-		location=location,
-		event_type=event_type,
-		community=community
-	)
+        # Check if the user is an owner or a leader of the community
+        is_owner = community.owner == user
+        is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
 
-	return Response({"message": "Event created!", "event_id": event.event_id}, status=201)
+        if not (is_owner or is_leader):
+            return Response({"error": "Permission denied."}, status=403)
 
+        # Create event
+        event = Event.objects.create(
+            title=title,
+            description=description,
+            date=date,
+            virtual_link=virtual_link,
+            location=location,
+            event_type=event_type,
+            community=community
+        )
+
+        return Response({"message": "Event created!", "event_id": event.event_id}, status=201)
+
+    # Handle GET method (List Events)
+    elif request.method == 'GET':
+        # Retrieve all events for the authenticated user
+        events = Event.objects.all()
+
+        # Prepare the event data for response
+        event_list = [
+            {
+                'event_id': event.event_id,
+                'title': event.title,
+                'description': event.description,
+                'date': event.date,
+                'virtual_link': event.virtual_link,
+                'location': event.location,
+                'event_type': event.event_type.name if event.event_type else None,
+                'community': event.community.name if event.community else None
+            }
+            for event in events
+        ]
+
+        return Response(event_list, status=200)
 
 # get user profile for any user, allows for users to see other users profile.
 class GetUserProfile(APIView):

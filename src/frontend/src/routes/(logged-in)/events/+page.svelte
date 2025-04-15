@@ -14,6 +14,7 @@
 	let event_type = 'virtual';
 	let community_id = '';
 	let searchTerm = '';
+	let events = '';
 	 // Search term for filtering
 
 	// Retrieve the logged-in user's ID from the JWT token
@@ -76,41 +77,70 @@
     }
 }
 
-	async function submitEvent(event) {
-		event.preventDefault(); // Prevent default form submission
+async function submitEvent(event) {
+    event.preventDefault(); // Prevent default form submission
 
-		const eventData = {
-			title,
-			description,
-			date,
-			virtual_link,
-			location,
-			event_type,
-			community_id
-		};
+    console.log("Form submitted, but request skipped.");
 
-		try {
-			const response = await fetch('http://127.0.0.1:8000/api/events/', {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${access_token}`, // Send the token
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(eventData),
-			});
+    const eventData = {
+        title,               // Assuming you have these variables populated in your form
+        description,
+        date,
+        virtual_link,
+        location,
+        event_type,          // Make sure this is set correctly, such as selecting from a dropdown
+        community_id         // The community ID should be passed along
+    };
 
-			if (!response.ok) {
-				throw new Error(`Failed to create event: ${response.status}`);
-			}
+    try {
+        const response = await fetch('http://127.0.0.1:8000/api/events/', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${access_token}`,  // Send the token for authentication
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(eventData),
+        });
 
-			const data = await response.json();
-			console.log('Event created successfully:', data);
-			// Optionally, you can reset the form or display a success message here
-		} catch (error) {
-			console.error('Error creating event:', error);
-			// Handle any errors, like displaying a message to the user
-		}
-	}
+        if (!response.ok) {
+            throw new Error(`Failed to create event: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Event created successfully:', data);
+
+        // Optionally, reset the form or display a success message here
+        // For example: resetForm();
+
+    } catch (error) {
+        console.error('Error creating event:', error);
+        // Handle any errors (such as displaying a message to the user)
+    }
+}
+
+async function fetchEvents() {
+    try {
+        const response = await fetch('http://127.0.0.1:8000/api/events/', {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${access_token}`,  // Include the token for authentication
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch events');
+        }
+
+        const events = await response.json();
+        console.log('Fetched events:', events);
+        // You can now display these events in the UI
+        // For example: updateEventList(events);
+
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        // Handle any errors such as showing a message to the user
+    }
+}
 
 	// Run the functions when the component loads
 	onMount(async () => {
@@ -125,7 +155,7 @@
 
 		await fetchUsers();
 		await fetchUserCommunities();
-
+		await fetchEvents();
 		const response = await fetch('http://127.0.0.1:8000/api/communities/', {
 			headers: {
 				Authorization: `Bearer ${access_token}`
@@ -232,6 +262,31 @@
 			{:else}
 				<p>You do not have permission to create events.</p>
 			{/if}
+		</div>
+	</div>
+	 <!-- Events List -->
+	 <div class="card bg-base-100 w-full rounded-3xl mt-5">
+		<div class="card-body bg-secondary rounded-3xl">
+		  	<h2>Your Events</h2>
+		  	{#if events.length === 0}
+			<p>No events available.</p>
+		  		{:else}
+				<div class="events-list">
+					{#each events as event}
+						<div class="event-card">
+						<h3>{event.title}</h3>
+						<p>{event.description}</p>
+						<p><strong>Date:</strong> {event.date}</p>
+						<p><strong>Event Type:</strong> {event.event_type}</p>
+						<p><strong>Location:</strong> {event.location || 'Online'}</p>
+							{#if event.virtual_link}
+								<p><strong>Virtual Link:</strong> <a href={event.virtual_link} target="_blank">Join Event</a></p>
+							{/if}
+							<p><strong>Community:</strong> {event.community}</p>
+						</div>
+					{/each}
+				</div>
+		  	{/if}
 		</div>
 	</div>
 </main>
