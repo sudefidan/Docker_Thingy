@@ -64,6 +64,7 @@ urlpatterns = [
     path('api/notifications/delete/<int:notification_id>/', delete_notification, name="delete_notification"),
   
     # event endpoints
-    path('api/events/', create_event, name='create-event'),
-    path('api/user/communities/', fetch_communities, name="user_communities")
+    path('api/events/create/', create_event, name='create_event'),
+    path('api/user/communities/', fetch_communities, name="user_communities"),
+
 ]

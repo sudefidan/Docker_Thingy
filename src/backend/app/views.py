@@ -990,44 +990,43 @@ def add_community_leader(request, community_id, user_id):
     except Exception as e:
         return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@csrf_exempt  # Remove if using Django's standard form handling
-@login_required
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_event(request):
-    if request.method == 'POST':
-        user = request.user
-        community_id = request.POST.get('community_id')
-        title = request.POST.get('title')
-        description = request.POST.get('description', '')
-        date = request.POST.get('date')
-        virtual_link = request.POST.get('virtual_link', None)
-        location = request.POST.get('location', None)
-        event_type_name = request.POST.get('event_type')
+	user = request.user
+	data = request.data
 
-        # Fetch community and event type
-        community = get_object_or_404(Community, pk=community_id)
-        event_type = get_object_or_404(EventType, pk=event_type_name)
+	# Extract fields
+	title = data.get('title')
+	description = data.get('description', '')
+	date = data.get('date')
+	virtual_link = data.get('virtual_link')
+	location = data.get('location')
+	event_type_name = data.get('event_type')
+	community_id = data.get('community_id')
 
-        # Check if the user is the owner or a leader of the community
-        is_owner = community.owner == user
-        is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
+	# Validate community and permissions
+	community = get_object_or_404(Community, pk=community_id)
+	event_type = get_object_or_404(EventType, pk=event_type_name)
 
-        if not (is_owner or is_leader):
-            return JsonResponse({"error": "You do not have permission to create an event in this community."}, status=403)
+	is_owner = community.owner == user
+	is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
 
-        # Create the event
-        event = Event.objects.create(
-            title=title,
-            description=description,
-            date=date,
-            virtual_link=virtual_link,
-            location=location,
-            event_type=event_type,
-            community=community
-        )
+	if not (is_owner or is_leader):
+		return Response({"error": "Permission denied."}, status=403)
 
-        return JsonResponse({"message": "Event created successfully!", "event_id": event.event_id}, status=201)
+	# Create event
+	event = Event.objects.create(
+		title=title,
+		description=description,
+		date=date,
+		virtual_link=virtual_link,
+		location=location,
+		event_type=event_type,
+		community=community
+	)
 
-    return JsonResponse({"error": "Invalid request method."}, status=400)
+	return Response({"message": "Event created!", "event_id": event.event_id}, status=201)
 
 
 # get user profile for any user, allows for users to see other users profile.

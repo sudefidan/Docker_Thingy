@@ -4,10 +4,8 @@
 	let access_token;
 	let loggedInUserId = null;
 	let users = []; // List of users fetched from API
-	let usersList = []; // List of users for MultiSelect component
 	let communities = []; // Stores the user's owned/managed communities
 	let allowedToCreate = false; // Controls form visibility
-	let submitEvent = '';
 	let title = '';
 	let description = '';
 	let date = '';
@@ -15,7 +13,8 @@
 	let location = '';
 	let event_type = 'virtual';
 	let community_id = '';
-	let searchTerm = ''; // Search term for filtering
+	let searchTerm = '';
+	 // Search term for filtering
 
 	// Retrieve the logged-in user's ID from the JWT token
 	function getLoggedInUserIdFromToken(token) {
@@ -50,59 +49,124 @@
 		}
 	}
 
-	// Fetch communities where the user is an owner or leader
-	async function fetchAllowedCommunities() {
-		try {
-			// Retrieve access token from localStorage
-			const access_token = localStorage.getItem('access_token');
-			if (!access_token) {
-				console.error('No access token found! Redirecting...');
-				window.location.href = '/'; // Redirect if not authenticated
-				return;
-			}
+	async function fetchUserCommunities() {
+    try {
+        const response = await fetch('http://127.0.0.1:8000/api/user/communities/', {
+            headers: {
+                Authorization: `Bearer ${access_token}`,
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`Failed to fetch communities: ${response.status}`);
+        }
 
-			const response = await fetch('http://127.0.0.1:8000/api/fetch_owned_communities/', {
-				method: 'GET',
+        const data = await response.json();
+        console.log('API Response:', data); // Log the full response
+
+        // Check if the response is an array
+        if (Array.isArray(data)) {
+            communities = data; // Directly assign the array to 'communities'
+            allowedToCreate = communities.length > 0;
+        } else {
+            console.error('Communities data is not an array');
+        }
+
+    } catch (error) {
+        console.error('Error fetching user communities:', error);
+    }
+}
+
+	async function submitEvent(event) {
+		event.preventDefault(); // Prevent default form submission
+
+		const eventData = {
+			title,
+			description,
+			date,
+			virtual_link,
+			location,
+			event_type,
+			community_id
+		};
+
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/events/', {
+				method: 'POST',
 				headers: {
-					Authorization: `Bearer ${access_token}`, // Add token
-					'Content-Type': 'application/json'
-				}
+					Authorization: `Bearer ${access_token}`, // Send the token
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(eventData),
 			});
 
 			if (!response.ok) {
-				if (response.status === 401) {
-					console.error('Unauthorized! Token might be invalid or expired.');
-					window.location.href = '/'; // Redirect if token expired
-				}
-				throw new Error(`Failed to fetch communities: ${response.status}`);
+				throw new Error(`Failed to create event: ${response.status}`);
 			}
 
 			const data = await response.json();
-			communities = data; // Store the fetched communities
-
-			// Check if user owns or leads at least one community
-			allowedToCreate = communities.length > 0;
+			console.log('Event created successfully:', data);
+			// Optionally, you can reset the form or display a success message here
 		} catch (error) {
-			console.error('Error fetching communities:', error);
+			console.error('Error creating event:', error);
+			// Handle any errors, like displaying a message to the user
 		}
 	}
 
-	// Run the function when the component loads
-	onMount(fetchAllowedCommunities);
-
 	// Run the functions when the component loads
-	onMount(() => {
+	onMount(async () => {
+	try {
 		access_token = localStorage.getItem('access_token');
-
 		if (!access_token) {
-			console.error('No access token found! Redirecting...');
-			window.location.href = '/'; // Redirect to login
-		} else {
-			loggedInUserId = getLoggedInUserIdFromToken(access_token);
-			fetchUsers();
-			fetchAllowedCommunities();
+			goto('http://localhost:5173/');
+			return;
 		}
-	});
+
+		loggedInUserId = getLoggedInUserIdFromToken(access_token);
+
+		await fetchUsers();
+		await fetchUserCommunities();
+
+		const response = await fetch('http://127.0.0.1:8000/api/communities/', {
+			headers: {
+				Authorization: `Bearer ${access_token}`
+			}
+		});
+		if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+		const allCommunities = await response.json();
+
+		const permitted = [];
+
+		// Check each community to see if user is owner or leader
+		for (const community of allCommunities) {
+			const isOwner = community.owner_id === loggedInUserId;
+
+			// Get leaders for this community
+			const leadersResponse = await fetch(
+				`http://127.0.0.1:8000/api/community/get_leaders/${community.community_id}`,
+				{
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+			if (!leadersResponse.ok) {
+				console.error(`Failed to get leaders for community ${community.community_id}`);
+				continue;
+			}
+			const leaders = await leadersResponse.json();
+			const isLeader = leaders.some((leader) => leader.id === loggedInUserId);
+
+			if (isOwner || isLeader) {
+				permitted.push(community);
+			}
+		}
+
+		communities = permitted;
+		allowedToCreate = permitted.length > 0;
+	} catch (error) {
+		console.error('Error during initialization:', error);
+	}
+});
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
