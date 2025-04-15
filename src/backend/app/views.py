@@ -1013,7 +1013,7 @@ def event_handler(request):
         community_id = data.get('community_id')
 
         # Validate community and permissions
-        community = get_object_or_404(Community, pk=community_id)
+        community = get_object_or_404(Community, community_id)
 
         try:
             event_type = EventType.objects.get(name=event_type_name)
