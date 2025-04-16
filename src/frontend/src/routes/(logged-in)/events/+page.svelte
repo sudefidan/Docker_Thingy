@@ -12,10 +12,10 @@
 	let virtual_link = '';
 	let location = '';
 	let event_type = 'virtual';
-	let community_id = '';
+	let community_id = ''; // This is where the selected community will be stored
 	let searchTerm = '';
-	let events = '';
-	 // Search term for filtering
+	let events = [];
+	// Search term for filtering
 
 	// Retrieve the logged-in user's ID from the JWT token
 	function getLoggedInUserIdFromToken(token) {
@@ -50,153 +50,159 @@
 		}
 	}
 
+	// Fetch user communities
 	async function fetchUserCommunities() {
-    try {
-        const response = await fetch('http://127.0.0.1:8000/api/user/communities/', {
-            headers: {
-                Authorization: `Bearer ${access_token}`,
-            }
-        });
-        if (!response.ok) {
-            throw new Error(`Failed to fetch communities: ${response.status}`);
-        }
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/user/communities/', {
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+				}
+			});
+			if (!response.ok) {
+				throw new Error(`Failed to fetch communities: ${response.status}`);
+			}
 
-        const data = await response.json();
-        console.log('API Response:', data); // Log the full response
+			const data = await response.json();
+			console.log('API Response for user communities:', data); // Log the full response
 
-        // Check if the response is an array
-        if (Array.isArray(data)) {
-            communities = data; // Directly assign the array to 'communities'
-            allowedToCreate = communities.length > 0;
-        } else {
-            console.error('Communities data is not an array');
-        }
+			// Check if the response is an array
+			if (Array.isArray(data)) {
+				communities = data; // Directly assign the array to 'communities'
+				allowedToCreate = communities.length > 0;
+			} else {
+				console.error('Communities data is not an array');
+			}
 
-    } catch (error) {
-        console.error('Error fetching user communities:', error);
-    }
-}
+		} catch (error) {
+			console.error('Error fetching user communities:', error);
+		}
+	}
 
-async function submitEvent(event) {
-    event.preventDefault(); // Prevent default form submission
+	// Submit event form
+	async function submitEvent(event) {
+		event.preventDefault(); // Prevent default form submission
 
-    console.log("Form submitted, but request skipped.");
+		console.log("Form submission triggered.");
 
-    const eventData = {
-        title,               // Assuming you have these variables populated in your form
-        description,
-        date,
-        virtual_link,
-        location,
-        event_type,          // Make sure this is set correctly, such as selecting from a dropdown
-        community_id         // The community ID should be passed along
-    };
+		const eventData = {
+			title,              
+			description,
+			date,
+			virtual_link: virtual_link === "" ? null : virtual_link,  
+			location,
+			event_type,          
+			community_id         
+		};
 
-    try {
-        const response = await fetch('http://127.0.0.1:8000/api/events/', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${access_token}`,  // Send the token for authentication
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(eventData),
-        });
+		// Log event data, including community_id
+		console.log("Event Data:", eventData);
 
-        if (!response.ok) {
-            throw new Error(`Failed to create event: ${response.status}`);
-        }
+		try {
+			console.log("Sending POST request to API...");
 
-        const data = await response.json();
-        console.log('Event created successfully:', data);
+			const response = await fetch('http://127.0.0.1:8000/api/events/create', {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${access_token}`, 
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(eventData),
+			});
 
-        // Optionally, reset the form or display a success message here
-        // For example: resetForm();
+			console.log("Response Status:", response.status);
 
-    } catch (error) {
-        console.error('Error creating event:', error);
-        // Handle any errors (such as displaying a message to the user)
-    }
-}
+			if (!response.ok) {
+				throw new Error(`Failed to create event: ${response.status}`);
+			}
 
-async function fetchEvents() {
-    try {
-        const response = await fetch('http://127.0.0.1:8000/api/events/', {
-            method: 'GET',
-            headers: {
-                Authorization: `Bearer ${access_token}`,  // Include the token for authentication
-            }
-        });
+			const data = await response.json();
 
-        if (!response.ok) {
-            throw new Error('Failed to fetch events');
-        }
+			console.log('Event created successfully:', data);
 
-        const events = await response.json();
-        console.log('Fetched events:', events);
-        // You can now display these events in the UI
-        // For example: updateEventList(events);
 
-    } catch (error) {
-        console.error('Error fetching events:', error);
-        // Handle any errors such as showing a message to the user
-    }
-}
+		} catch (error) {
+			console.error('Error creating event:', error);
+		}
+	}
+
+	// Fetch events
+	async function fetchEvents() {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/events/', {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${access_token}`,  
+				}
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch events');
+			}
+
+			events = await response.json();
+			console.log('Fetched events:', events);
+
+		} catch (error) {
+			console.error('Error fetching events:', error);
+		}
+	}
 
 	// Run the functions when the component loads
 	onMount(async () => {
-	try {
-		access_token = localStorage.getItem('access_token');
-		if (!access_token) {
-			goto('http://localhost:5173/');
-			return;
-		}
-
-		loggedInUserId = getLoggedInUserIdFromToken(access_token);
-
-		await fetchUsers();
-		await fetchUserCommunities();
-		await fetchEvents();
-		const response = await fetch('http://127.0.0.1:8000/api/communities/', {
-			headers: {
-				Authorization: `Bearer ${access_token}`
+		try {
+			access_token = localStorage.getItem('access_token');
+			if (!access_token) {
+				goto('http://localhost:5173/');
+				return;
 			}
-		});
-		if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-		const allCommunities = await response.json();
 
-		const permitted = [];
+			loggedInUserId = getLoggedInUserIdFromToken(access_token);
 
-		// Check each community to see if user is owner or leader
-		for (const community of allCommunities) {
-			const isOwner = community.owner_id === loggedInUserId;
-
-			// Get leaders for this community
-			const leadersResponse = await fetch(
-				`http://127.0.0.1:8000/api/community/get_leaders/${community.community_id}`,
-				{
-					headers: {
-						Authorization: `Bearer ${access_token}`
-					}
+			await fetchUsers();
+			await fetchUserCommunities();
+			await fetchEvents();
+			const response = await fetch('http://127.0.0.1:8000/api/communities/', {
+				headers: {
+					Authorization: `Bearer ${access_token}`
 				}
-			);
-			if (!leadersResponse.ok) {
-				console.error(`Failed to get leaders for community ${community.community_id}`);
-				continue;
-			}
-			const leaders = await leadersResponse.json();
-			const isLeader = leaders.some((leader) => leader.id === loggedInUserId);
+			});
+			if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+			const allCommunities = await response.json();
 
-			if (isOwner || isLeader) {
-				permitted.push(community);
+			const permitted = [];
+			console.log("Communities:", communities);
+
+			// Check each community to see if user is owner or leader
+			for (const community of allCommunities) {
+				const isOwner = community.owner_id === loggedInUserId;
+
+				// Get leaders for this community
+				const leadersResponse = await fetch(
+					`http://127.0.0.1:8000/api/community/get_leaders/${community.community_id}`,
+					{
+						headers: {
+							Authorization: `Bearer ${access_token}`
+						}
+					}
+				);
+				if (!leadersResponse.ok) {
+					console.error(`Failed to get leaders for community ${community.community_id}`);
+					continue;
+				}
+				const leaders = await leadersResponse.json();
+				const isLeader = leaders.some((leader) => leader.id === loggedInUserId);
+
+				if (isOwner || isLeader) {
+					permitted.push(community);
+				}
 			}
+
+			communities = permitted;
+			allowedToCreate = permitted.length > 0;
+		} catch (error) {
+			console.error('Error during initialization:', error);
 		}
-
-		communities = permitted;
-		allowedToCreate = permitted.length > 0;
-	} catch (error) {
-		console.error('Error during initialization:', error);
-	}
-});
+	});
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -251,7 +257,7 @@ async function fetchEvents() {
 								<option disabled>No communities found</option>
 							{:else}
 								{#each communities as community}
-									<option value={community.id}>{community.name}</option>
+									<option value={community.community_id}>{community.name}</option>
 								{/each}
 							{/if}
 						</select>
@@ -264,21 +270,21 @@ async function fetchEvents() {
 			{/if}
 		</div>
 	</div>
-	 <!-- Events List -->
-	 <div class="card bg-base-100 w-full rounded-3xl mt-5">
+	<!-- Events List -->
+	<div class="card bg-base-100 w-full rounded-3xl mt-5">
 		<div class="card-body bg-secondary rounded-3xl">
-		  	<h2>Your Events</h2>
-		  	{#if events.length === 0}
-			<p>No events available.</p>
-		  		{:else}
+			<h2>Your Events</h2>
+			{#if events.length === 0}
+				<p>No events available.</p>
+			{:else}
 				<div class="events-list">
 					{#each events as event}
 						<div class="event-card">
-						<h3>{event.title}</h3>
-						<p>{event.description}</p>
-						<p><strong>Date:</strong> {event.date}</p>
-						<p><strong>Event Type:</strong> {event.event_type}</p>
-						<p><strong>Location:</strong> {event.location || 'Online'}</p>
+							<h3>{event.title}</h3>
+							<p>{event.description}</p>
+							<p><strong>Date:</strong> {event.date}</p>
+							<p><strong>Event Type:</strong> {event.event_type}</p>
+							<p><strong>Location:</strong> {event.location || 'Online'}</p>
 							{#if event.virtual_link}
 								<p><strong>Virtual Link:</strong> <a href={event.virtual_link} target="_blank">Join Event</a></p>
 							{/if}
@@ -286,7 +292,7 @@ async function fetchEvents() {
 						</div>
 					{/each}
 				</div>
-		  	{/if}
+			{/if}
 		</div>
 	</div>
 </main>
