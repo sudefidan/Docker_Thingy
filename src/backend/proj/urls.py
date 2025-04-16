@@ -43,6 +43,7 @@ urlpatterns = [
     path('api/get_posts/', views.get_posts, name='get_posts'),
     path('api/create_posts/', views.create_post, name='create_post'),
     path('api/delete_post/<int:post_id>/', DeletePostView.as_view(), name='delete_post'),
+    path('post_image/<int:post_id>/', views.get_post_image, name='get_post_image'),
 
 
     # community related endpoints

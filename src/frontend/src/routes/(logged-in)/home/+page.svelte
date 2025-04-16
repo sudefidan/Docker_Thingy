@@ -8,13 +8,13 @@
 	let title = '';
 	let posts = [];
 	let filteredPosts = [];
-	let searchTerm = ''; 
+	let searchTerm = '';
 	let subscribedCommunities = [];
 	let selectedCommunityId = '';
 	let postCreationError = null;
 	let postCreationSuccess = false;
-	// let allCommunities = [];
-
+	let postImage = null; // To store the selected image file
+  
 	let userProfile = {
 	  profile_picture: '',
 	  username: '',
@@ -43,7 +43,6 @@
 		loggedInUserId = getLoggedInUserIdFromToken(access_token);
 		await fetchPosts();
 		await fetchSubscribedCommunities();
-		// await fetchAllCommunities();
 	  }
 	});
   
@@ -65,47 +64,26 @@
 		console.error('Network error:', error.message);
 	  }
 	};
-
-// 	const fetchAllCommunities = async () => {
-//   try {
-//     const response = await fetch('http://127.0.0.1:8000/api/communities/', {
-//       method: 'GET',
-//       headers: { Authorization: `Bearer ${access_token}` }
-//     });
-
-//     if (response.ok) {
-//       const data = await response.json();
-//       allCommunities = data; // Store communities in the allCommunities array
-//       console.log("All communities:", allCommunities);
-//     } else {
-//       console.error('Failed to fetch all communities');
-//     }
-//   } catch (error) {
-//     console.error('Error fetching all communities:', error);
-//   }
-// };
-
-
+  
   
 	// Fetch all posts made
-
 	const fetchPosts = async () => {
-  		const response = await fetch('http://127.0.0.1:8000/api/get_posts/', {
-    		method: 'GET',
-   			headers: { Authorization: `Bearer ${access_token}` }
-  		});
-
-  		const data = await response.json();
-  		if (response.ok) {
-    		posts = await Promise.all(data.map(async (post) => {
-      		const userProfile = await fetchUserProfileForPost(post.user_id);
-      		return { ...post, userProfile };
-    	}));
-  		} else {
-    		console.error('Failed to fetch posts:', data);
-  		}
+	  const response = await fetch('http://127.0.0.1:8000/api/get_posts/', {
+		method: 'GET',
+		headers: { Authorization: `Bearer ${access_token}` }
+	  });
+  
+	  const data = await response.json();
+	  if (response.ok) {
+		posts = await Promise.all(data.map(async (post) => {
+		  const userProfile = await fetchUserProfileForPost(post.user_id);
+		  return { ...post, userProfile };
+		}));
+	  } else {
+		console.error('Failed to fetch posts:', data);
+	  }
 	};
-
+  
   
 	// Fetch the user's profile for a given post
 	const fetchUserProfileForPost = async (userId) => {
@@ -119,7 +97,7 @@
 		  const profileData = await response.json();
 		  return {
 			username: profileData.username,
-			profile_picture: profileData.profile_picture || '', 
+			profile_picture: profileData.profile_picture || '',
 			first_name: profileData.first_name,
 			last_name: profileData.last_name,
 			email: profileData.email
@@ -131,6 +109,11 @@
 	  return {};
 	};
   
+	// Function to handle image selection
+	const handleImageChange = (event) => {
+	  postImage = event.target.files[0];
+	};
+  
 	// Function to create a new post
 	const createPost = async () => {
 	  if (!title.trim() || !postContent.trim()) return;
@@ -138,29 +121,33 @@
 	  const todayDate = new Date().toISOString().split('T')[0];
   
 	  try {
+		const formData = new FormData();
+		formData.append('title', title);
+		formData.append('content', postContent);
+		formData.append('date', todayDate);
+		formData.append('user_id', loggedInUserId);
+		formData.append('community_id', selectedCommunityId || null);
+		if (postImage) {
+		  formData.append('image', postImage); // Append the image file
+		}
+  
 		const response = await fetch('http://127.0.0.1:8000/api/create_posts/', {
 		  method: 'POST',
 		  headers: {
-			'Content-Type': 'application/json',
 			Authorization: `Bearer ${access_token}`,
 		  },
-		  body: JSON.stringify({
-			title: title,
-			content: postContent,
-			date: todayDate,
-			user_id: loggedInUserId,
-			community_id: selectedCommunityId || null,
-		  }),
+		  body: formData, // Use FormData for file uploads
 		});
   
 		if (response.ok) {
 		  const newPost = await response.json();
-		  posts.push(newPost); 
-		  title = ''; 
+		  posts.push(newPost);
+		  title = '';
 		  postContent = '';
 		  selectedCommunityId = '';
+		  postImage = null; // Reset the image input
 		  postCreationSuccess = true;
-		  postCreationError = null; 
+		  postCreationError = null;
 		  window.location.reload();
 		} else {
 		  const error = await response.json();
@@ -187,43 +174,35 @@
 	}
 	// allows users to delete the posts
 	const deletePost = async (postId) => {
-  	const confirmDelete = confirm('Are you sure you want to delete this post?');
-  	if (!confirmDelete) return;
-
-  		try {
+	  const confirmDelete = confirm('Are you sure you want to delete this post?');
+	  if (!confirmDelete) return;
+  
+	  try {
 		const response = await fetch(`http://127.0.0.1:8000/api/delete_post/${postId}/`, {
-	  	method: 'DELETE',
-	  	headers: {
-		Authorization: `Bearer ${access_token}`,
-	  },
-	});
-
-	if (response.ok) {
-	  posts = posts.filter(post => post.id !== postId); 
-	} else {
-	  console.error('Failed to delete post');
-	  alert('Failed to delete post');
-	}
-  	} catch (error) {
-	console.error('Error deleting post:', error);
-	alert('An error occurred while deleting the post');
-  	}
+		  method: 'DELETE',
+		  headers: {
+			Authorization: `Bearer ${access_token}`,
+		  },
+		});
+  
+		if (response.ok) {
+		  posts = posts.filter(post => post.id !== postId);
+		} else {
+		  console.error('Failed to delete post');
+		  alert('Failed to delete post');
+		}
+	  } catch (error) {
+		console.error('Error deleting post:', error);
+		alert('An error occurred while deleting the post');
+	  }
 	};
-
-
-
-
-
-
   </script>
   
   <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
-	<!-- Top panel with search bar -->
 	<div class="top-panel">
 	  <input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
 	</div>
   
-	<!-- Create Post Form -->
 	<div class="card bg-base-100 w-full rounded-3xl mb-10">
 	  <div class="card-body bg-secondary rounded-3xl">
 		<form id="post-form" class="space-y-4" on:submit|preventDefault={createPost}>
@@ -278,6 +257,21 @@
 			</div>
 		  </div>
   
+		  <div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+			<div class="w-full">
+			  <label for="image" class="label">
+				<span class="label-text">Add Image (Optional)</span>
+			  </label>
+			  <input
+				type="file"
+				id="image"
+				accept="image/*"
+				class="file-input file-input-bordered w-full max-w-xs"
+				on:change={handleImageChange}
+			  />
+			</div>
+		  </div>
+  
 		  <div class="form-control mb-2 flex justify-end">
 			<button class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10" type="submit">
 			  Post
@@ -287,7 +281,6 @@
 	  </div>
 	</div>
   
-	<!-- Success/Error Message -->
 	{#if postCreationError}
 	  <div class="alert alert-error">{postCreationError}</div>
 	{/if}
@@ -296,7 +289,6 @@
 	  <div class="alert alert-success">Your post has been created successfully!</div>
 	{/if}
   
-	<!-- Posts Section -->
 	<div class="grid grid-cols-1 w-full space-y-10">
 	  {#each filteredPosts as p}
 		<div class="card bg-base-100 mb-10 shadow-4xl min-h-1/3 w-full rounded-3xl mb-4">
@@ -307,24 +299,35 @@
 			  {#if p.userProfile.profile_picture}
 				<img src={`data:image/jpeg;base64,${p.userProfile.profile_picture}`} alt="Profile Picture" class="profile-picture" />
 			  {:else}
-				<!-- show the default picture -->
-			  {/if}
+				{/if}
 			</div>
 			<p class="text-accent text-sm mb-2">Posted by: {p.userProfile.username}</p>
 			<p class="text-base-100 pr-10 overflow-auto text-ellipsis" style="word-break: break-word;">
 			  {p.content}
 			</p>
-
+			{#if p.id}
+				<img src={`http://127.0.0.1:8000/post_image/${p.id}/`} alt="Post Image" class="mt-4 rounded-md" style="max-width: 100%; height: auto;" />
+		  	{/if}
+  
 			{#if p.user_id === loggedInUserId}
-			<button
-			  on:click={() => deletePost(p.id)}
-			  class="btn btn-error text-white mt-3">
-			  Delete Post
-			</button>
-		  {/if}
+			  <button
+				on:click={() => deletePost(p.id)}
+				class="btn btn-error text-white mt-3">
+				Delete Post
+			  </button>
+			{/if}
 		  </div>
 		</div>
 	  {/each}
 	</div>
   </main>
   
+  <style>
+	.profile-picture {
+	  width: 50px;
+	  height: 50px;
+	  border-radius: 50%;
+	  object-fit: cover;
+	  margin-right: 10px;
+	}
+  </style>

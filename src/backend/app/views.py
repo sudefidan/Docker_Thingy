@@ -12,7 +12,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
 import re
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage 
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
@@ -330,22 +330,25 @@ def get_posts(request):
 
 
 # send the post from the backend to the database
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_post(request):
     if request.method == 'POST':
-        data = request.data
-        print(data)  # Log incoming data to check what is sent from the frontend
+        print(request.data)  # Log incoming data to check what is sent from the frontend
+        print(request.FILES) # Log uploaded files
 
-        title = data.get('title')
-        content = data.get('content')
-        date = data.get('date')
-        community_id = data.get('community_id')
+        title = request.data.get('title')
+        content = request.data.get('content')
+        date = request.data.get('date')
+        community_id = request.data.get('community_id')
+        image_file = request.FILES.get('image')  # Get the uploaded image file
 
         if not title or not content:
             return Response({'error': 'Title and content are required!'}, status=400)
 
-        # If no community_id is provided (or it's empty), set community to None
+        # If no community_id is provided or it's empty set community to None
         if not community_id:
             community = None
         else:
@@ -363,18 +366,43 @@ def create_post(request):
             user=request.user,
             community=community  # If community is None, post will have no community
         )
+        image_url = None
+        # if an image is attached to the post this will handle it
+        if image_file:
+            try:
+                image_data = image_file.read()
+                post_image = PostImage.objects.create(
+                    post=post,
+                    image=image_data  
+                )
 
-        return Response({
+            except Exception as e:
+                print(f"Error saving image data: {e}")
+
+        response_data = {
             'id': post.post_id,
             'title': post.title,
             'content': post.content,
             'user_id': post.user.id,
             'username': post.user.username,
             'community_id': post.community.community_id if post.community else None,
-            'community_name': post.community.name if post.community else None
-        }, status=201)
+            'community_name': post.community.name if post.community else None,
+        }
 
 
+        return Response(response_data, status=201)
+
+# Retrieves the post image from the database
+@api_view(['GET'])
+def get_post_image(request, post_id):
+    try:
+        post_image = PostImage.objects.get(post__post_id=post_id)
+        if post_image.image:
+            return HttpResponse(post_image.image, content_type='image/jpeg') 
+        else:
+            return HttpResponse(status=404)
+    except PostImage.DoesNotExist:
+        return HttpResponse(status=404)
 
 
 class CreateCommunity(APIView):
