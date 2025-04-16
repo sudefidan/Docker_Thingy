@@ -9,9 +9,9 @@
 	let title = '';
 	let description = '';
 	let date = '';
-	let virtual_link = '';
-	let location = '';
-	let event_type = 'virtual';
+	let virtualLinkInput = '';
+	let locationInput = '';
+	let event_type = 'in-person';
 	let community_id = ''; // This is where the selected community will be stored
 	let searchTerm = '';
 	let events = [];
@@ -80,50 +80,51 @@
 
 	// Submit event form
 	async function submitEvent(event) {
-		event.preventDefault(); // Prevent default form submission
+    event.preventDefault();  // Prevent default form submission
 
-		console.log("Form submission triggered.");
+    console.log("Form submission triggered.");
 
-		const eventData = {
-			title,              
-			description,
-			date,
-			virtual_link: virtual_link === "" ? null : virtual_link,  
-			location,
-			event_type,          
-			community_id         
-		};
+    const eventData = {
+        title,
+        description,
+        date,
+        virtual_link: virtualLinkInput.trim() || null,
+        location: locationInput.trim() || null,
+        event_type,
+        community_id
+    };
 
-		// Log event data, including community_id
-		console.log("Event Data:", eventData);
+    // Log event data, including community_id
+    console.log("Event Data:", eventData);
 
-		try {
-			console.log("Sending POST request to API...");
+    try {
+        console.log("Sending POST request to API...");
 
-			const response = await fetch('http://127.0.0.1:8000/api/events/create', {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${access_token}`, 
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(eventData),
-			});
+        const response = await fetch('http://127.0.0.1:8000/api/events/create/', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${access_token}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(eventData),  // Using URLSearchParams to encode the form data
+        });
 
-			console.log("Response Status:", response.status);
+        // Check for a successful response
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error:', errorText);  // Log error response body
+            alert(`Error: ${errorText}`);
+            return;
+        }
 
-			if (!response.ok) {
-				throw new Error(`Failed to create event: ${response.status}`);
-			}
+        // Parse the JSON response
+        const result = await response.json();
+        console.log('Event created successfully:', result);  // Log success
 
-			const data = await response.json();
-
-			console.log('Event created successfully:', data);
-
-
-		} catch (error) {
-			console.error('Error creating event:', error);
-		}
-	}
+    } catch (error) {
+        console.error('Error creating event:', error);  // Log error in case of failure
+    }
+}
 
 	// Fetch events
 	async function fetchEvents() {
@@ -233,12 +234,12 @@
 
 					<div class="form-group">
 						<label for="virtual_link">Virtual Link:</label>
-						<input type="url" bind:value={virtual_link} id="virtual_link" class="form-input" />
+						<input type="url" bind:value={virtualLinkInput} id="virtual_link" class="form-input" />
 					</div>
 
 					<div class="form-group">
 						<label for="location">Location:</label>
-						<input type="text" bind:value={location} id="location" class="form-input" />
+						<input type="text" bind:value={locationInput } id="location" class="form-input" />
 					</div>
 
 					<div class="form-group">

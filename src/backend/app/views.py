@@ -472,19 +472,18 @@ def join_community(request, community_id):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def leave_community(request):
+def leave_community(request, community_id):
         user = request.user
-        community_id = request.data.get("community_id")
+        community = get_object_or_404(Community, pk=community_id)
 
         try:
-            membership = Subscribed.objects.get(user=user, community_id=community_id)
-
-            CommunityLeader.objects.filter(user=user, community_id=community_id).delete()
-
+            membership = Subscribed.objects.get(user=user, community=community)
             membership.delete()
-            return Response({"error": "Successfully left the community"})
 
-        finally:
+            CommunityLeader.objects.filter(user=user, community=community).delete()
+
+            return Response({"message": "Successfully left the community"})
+        except Subscribed.DoesNotExist:
             return Response({"error": "You are not a member of this community"}, status=400)
 
         # except Subscribed.DoesNotExsist:
@@ -1025,40 +1024,41 @@ def create_event(request):
     data = request.data
     user = request.user
 
-    print(" Incoming Event Data:", data)
+    EventType.objects.get_or_create(name='virtual')
+    EventType.objects.get_or_create(name='in-person')
 
-    # Extract fields
+    # Extract fields from request.data
     title = data.get('title')
     description = data.get('description', '')
     date_str = data.get('date')
     virtual_link = data.get('virtual_link')
     location = data.get('location')
-    event_type_name = data.get('event_type')
+    event_type_name = data.get('event_type') 
     community_id = data.get('community_id')
 
     # Validate required fields
-    if not all([title, date_str, location, event_type_name, community_id]):
-        return Response({"error": "Missing required fields."}, status=400)
+    if not all([title, date_str, event_type_name, community_id]):
+        return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validate date format
     try:
         date = datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
-        return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=400)
+        return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validate community and permissions
     community = get_object_or_404(Community, pk=community_id)
     try:
         event_type = EventType.objects.get(name=event_type_name)
     except EventType.DoesNotExist:
-        return Response({"error": f"EventType '{event_type_name}' not found."}, status=400)
+        return Response({"error": f"EventType '{event_type_name}' not found."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Check if the user is an owner or a leader of the community
     is_owner = community.owner == user
     is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
 
     if not (is_owner or is_leader):
-        return Response({"error": "Permission denied."}, status=403)
+        return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
 
     # Create event
     event = Event.objects.create(
@@ -1071,7 +1071,9 @@ def create_event(request):
         community=community
     )
 
-    return Response({"message": "Event created!", "event_id": event.event_id}, status=201)
+    event.save
+
+    return Response({"message": "Event created!", "event_id": event.event_id}, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

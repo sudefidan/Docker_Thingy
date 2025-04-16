@@ -27,7 +27,7 @@ class Community(models.Model):
 
 class EventType(models.Model):
     name = models.CharField(max_length=255, primary_key=True)
-
+    
     class Meta:
         db_table = 'EventType'
 
@@ -42,7 +42,7 @@ class Event(models.Model):
     date = models.DateField()
     virtual_link = models.CharField(max_length=255, blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
-    event_type = models.ForeignKey(EventType, on_delete=models.CASCADE, blank=True, null=True)
+    event_type = models.ForeignKey(EventType, on_delete=models.CASCADE)
     community = models.ForeignKey(Community, on_delete=models.CASCADE, blank=True, null=True)
 
     class Meta:

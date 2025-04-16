@@ -50,7 +50,7 @@ urlpatterns = [
     path('api/create_community/', views.create_community.as_view()),
     path("api/communities/", fetch_communities, name="fetch_communities"),
     path("api/join_community/<int:community_id>/", join_community, name="join_community"),
-    path("api/leave_community/", leave_community, name="leave_community"),
+    path("api/leave_community/<int:community_id>/", leave_community, name="leave_community"),
     path('api/subscribed_communities/', views.SubscribedCommunities.as_view(), name='subscribed_communities'),
     path('api/communities/update_community_name/', update_community_name, name="update_community_name"),
     path('api/communities/update_community_description/', update_community_description, name="update_community_description"),
@@ -67,7 +67,7 @@ urlpatterns = [
     # event endpoints
     path('api/user/communities/', fetch_communities, name="user_communities"),
     # path('api/events/', event_handler, name='event_handler'),
-    path('api/events/create', create_event, name='event_handler'),
+    path('api/events/create/', create_event, name='create_event'),
     path('api/events/', list_events, name='event_handler'),
 
 
