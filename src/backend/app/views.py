@@ -12,11 +12,12 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
 import re
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage 
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
 from django.views import View
+from datetime import datetime
 
 
 def index(request):
@@ -471,19 +472,18 @@ def join_community(request, community_id):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def leave_community(request):
+def leave_community(request, community_id):
         user = request.user
-        community_id = request.data.get("community_id")
+        community = get_object_or_404(Community, pk=community_id)
 
         try:
-            membership = Subscribed.objects.get(user=user, community_id=community_id)
-
-            CommunityLeader.objects.filter(user=user, community_id=community_id).delete()
-
+            membership = Subscribed.objects.get(user=user, community=community)
             membership.delete()
-            return Response({"error": "Successfully left the community"})
 
-        finally:
+            CommunityLeader.objects.filter(user=user, community=community).delete()
+
+            return Response({"message": "Successfully left the community"})
+        except Subscribed.DoesNotExist:
             return Response({"error": "You are not a member of this community"}, status=400)
 
         # except Subscribed.DoesNotExsist:
@@ -1018,45 +1018,155 @@ def add_community_leader(request, community_id, user_id):
     except Exception as e:
         return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@csrf_exempt  # Remove if using Django's standard form handling
-@login_required
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_event(request):
-    if request.method == 'POST':
-        user = request.user
-        community_id = request.POST.get('community_id')
-        title = request.POST.get('title')
-        description = request.POST.get('description', '')
-        date = request.POST.get('date')
-        virtual_link = request.POST.get('virtual_link', None)
-        location = request.POST.get('location', None)
-        event_type_name = request.POST.get('event_type')
+    data = request.data
+    user = request.user
 
-        # Fetch community and event type
-        community = get_object_or_404(Community, pk=community_id)
-        event_type = get_object_or_404(EventType, pk=event_type_name)
+    EventType.objects.get_or_create(name='virtual')
+    EventType.objects.get_or_create(name='in-person')
 
-        # Check if the user is the owner or a leader of the community
-        is_owner = community.owner == user
-        is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
+    # Extract fields from request.data
+    title = data.get('title')
+    description = data.get('description', '')
+    date_str = data.get('date')
+    virtual_link = data.get('virtual_link')
+    location = data.get('location')
+    event_type_name = data.get('event_type') 
+    community_id = data.get('community_id')
 
-        if not (is_owner or is_leader):
-            return JsonResponse({"error": "You do not have permission to create an event in this community."}, status=403)
+    # Validate required fields
+    if not all([title, date_str, event_type_name, community_id]):
+        return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create the event
-        event = Event.objects.create(
-            title=title,
-            description=description,
-            date=date,
-            virtual_link=virtual_link,
-            location=location,
-            event_type=event_type,
-            community=community
-        )
+    # Validate date format
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
-        return JsonResponse({"message": "Event created successfully!", "event_id": event.event_id}, status=201)
+    # Validate community and permissions
+    community = get_object_or_404(Community, pk=community_id)
+    try:
+        event_type = EventType.objects.get(name=event_type_name)
+    except EventType.DoesNotExist:
+        return Response({"error": f"EventType '{event_type_name}' not found."}, status=status.HTTP_400_BAD_REQUEST)
 
-    return JsonResponse({"error": "Invalid request method."}, status=400)
+    # Check if the user is an owner or a leader of the community
+    is_owner = community.owner == user
+    is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
 
+    if not (is_owner or is_leader):
+        return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+    # Create event
+    event = Event.objects.create(
+        title=title,
+        description=description,
+        date=date,
+        virtual_link=virtual_link,
+        location=location,
+        event_type=event_type,
+        community=community
+    )
+
+    event.save
+
+    return Response({"message": "Event created!", "event_id": event.event_id}, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_events(request):
+    # Retrieve all events for the authenticated user
+    events = Event.objects.all()
+
+    # Prepare the event data for response
+    event_list = [
+        {
+            'event_id': event.event_id,
+            'title': event.title,
+            'description': event.description,
+            'date': event.date,
+            'virtual_link': event.virtual_link,
+            'location': event.location,
+            'event_type': event.event_type.name if event.event_type else None,
+            'community': event.community.name if event.community else None
+        }
+        for event in events
+    ]
+
+    return Response(event_list, status=200)
+
+# @api_view(['GET', 'POST'])
+# @permission_classes([IsAuthenticated])
+# def event_handler(request):
+#     # Handle POST method (Create Event)
+#     if request.method == 'POST':
+#         # Extract data from the request body
+#         data = request.data
+#         user = request.user
+
+#         print(" Incoming Event Data:", data)
+
+#         # Extract fields
+#         title = data.get('title')
+#         description = data.get('description', '')
+#         date = data.get('date')
+#         virtual_link = data.get('virtual_link')
+#         location = data.get('location')
+#         event_type_name = data.get('event_type')
+#         community_id = data.get('community_id')
+
+#         # Validate community and permissions
+#         community = get_object_or_404(Community, pk=community_id)
+
+#         try:
+#             event_type = EventType.objects.get(name=event_type_name)
+#         except EventType.DoesNotExist:
+#             return Response({"error": f"EventType '{event_type_name}' not found."}, status=400)
+
+#         # Check if the user is an owner or a leader of the community
+#         is_owner = community.owner == user
+#         is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
+
+#         if not (is_owner or is_leader):
+#             return Response({"error": "Permission denied."}, status=403)
+
+#         # Create event
+#         event = Event.objects.create(
+#             title=title,
+#             description=description,
+#             date=date,
+#             virtual_link=virtual_link,
+#             location=location,
+#             event_type=event_type,
+#             community=community
+#         )
+
+#         return Response({"message": "Event created!", "event_id": event.event_id}, status=201)
+
+#     # Handle GET method (List Events)
+#     elif request.method == 'GET':
+#         # Retrieve all events for the authenticated user
+#         events = Event.objects.all()
+
+#         # Prepare the event data for response
+#         event_list = [
+#             {
+#                 'event_id': event.event_id,
+#                 'title': event.title,
+#                 'description': event.description,
+#                 'date': event.date,
+#                 'virtual_link': event.virtual_link,
+#                 'location': event.location,
+#                 'event_type': event.event_type.name if event.event_type else None,
+#                 'community': event.community.name if event.community else None
+#             }
+#             for event in events
+#         ]
+
+#         return Response(event_list, status=200)
 
 # get user profile for any user, allows for users to see other users profile.
 class GetUserProfile(APIView):

@@ -3,7 +3,7 @@ from django.urls import path, re_path, include
 from app import views
 from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests, GetUserProfile, DeletePostView
 from rest_framework import routers, serializers, viewsets
-from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event
+from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event, list_events
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -50,7 +50,7 @@ urlpatterns = [
     path('api/create_community/', views.create_community.as_view()),
     path("api/communities/", fetch_communities, name="fetch_communities"),
     path("api/join_community/<int:community_id>/", join_community, name="join_community"),
-    path("api/leave_community/", leave_community, name="leave_community"),
+    path("api/leave_community/<int:community_id>/", leave_community, name="leave_community"),
     path('api/subscribed_communities/', views.SubscribedCommunities.as_view(), name='subscribed_communities'),
     path('api/communities/update_community_name/', update_community_name, name="update_community_name"),
     path('api/communities/update_community_description/', update_community_description, name="update_community_description"),
@@ -65,6 +65,10 @@ urlpatterns = [
     path('api/notifications/delete/<int:notification_id>/', delete_notification, name="delete_notification"),
   
     # event endpoints
-    path('api/events/', create_event, name='create-event'),
-    path('api/user/communities/', fetch_communities, name="user_communities")
+    path('api/user/communities/', fetch_communities, name="user_communities"),
+    # path('api/events/', event_handler, name='event_handler'),
+    path('api/events/create/', create_event, name='create_event'),
+    path('api/events/', list_events, name='event_handler'),
+
+
 ]

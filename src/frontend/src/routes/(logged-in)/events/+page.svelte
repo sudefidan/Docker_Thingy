@@ -4,18 +4,18 @@
 	let access_token;
 	let loggedInUserId = null;
 	let users = []; // List of users fetched from API
-	let usersList = []; // List of users for MultiSelect component
 	let communities = []; // Stores the user's owned/managed communities
 	let allowedToCreate = false; // Controls form visibility
-	let submitEvent = '';
 	let title = '';
 	let description = '';
 	let date = '';
-	let virtual_link = '';
-	let location = '';
-	let event_type = 'virtual';
-	let community_id = '';
-	let searchTerm = ''; // Search term for filtering
+	let virtualLinkInput = '';
+	let locationInput = '';
+	let event_type = 'in-person';
+	let community_id = ''; // This is where the selected community will be stored
+	let searchTerm = '';
+	let events = [];
+	// Search term for filtering
 
 	// Retrieve the logged-in user's ID from the JWT token
 	function getLoggedInUserIdFromToken(token) {
@@ -50,57 +50,158 @@
 		}
 	}
 
-	// Fetch communities where the user is an owner or leader
-	async function fetchAllowedCommunities() {
+	// Fetch user communities
+	async function fetchUserCommunities() {
 		try {
-			// Retrieve access token from localStorage
-			const access_token = localStorage.getItem('access_token');
-			if (!access_token) {
-				console.error('No access token found! Redirecting...');
-				window.location.href = '/'; // Redirect if not authenticated
-				return;
-			}
-
-			const response = await fetch('http://127.0.0.1:8000/api/fetch_owned_communities/', {
-				method: 'GET',
+			const response = await fetch('http://127.0.0.1:8000/api/user/communities/', {
 				headers: {
-					Authorization: `Bearer ${access_token}`, // Add token
-					'Content-Type': 'application/json'
+					Authorization: `Bearer ${access_token}`,
 				}
 			});
-
 			if (!response.ok) {
-				if (response.status === 401) {
-					console.error('Unauthorized! Token might be invalid or expired.');
-					window.location.href = '/'; // Redirect if token expired
-				}
 				throw new Error(`Failed to fetch communities: ${response.status}`);
 			}
 
 			const data = await response.json();
-			communities = data; // Store the fetched communities
+			console.log('API Response for user communities:', data); // Log the full response
 
-			// Check if user owns or leads at least one community
-			allowedToCreate = communities.length > 0;
+			// Check if the response is an array
+			if (Array.isArray(data)) {
+				communities = data; // Directly assign the array to 'communities'
+				allowedToCreate = communities.length > 0;
+			} else {
+				console.error('Communities data is not an array');
+			}
+
 		} catch (error) {
-			console.error('Error fetching communities:', error);
+			console.error('Error fetching user communities:', error);
 		}
 	}
 
-	// Run the function when the component loads
-	onMount(fetchAllowedCommunities);
+	// Submit event form
+	async function submitEvent(event) {
+    event.preventDefault();  // Prevent default form submission
+
+    console.log("Form submission triggered.");
+
+    const eventData = {
+        title,
+        description,
+        date,
+        virtual_link: virtualLinkInput.trim() || null,
+        location: locationInput.trim() || null,
+        event_type,
+        community_id
+    };
+
+    // Log event data, including community_id
+    console.log("Event Data:", eventData);
+
+    try {
+        console.log("Sending POST request to API...");
+
+        const response = await fetch('http://127.0.0.1:8000/api/events/create/', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${access_token}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(eventData),  // Using URLSearchParams to encode the form data
+        });
+
+        // Check for a successful response
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error:', errorText);  // Log error response body
+            alert(`Error: ${errorText}`);
+            return;
+        }
+
+        // Parse the JSON response
+        const result = await response.json();
+        console.log('Event created successfully:', result);  // Log success
+
+    } catch (error) {
+        console.error('Error creating event:', error);  // Log error in case of failure
+    }
+}
+
+	// Fetch events
+	async function fetchEvents() {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/events/', {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${access_token}`,  
+				}
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch events');
+			}
+
+			events = await response.json();
+			console.log('Fetched events:', events);
+
+		} catch (error) {
+			console.error('Error fetching events:', error);
+		}
+	}
 
 	// Run the functions when the component loads
-	onMount(() => {
-		access_token = localStorage.getItem('access_token');
+	onMount(async () => {
+		try {
+			access_token = localStorage.getItem('access_token');
+			if (!access_token) {
+				goto('http://localhost:5173/');
+				return;
+			}
 
-		if (!access_token) {
-			console.error('No access token found! Redirecting...');
-			window.location.href = '/'; // Redirect to login
-		} else {
 			loggedInUserId = getLoggedInUserIdFromToken(access_token);
-			fetchUsers();
-			fetchAllowedCommunities();
+
+			await fetchUsers();
+			await fetchUserCommunities();
+			await fetchEvents();
+			const response = await fetch('http://127.0.0.1:8000/api/communities/', {
+				headers: {
+					Authorization: `Bearer ${access_token}`
+				}
+			});
+			if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+			const allCommunities = await response.json();
+
+			const permitted = [];
+			console.log("Communities:", communities);
+
+			// Check each community to see if user is owner or leader
+			for (const community of allCommunities) {
+				const isOwner = community.owner_id === loggedInUserId;
+
+				// Get leaders for this community
+				const leadersResponse = await fetch(
+					`http://127.0.0.1:8000/api/community/get_leaders/${community.community_id}`,
+					{
+						headers: {
+							Authorization: `Bearer ${access_token}`
+						}
+					}
+				);
+				if (!leadersResponse.ok) {
+					console.error(`Failed to get leaders for community ${community.community_id}`);
+					continue;
+				}
+				const leaders = await leadersResponse.json();
+				const isLeader = leaders.some((leader) => leader.id === loggedInUserId);
+
+				if (isOwner || isLeader) {
+					permitted.push(community);
+				}
+			}
+
+			communities = permitted;
+			allowedToCreate = permitted.length > 0;
+		} catch (error) {
+			console.error('Error during initialization:', error);
 		}
 	});
 </script>
@@ -133,12 +234,12 @@
 
 					<div class="form-group">
 						<label for="virtual_link">Virtual Link:</label>
-						<input type="url" bind:value={virtual_link} id="virtual_link" class="form-input" />
+						<input type="url" bind:value={virtualLinkInput} id="virtual_link" class="form-input" />
 					</div>
 
 					<div class="form-group">
 						<label for="location">Location:</label>
-						<input type="text" bind:value={location} id="location" class="form-input" />
+						<input type="text" bind:value={locationInput } id="location" class="form-input" />
 					</div>
 
 					<div class="form-group">
@@ -157,7 +258,7 @@
 								<option disabled>No communities found</option>
 							{:else}
 								{#each communities as community}
-									<option value={community.id}>{community.name}</option>
+									<option value={community.community_id}>{community.name}</option>
 								{/each}
 							{/if}
 						</select>
@@ -167,6 +268,31 @@
 				</form>
 			{:else}
 				<p>You do not have permission to create events.</p>
+			{/if}
+		</div>
+	</div>
+	<!-- Events List -->
+	<div class="card bg-base-100 w-full rounded-3xl mt-5">
+		<div class="card-body bg-secondary rounded-3xl">
+			<h2>Your Events</h2>
+			{#if events.length === 0}
+				<p>No events available.</p>
+			{:else}
+				<div class="events-list">
+					{#each events as event}
+						<div class="event-card">
+							<h3>{event.title}</h3>
+							<p>{event.description}</p>
+							<p><strong>Date:</strong> {event.date}</p>
+							<p><strong>Event Type:</strong> {event.event_type}</p>
+							<p><strong>Location:</strong> {event.location || 'Online'}</p>
+							{#if event.virtual_link}
+								<p><strong>Virtual Link:</strong> <a href={event.virtual_link} target="_blank">Join Event</a></p>
+							{/if}
+							<p><strong>Community:</strong> {event.community}</p>
+						</div>
+					{/each}
+				</div>
 			{/if}
 		</div>
 	</div>

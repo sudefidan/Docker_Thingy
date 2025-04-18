@@ -209,7 +209,7 @@
 
 	const leave_community = async (communityId) => {
 		try {
-			const response = await fetch(`http://127.0.0.1:8000/api/leave_community/`, {
+			const response = await fetch(`http://127.0.0.1:8000/api/leave_community/${communityId}/`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -221,7 +221,7 @@
 			if (response.ok) {
 				console.log(result.message);
 				alert('You have successfully left the community!');
-				await fetch_your_communities();
+				await fetchSubscribedCommunities();
 			} else {
 				console.error(result.error);
 			}
@@ -426,7 +426,7 @@
 										<button
 											on:click={() => leave_community(community.community_id)}
 											class="hover:text-primary"
-										>
+											aria-label="Leave Community">
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
 												fill="currentColor"
