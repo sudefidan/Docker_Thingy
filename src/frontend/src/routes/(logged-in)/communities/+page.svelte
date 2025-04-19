@@ -30,6 +30,14 @@
 
 	let searchTerm = ''; // Search term for filtering
 
+	// Add reactive statement to filter communities
+	$: filteredCommunities = communities.filter(
+		(community) =>
+			community.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			(community.description && community.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+			(community.category && community.category.toLowerCase().includes(searchTerm.toLowerCase()))
+	);
+
 	// Function to adjust the height of the textarea dynamically
 	function adjustTextareaHeight(event) {
 		const textarea = event.target;
@@ -413,7 +421,7 @@
 			<!-- Communities Section-->
 			<div class="flex flex-wrap justify-center space-y-10">
 				<!-- List Communities and Join Button -->
-				{#each communities as community}
+				{#each filteredCommunities as community}
 					<div class="card bg-base-100 w-full rounded-3xl">
 						<div class="card-body bg-secondary rounded-3xl">
 							<div class="mb-4 flex items-center justify-between">
