@@ -1,47 +1,52 @@
 <script>
-    import { goto } from '$app/navigation';
+	import { goto } from '$app/navigation';
+	import ShowPasswordIcon from '../assets/ShowPasswordIcon.svelte';
+	let username = '';
+	let password = '';
+	let message = '';
+	let showPassword = false;
+	let identifier = "";
+	
 
-    let username = '';
-    let password = '';
-    let message = '';
-    let showPassword = false;
+	async function login() {
+		try {
+			const res = await fetch('http://127.0.0.1:8000/api/login/', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ identifier, password })
+			});
 
-    async function login() {
-        try {
-            const res = await fetch('http://127.0.0.1:8000/api/login/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username, password })
-            });
+			if (res.ok) {
+				const data = await res.json();
+				console.log(data);
 
-            if (res.ok) {
-                const data = await res.json();
+				// Assuming the response contains the access token in data.access
+				if (data.access) {
+					// Store the access token in localStorage
+					localStorage.setItem('access_token', data.access);
 
-                // Assuming the response contains the access token in data.access
-                if (data.access) {
-                    // Store the access token in localStorage
-                    localStorage.setItem('access_token', data.access);
-                    console.log("Access token saved:", data.access);
-
-                    // After successful login, forward to homepage
-                    goto('/home');  // Redirect to the home page or another protected route
-                } else {
-                    message = 'Failed to login! No access token received.';
-                }
-            } else {
-                const data = await res.json();
-                message = 'Invalid username or password!';
-                // Clear the form inputs
-                username = '';
-                password = '';
-            }
-        } catch (error) {
-            console.error(error);
-            message = 'An error occurred. Please try again!';
-        }
-    }
+					// After successful login, forward to homepage
+					goto('/home'); // Redirect to the home page or another protected route
+					if (data.refresh) {
+						localStorage.setItem('refresh_token', data.refresh);
+					}
+				} else {
+					message = 'Failed to login! No access token received.';
+				}
+			} else {
+				const data = await res.json();
+				message = 'Invalid username or password!';
+				// Clear the form inputs
+				identifier = '';
+				password = '';
+			}
+		} catch (error) {
+			console.error(error);
+			message = 'An error occurred. Please try again!';
+		}
+	}
 </script>
 
 <main class="flex items-center justify-center">
@@ -51,21 +56,17 @@
 			<form on:submit|preventDefault={login}>
 				<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
 					<div class="w-full">
-						<label for="username" class="label">
-							<span class="label-text">Username</span>
+						<label for="identifier" class="label">
+							<span class="label-text">Username or Email</span>
 						</label>
 						<input
 							type="text"
-							bind:value={username}
-							name="username"
+							bind:value={identifier}
+							name="identifier"
 							class="input input-bordered validator custom-input"
 							required
-							pattern="[A-Za-z][A-Za-z0-9\-]*"
-							minlength="3"
-							maxlength="30"
-							title="Only letters, numbers or dash"
 							autocomplete="email"
-							placeholder="Enter your username"
+							placeholder="Enter your username or email"
 						/>
 					</div>
 				</div>
@@ -91,25 +92,7 @@
 								on:click={() => (showPassword = !showPassword)}
 							>
 								{#if showPassword}
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="1.5"
-										stroke="currentColor"
-										class="size-5"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-										/>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-										/>
-									</svg>
+									<ShowPasswordIcon />
 								{:else}
 									<svg
 										xmlns="http://www.w3.org/2000/svg"

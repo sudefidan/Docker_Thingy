@@ -4,17 +4,21 @@ from django.http import JsonResponse, HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from app.models import User, UserSocial
+from app.models import User, UserSocial, Event
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
-from .models import Community, CommunityMember, CommunityLeader, Subscribed, SocialType, Post
+import re
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
+from django.views import View
+from datetime import datetime
+
 
 def index(request):
     return JsonResponse({"message": "Welcome to the Django backend!"})
@@ -71,11 +75,21 @@ class login_user(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        username = request.data.get('username')
+        identifier = request.data.get('identifier')
         password = request.data.get('password')
 
+        #this determines whether the user has inputted email or password.
+        try:
+            if '@' in identifier:
+                user_obj = User.objects.get(email=identifier)
+                username = user_obj.username
+            else:
+                username = identifier
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)    
+
         user = authenticate(username=username, password=password)
-        if user: 
+        if user:
             refresh = RefreshToken.for_user(user)
             return Response({
                 'access': str(refresh.access_token),
@@ -104,28 +118,28 @@ class logout_user(APIView):
             return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': 'Invalid Token'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    
+
+
 # handles user profile data retrieval
 # returns all user information including profile picture, social media, and personal details
 # requires user to be authenticated
 class user_profile_view(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         try:
             user = request.user
-            
+
             # get social media data
             social_media = UserSocial.objects.filter(user=user)
             social_type = [sm.social_type.social_type for sm in social_media]
             social_username = [sm.social_username for sm in social_media]
-            
+
             # handle profile picture conversion
             profile_picture = ''
             if hasattr(user, 'profile_picture') and user.profile_picture:
                 profile_picture = f"data:image/png;base64,{base64.b64encode(user.profile_picture).decode('utf-8')}"
-            
+
             return Response({
                 "username": user.username,
                 "first_name": user.first_name,
@@ -137,50 +151,51 @@ class user_profile_view(APIView):
                 "social_username": social_username,
                 "interests": user.interests if hasattr(user, 'interests') else []
             })
-            
+
         except Exception as e:
             return Response({
                 "error": "Failed to fetch user profile",
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
 # handles profile picture uploads and storage
 # accepts base64 encoded image data from frontend
 # converts and stores as binary data in database
+
 class upload_profile_picture(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         try:
             # get current authenticated user
             user = request.user
             # get base64 image data from request
             base64_image = request.data.get('profile_picture')
-            
+
             # validate that image data was provided
             if not base64_image:
                 return Response({"error": "No image data provided"}, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # handle base64 data URL format
             if ',' in base64_image:
                 base64_image = base64_image.split(',')[1]
-            
+
             # convert base64 string to binary data for storage
             # this is necessary because we store images as binary in the database
             image_data = base64.b64decode(base64_image)
-            
+
             # save the binary image data to user's profile
             # the profile_picture field is a BinaryField in the User model
             user.profile_picture = image_data
             user.save()
-            
+
             # return success response with the base64 image
             # frontend needs this to display the image immediately
             return Response({
                 "message": "Profile picture uploaded successfully",
                 "profile_picture": f"data:image/png;base64,{base64_image}"
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             # handle any errors during upload process
             return Response({
@@ -191,19 +206,19 @@ class upload_profile_picture(APIView):
 # retrieves user's profile picture in base64 format
 # converts binary data from database back to base64 for frontend display
 class GetProfilePicture(APIView):
-    permission_classes = [IsAuthenticated]  
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
             # get current authenticated user
             user = request.user
-            
+
             # check if user has a profile picture
             if user.profile_picture:
                 # convert binary data back to base64 string
                 # this is needed because frontend expects base64 format
                 base64_image = base64.b64encode(user.profile_picture).decode("utf-8")
-                
+
                 # return the image in data URL format
                 # this format is required for displaying in HTML img tags
                 return Response({
@@ -212,7 +227,7 @@ class GetProfilePicture(APIView):
 
             # if no profile picture exists, return null - placeholder icon is provided by frontend
             return Response({"profile_picture": None}, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             # handle any errors during retrieval process
             return Response({
@@ -220,8 +235,9 @@ class GetProfilePicture(APIView):
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class create_community(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     # post request to send off the following variables
     def post(self, request):
         name = request.data.get('name')
@@ -233,7 +249,7 @@ class create_community(APIView):
             owner_id = request.user.id
         else:
             return Response({"error": "User must be logged in"}, status=400)
-          
+
         if Community.objects.filter(name__iexact=name).exists():
             return Response({"error": "This community already exists."}, status=400)
 
@@ -249,7 +265,7 @@ class create_community(APIView):
             user = get_object_or_404(User, id=leader_id)
             CommunityLeader.objects.create(community=community, user=user)
             Subscribed.objects.create(community=community, user=user)
-            
+
         # auto subscribe the current userid that is logged to the community
         Subscribed.objects.create(community=community, user_id=owner_id)
 
@@ -257,10 +273,10 @@ class create_community(APIView):
             "community_id": community.community_id,
             "message": "Community created successfully and selected leaders assigned"
         })
-    
+
 class SubscribedCommunities(APIView):
     # the user must be logged in otherwise it will not work
-    permission_classes = [IsAuthenticated] 
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
@@ -268,7 +284,7 @@ class SubscribedCommunities(APIView):
         subscriptions = Subscribed.objects.filter(user=user)
         # Get the list of communities that have been subscribed too
         communities = [sub.community for sub in subscriptions]
-        
+
         # Serialize the response
         community_data = [
             {
@@ -277,7 +293,7 @@ class SubscribedCommunities(APIView):
                 "description": community.description,
                 "category": community.category,
                 "owner_id": community.owner_id
-            } 
+            }
             for community in communities
         ]
 
@@ -294,53 +310,104 @@ def get_users(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_posts(request):
-    posts = Post.objects.all().order_by('-date') 
-    posts_data = [
-        {
+    posts = Post.objects.all().order_by('-date')
+    
+    posts_data = []
+    for post in posts:
+        community_id = post.community.community_id if post.community else None
+        community_name = post.community.name if post.community else 'No Community'
+        posts_data.append({
             'id': post.post_id,
             'title': post.title,
             'content': post.content,
-            'date': post.date.isoformat(),  
-            'user_id': post.user.id,  
-            'username': post.user.username,  
-        }
-        for post in posts
-    ]
+            'date': post.date.isoformat(),
+            'user_id': post.user.id,
+            'username': post.user.username,
+            'community_id': community_id,
+            'community_name': community_name,
+        })
+    
     return JsonResponse(posts_data, safe=False, status=200)
 
 
 # send the post from the backend to the database
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_post(request):
     if request.method == 'POST':
-        data = request.data
+        print(request.data)  # Log incoming data to check what is sent from the frontend
+        print(request.FILES) # Log uploaded files
 
-        title = data.get('title')  
-        content = data.get('content')  
-        date = data.get('date')
+        title = request.data.get('title')
+        content = request.data.get('content')
+        date = request.data.get('date')
+        community_id = request.data.get('community_id')
+        image_file = request.FILES.get('image')  # Get the uploaded image file
 
         if not title or not content:
             return Response({'error': 'Title and content are required!'}, status=400)
+
+        # If no community_id is provided or it's empty set community to None
+        if not community_id:
+            community = None
+        else:
+            try:
+                # Ensure the community exists
+                community = Community.objects.get(community_id=community_id)
+            except Community.DoesNotExist:
+                return Response({'error': 'Community not found!'}, status=404)
 
         # Create a new post
         post = Post.objects.create(
             title=title,
             content=content,
-            date = date,
-            user=request.user  
+            date=date,
+            user=request.user,
+            community=community  # If community is None, post will have no community
         )
+        image_url = None
+        # if an image is attached to the post this will handle it
+        if image_file:
+            try:
+                image_data = image_file.read()
+                post_image = PostImage.objects.create(
+                    post=post,
+                    image=image_data  
+                )
 
-        return Response({
+            except Exception as e:
+                print(f"Error saving image data: {e}")
+
+        response_data = {
             'id': post.post_id,
             'title': post.title,
             'content': post.content,
             'user_id': post.user.id,
-            'username': post.user.username
-        }, status=201)
-    
+            'username': post.user.username,
+            'community_id': post.community.community_id if post.community else None,
+            'community_name': post.community.name if post.community else None,
+        }
+
+
+        return Response(response_data, status=201)
+
+# Retrieves the post image from the database
+@api_view(['GET'])
+def get_post_image(request, post_id):
+    try:
+        post_image = PostImage.objects.get(post__post_id=post_id)
+        if post_image.image:
+            return HttpResponse(post_image.image, content_type='image/jpeg') 
+        else:
+            return HttpResponse(status=404)
+    except PostImage.DoesNotExist:
+        return HttpResponse(status=404)
+
+
 class CreateCommunity(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         name = request.data.get('name')
@@ -381,7 +448,7 @@ def fetch_communities(request):
     if request.method == "GET":
         communities = Community.objects.all().values()
         return JsonResponse(list(communities), safe=False)
-    
+
     return JsonResponse({"error": "Invalid request"}, status=400)
 
 
@@ -403,63 +470,22 @@ def join_community(request, community_id):
 
     return Response({"message": "Successfully joined the community!"})
 
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def fetch_your_communities(request):
-    """Fetch all communities a user has joined."""
-    user = request.user
-    communities = Community.objects.filter(community_id__in=
-        Subscribed.objects.filter(user_id=user.id).values_list("community_id", flat=True)
-    )
-
-    community_data = [
-        {
-            'community_id': community.community_id,
-            'name': community.name,
-            'description': community.description,
-            'category': community.category,
-            'is_owner': community.owner_id == user.id
-        }
-        for community in communities
-    ]
-    
-    return Response(community_data, status=200)
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def fetch_owned_communities(request):
-    """Fetch all communities a user owns."""
-    user = request.user
-    communities = Community.objects.filter(owner=user)
-
-    community_data = [
-        {
-            'community_id': community.community_id,
-            'name': community.name,
-            'description': community.description,
-            'category': community.category,
-            'is_owner': True  # Since these are owned communities
-        }
-        for community in communities
-    ]
-
-    return Response(community_data, status=200)
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def leave_community(request):
+def leave_community(request, community_id):
         user = request.user
-        community_id = request.data.get("community_id")
+        community = get_object_or_404(Community, pk=community_id)
 
         try:
-            membership = Subscribed.objects.get(user=user, community_id=community_id)
+            membership = Subscribed.objects.get(user=user, community=community)
             membership.delete()
-            return Response({"error": "Successfully left the community"})
-        
-        finally:
+
+            CommunityLeader.objects.filter(user=user, community=community).delete()
+
+            return Response({"message": "Successfully left the community"})
+        except Subscribed.DoesNotExist:
             return Response({"error": "You are not a member of this community"}, status=400)
-        
+
         # except Subscribed.DoesNotExsist:
         #     return Response({"error": "You are not a member of this community"}, status=400)
 
@@ -467,39 +493,39 @@ def leave_community(request):
 # requires current password verification and new password
 class change_password(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         try:
             user = request.user
             current_password = request.data.get('current_password')
             new_password = request.data.get('new_password')
-            
+
             # validate that both passwords are provided
             if not current_password or not new_password:
                 return Response({
                     "error": "Both current and new passwords are required"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # verify current password is correct
             if not user.check_password(current_password):
                 return Response({
                     "error": "Current password is incorrect"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # validate new password length
             if len(new_password) < 8:
                 return Response({
                     "error": "New password must be at least 8 characters long"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # update password
             user.set_password(new_password)
             user.save()
-            
+
             return Response({
                 "message": "Password updated successfully"
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response({
                 "error": "Failed to change password",
@@ -510,63 +536,76 @@ class change_password(APIView):
 # allows updating username, first name, last name, and email
 class update_user_profile(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def put(self, request):
         try:
             user = request.user
             data = request.data
-            
+
             # validate required fields
             if not all([data.get('username'), data.get('first_name'), data.get('last_name'), data.get('email')]):
                 return Response({
                     "error": "All fields are required"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # validate username format and length
             username = data['username']
-            if not username.isalnum() or len(username) < 3 or len(username) > 30:
+            if not re.fullmatch(r'[A-Za-z][A-Za-z0-9\-_]*', username) or len(username) < 3 or len(username) > 30:
                 return Response({
-                    "error": "Username must be 3-30 characters long and contain only letters and numbers"
+                    "error": "Username must be 3-30 characters long, start with a letter, and contain only letters, numbers, hyphens, or underscores"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # validate name fields
+
+            # validate first name
             first_name = data['first_name']
+            if not re.fullmatch(r'[A-Za-z]+', first_name):
+                return Response({
+                    "error": "First name must contain only letters"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if len(first_name) < 1:
+                return Response({
+                    "error": "First name must be at least 1 character long"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+
+            # validate last name
             last_name = data['last_name']
-            if not first_name.isalpha() or not last_name.isalpha():
+            if not re.fullmatch(r'[A-Za-z]+', last_name):
                 return Response({
-                    "error": "First and last names must contain only letters"
+                    "error": "Last name must contain only letters"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            if len(first_name) < 2 or len(last_name) < 2:
+
+            if len(last_name) < 1:
                 return Response({
-                    "error": "First and last names must be at least 2 characters long"
+                    "error": "Last name must be at least 1 character long"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # validate email format
             email = data['email']
             if not '@' in email or not '.' in email:
                 return Response({
                     "error": "Please enter a valid email address"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # check if username is already taken by another user
             if User.objects.filter(username=username).exclude(id=user.id).exists():
                 return Response({
                     "error": "Username is already taken"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # check if email is already taken by another user
             if User.objects.filter(email=email).exclude(id=user.id).exists():
                 return Response({
                     "error": "Email is already in use"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # update user information
             user.username = username
             user.first_name = first_name
             user.last_name = last_name
             user.email = email
             user.save()
-            
+
             return Response({
                 "message": "Profile updated successfully",
                 "username": user.username,
@@ -574,7 +613,7 @@ class update_user_profile(APIView):
                 "last_name": user.last_name,
                 "email": user.email
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response({
                 "error": "Failed to update profile",
@@ -583,62 +622,56 @@ class update_user_profile(APIView):
 
 class update_social_media(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         try:
             user = request.user
             social_type = request.data.get('social_type')
             social_username = request.data.get('social_username')
-            
+
             # validate required fields
             if not social_type or not social_username:
                 return Response({
                     "error": "Both social type and username are required"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # validate social type
-            valid_types = ['instagram', 'linkedin', 'twitter']
-            if social_type.lower() not in valid_types:
-                return Response({
-                    "error": f"Invalid social type. Must be one of: {', '.join(valid_types)}"
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
+
+
             # get or create the social type
-            social_type_obj, _ = SocialType.objects.get_or_create(social_type=social_type.lower())
-            
+            social_type_obj, _ = SocialType.objects.get_or_create(social_type=social_type)
+
             # get or create user social media entry
             user_social, created = UserSocial.objects.get_or_create(
                 user=user,
                 social_type=social_type_obj,
                 defaults={'social_username': social_username}
             )
-            
+
             if not created:
                 user_social.social_username = social_username
                 user_social.save()
-            
+
             return Response({
                 "message": "Social media updated successfully",
                 "social_type": user_social.social_type.social_type,
                 "social_username": user_social.social_username
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response({
                 "error": "Failed to update social media",
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     def delete(self, request):
         try:
             user = request.user
             social_type = request.data.get('social_type')
-            
+
             if not social_type:
                 return Response({
                     "error": "Social type is required"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # get the social type object
             try:
                 social_type_obj = SocialType.objects.get(social_type=social_type.lower())
@@ -648,11 +681,11 @@ class update_social_media(APIView):
                 return Response({
                     "error": "Invalid social type"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             return Response({
                 "message": "Social media removed successfully"
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response({
                 "error": "Failed to remove social media",
@@ -664,21 +697,21 @@ class update_social_media(APIView):
 # requires user to be authenticated
 class update_user_about(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def put(self, request):
         try:
             user = request.user
             about = request.data.get('about', '')
-            
+
             # update user's about section
             user.about = about
             user.save()
-            
+
             return Response({
                 "message": "About section updated successfully",
                 "about": user.about
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response({
                 "error": "Failed to update about section",
@@ -690,33 +723,33 @@ class update_user_about(APIView):
 # requires user to be authenticated
 class update_user_interests(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def put(self, request):
         try:
             user = request.user
             interests = request.data.get('interests', [])
-            
+
             # validate interests is a list
             if not isinstance(interests, list):
                 return Response({
                     "error": "Interests must be a list"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # update user's interests
             user.interests = interests
             user.save()
-            
+
             return Response({
                 "message": "Interests updated successfully",
                 "interests": user.interests
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response({
                 "error": "Failed to update interests",
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-          
+
 
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
@@ -872,7 +905,8 @@ def get_notifications(request):
         ]
 
         return Response(notification_data, status=200)
-    except:
+    except Exception as e:
+        print(e)
         return Response({"message": "Could not get notifications."}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(["DELETE"])
@@ -952,13 +986,13 @@ def delete_community_leader(request, community_id, leader_id):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def add_community_leader(request, community_id, username):
+def add_community_leader(request, community_id, user_id):
     """
     Adds a user as a leader to a community.
     """
     try:
         community = get_object_or_404(Community, community_id=community_id)
-        user_to_add = get_object_or_404(User, username=username)
+        user_to_add = get_object_or_404(User, id=user_id)
     except ValueError:
         return Response({"error": "Invalid community or user ID format."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -977,9 +1011,215 @@ def add_community_leader(request, community_id, username):
             # Subscribe the user to the community only if they are not already subscribed
             Subscribed.objects.create(community=community, user=user_to_add)
         message_leader = f"You are now a leader of {community.name}."
-        create_notification(user_to_add.id, message_leader) 
+        create_notification(user_to_add.id, message_leader)
         message_owner = f"User {user_to_add.username} is now a leader of {community.name}."
         create_notification(request.user.id, message_owner)
         return Response({"message": f"User {user_to_add.username} is now a leader of {community.name}."}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_event(request):
+    data = request.data
+    user = request.user
+
+    EventType.objects.get_or_create(name='virtual')
+    EventType.objects.get_or_create(name='in-person')
+
+    # Extract fields from request.data
+    title = data.get('title')
+    description = data.get('description', '')
+    date_str = data.get('date')
+    virtual_link = data.get('virtual_link')
+    location = data.get('location')
+    event_type_name = data.get('event_type') 
+    community_id = data.get('community_id')
+
+    # Validate required fields
+    if not all([title, date_str, event_type_name, community_id]):
+        return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validate date format
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validate community and permissions
+    community = get_object_or_404(Community, pk=community_id)
+    try:
+        event_type = EventType.objects.get(name=event_type_name)
+    except EventType.DoesNotExist:
+        return Response({"error": f"EventType '{event_type_name}' not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is an owner or a leader of the community
+    is_owner = community.owner == user
+    is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
+
+    if not (is_owner or is_leader):
+        return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+    # Create event
+    event = Event.objects.create(
+        title=title,
+        description=description,
+        date=date,
+        virtual_link=virtual_link,
+        location=location,
+        event_type=event_type,
+        community=community
+    )
+
+    event.save
+
+    return Response({"message": "Event created!", "event_id": event.event_id}, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_events(request):
+    # Retrieve all events for the authenticated user
+    events = Event.objects.all()
+
+    # Prepare the event data for response
+    event_list = [
+        {
+            'event_id': event.event_id,
+            'title': event.title,
+            'description': event.description,
+            'date': event.date,
+            'virtual_link': event.virtual_link,
+            'location': event.location,
+            'event_type': event.event_type.name if event.event_type else None,
+            'community': event.community.name if event.community else None
+        }
+        for event in events
+    ]
+
+    return Response(event_list, status=200)
+
+# @api_view(['GET', 'POST'])
+# @permission_classes([IsAuthenticated])
+# def event_handler(request):
+#     # Handle POST method (Create Event)
+#     if request.method == 'POST':
+#         # Extract data from the request body
+#         data = request.data
+#         user = request.user
+
+#         print(" Incoming Event Data:", data)
+
+#         # Extract fields
+#         title = data.get('title')
+#         description = data.get('description', '')
+#         date = data.get('date')
+#         virtual_link = data.get('virtual_link')
+#         location = data.get('location')
+#         event_type_name = data.get('event_type')
+#         community_id = data.get('community_id')
+
+#         # Validate community and permissions
+#         community = get_object_or_404(Community, pk=community_id)
+
+#         try:
+#             event_type = EventType.objects.get(name=event_type_name)
+#         except EventType.DoesNotExist:
+#             return Response({"error": f"EventType '{event_type_name}' not found."}, status=400)
+
+#         # Check if the user is an owner or a leader of the community
+#         is_owner = community.owner == user
+#         is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
+
+#         if not (is_owner or is_leader):
+#             return Response({"error": "Permission denied."}, status=403)
+
+#         # Create event
+#         event = Event.objects.create(
+#             title=title,
+#             description=description,
+#             date=date,
+#             virtual_link=virtual_link,
+#             location=location,
+#             event_type=event_type,
+#             community=community
+#         )
+
+#         return Response({"message": "Event created!", "event_id": event.event_id}, status=201)
+
+#     # Handle GET method (List Events)
+#     elif request.method == 'GET':
+#         # Retrieve all events for the authenticated user
+#         events = Event.objects.all()
+
+#         # Prepare the event data for response
+#         event_list = [
+#             {
+#                 'event_id': event.event_id,
+#                 'title': event.title,
+#                 'description': event.description,
+#                 'date': event.date,
+#                 'virtual_link': event.virtual_link,
+#                 'location': event.location,
+#                 'event_type': event.event_type.name if event.event_type else None,
+#                 'community': event.community.name if event.community else None
+#             }
+#             for event in events
+#         ]
+
+#         return Response(event_list, status=200)
+
+# get user profile for any user, allows for users to see other users profile.
+class GetUserProfile(APIView):
+    permission_classes = []
+
+    def get(self, request, user_id):
+        try:
+            # Fetch user by ID
+            user = User.objects.get(id=user_id)
+
+            # Fetch social links associated with the user
+            social_links = UserSocial.objects.filter(user=user).values('social_type__social_type', 'social_username')
+
+            # Prepare the profile picture as Base64 string
+            profile_picture_base64 = None
+            if user.profile_picture:
+                # Convert binary profile picture to Base64
+                profile_picture_base64 = base64.b64encode(user.profile_picture).decode('utf-8')
+
+            # Retrieve user profile data
+            user_profile_data = {
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "about": user.about, 
+                "profile_picture": profile_picture_base64, 
+                "social_links": [
+                    {"social_type": link['social_type__social_type'], "social_username": link['social_username']}
+                    for link in social_links
+                ],
+            }
+
+            # Return profile data
+            return Response(user_profile_data, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+    
+            return Response({"error": "An error occurred.", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class DeletePostView(APIView):
+
+    def delete(self, request, post_id):
+        try:
+            post = Post.objects.get(pk=post_id)
+            if post.user.id != request.user.id:
+                return Response({"detail": "Not authorized to delete this post."}, status=status.HTTP_403_FORBIDDEN)
+            
+            post.delete()
+            return Response({"detail": "Post deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+        except Post.DoesNotExist:
+            return Response({"detail": "Post not found."}, status=status.HTTP_404_NOT_FOUND)

@@ -6,7 +6,6 @@ class User(AbstractUser):
     access_level = models.IntegerField(default=1)
     about = models.CharField(max_length=255, blank=True, null=True)
     profile_picture = models.BinaryField(blank=True, null=True)
-    interests = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return self.username
@@ -28,7 +27,7 @@ class Community(models.Model):
 
 class EventType(models.Model):
     name = models.CharField(max_length=255, primary_key=True)
-
+    
     class Meta:
         db_table = 'EventType'
 
@@ -43,7 +42,7 @@ class Event(models.Model):
     date = models.DateField()
     virtual_link = models.CharField(max_length=255, blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
-    event_type = models.ForeignKey(EventType, on_delete=models.CASCADE, blank=True, null=True)
+    event_type = models.ForeignKey(EventType, on_delete=models.CASCADE)
     community = models.ForeignKey(Community, on_delete=models.CASCADE, blank=True, null=True)
 
     class Meta:
@@ -145,3 +144,17 @@ class Comment(models.Model):
 
     class Meta:
         db_table = 'Comment'
+
+class UserInterest(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+    interest = models.TextField(null=False)
+
+    class Meta:
+        db_table ='UserInterest'
+        
+class PostImage(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, null=False)
+    image = models.BinaryField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'PostImage'
