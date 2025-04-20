@@ -1246,3 +1246,23 @@ def join_event(request, event_id):
     create_notification(event.community.owner.id, message)
 
     return Response({"message": "Successfully joined the event!"})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def leave_event(request, event_id):
+    """Allow a user to leave an event"""
+    user = request.user
+    event = get_object_or_404(Event, pk=event_id)
+
+    # Check if user is a participant
+    try:
+        participant = EventParticipant.objects.get(event=event, user=user)
+        participant.delete()
+        
+        # Create notification for event creator
+        message = f"{user.username} has left your event '{event.title}'"
+        create_notification(event.community.owner.id, message)
+        
+        return Response({"message": "Successfully left the event!"}, status=status.HTTP_200_OK)
+    except EventParticipant.DoesNotExist:
+        return Response({"error": "You are not participating in this event!"}, status=status.HTTP_400_BAD_REQUEST)
