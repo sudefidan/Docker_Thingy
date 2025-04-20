@@ -175,6 +175,33 @@
 		}
 	}
 
+	// Leave event function
+	async function leaveEvent(eventId) {
+		try {
+			const response = await fetch(`http://127.0.0.1:8000/api/events/${eventId}/leave/`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+					'Content-Type': 'application/json'
+				}
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.error || 'Failed to leave event');
+			}
+
+			console.log('Successfully left event:', data);
+			
+			// Refresh the events list to update the UI
+			await fetchEvents();
+		} catch (error) {
+			console.error('Error leaving event:', error);
+			alert(error.message);
+		}
+	}
+
 	// Run the functions when the component loads
 	onMount(async () => {
 		try {
@@ -324,7 +351,14 @@
 									Join Event
 								</button>
 							{:else}
-								<p class="text-primary mt-3">You are participating in this event</p>
+								<div class="flex flex-col items-start gap-2">
+									<p class="text-primary mt-3">You are participating in this event</p>
+									<button 
+										class="btn btn-error text-secondary hover:bg-error-focus w-fit"
+										on:click={() => leaveEvent(event.event_id)}>
+										Leave Event
+									</button>
+								</div>
 							{/if}
 						</div>
 					{/each}
