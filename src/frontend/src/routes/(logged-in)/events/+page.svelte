@@ -148,6 +148,33 @@
 		}
 	}
 
+	// Join event function
+	async function joinEvent(eventId) {
+		try {
+			const response = await fetch(`http://127.0.0.1:8000/api/events/${eventId}/join/`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+					'Content-Type': 'application/json'
+				}
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Failed to join event');
+			}
+
+			const result = await response.json();
+			console.log('Successfully joined event:', result);
+			
+			// Refresh the events list to update the UI
+			await fetchEvents();
+		} catch (error) {
+			console.error('Error joining event:', error);
+			alert(error.message);
+		}
+	}
+
 	// Run the functions when the component loads
 	onMount(async () => {
 		try {
@@ -290,6 +317,15 @@
 								<p><strong>Virtual Link:</strong> <a href={event.virtual_link} target="_blank">Join Event</a></p>
 							{/if}
 							<p><strong>Community:</strong> {event.community}</p>
+							{#if !event.is_participating}
+								<button 
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto mt-3"
+									on:click={() => joinEvent(event.event_id)}>
+									Join Event
+								</button>
+							{:else}
+								<p class="text-primary mt-3">You are participating in this event</p>
+							{/if}
 						</div>
 					{/each}
 				</div>
