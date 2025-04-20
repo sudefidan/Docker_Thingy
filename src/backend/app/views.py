@@ -12,7 +12,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 import requests
 import base64
 import re
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
@@ -1080,6 +1080,7 @@ def create_event(request):
 def list_events(request):
     # Retrieve all events for the authenticated user
     events = Event.objects.all()
+    user = request.user
 
     # Prepare the event data for response
     event_list = [
@@ -1091,7 +1092,9 @@ def list_events(request):
             'virtual_link': event.virtual_link,
             'location': event.location,
             'event_type': event.event_type.name if event.event_type else None,
-            'community': event.community.name if event.community else None
+            'community': event.community.name if event.community else None,
+            'participant_count': EventParticipant.objects.filter(event=event).count(),
+            'is_participating': EventParticipant.objects.filter(event=event, user=user).exists()
         }
         for event in events
     ]
@@ -1223,3 +1226,23 @@ class DeletePostView(APIView):
 
         except Post.DoesNotExist:
             return Response({"detail": "Post not found."}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def join_event(request, event_id):
+    """Allow a user to join an event"""
+    user = request.user
+    event = get_object_or_404(Event, pk=event_id)
+
+    # Check if user is already a participant
+    if EventParticipant.objects.filter(event=event, user=user).exists():
+        return Response({"message": "You are already participating in this event!"}, status=status.HTTP_200_OK)
+
+    # Add user as participant
+    EventParticipant.objects.create(event=event, user=user)
+
+    # Create notification for event creator
+    message = f"{user.username} has joined your event '{event.title}'"
+    create_notification(event.community.owner.id, message)
+
+    return Response({"message": "Successfully joined the event!"})
