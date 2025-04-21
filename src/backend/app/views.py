@@ -10,6 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import transaction
+from django.db.models import Q
 import requests
 import base64
 import re
@@ -1247,3 +1248,173 @@ def leave_event(request, event_id):
         return Response({"message": "Successfully left the event!"}, status=status.HTTP_200_OK)
     except EventParticipant.DoesNotExist:
         return Response({"error": "You are not participating in this event!"}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_managed_events(request):
+    """
+    Retrieves events where the authenticated user is either the owner
+    or a leader of the associated community. Handles potential duplicates
+    if a user is both owner and leader.
+    """
+    user = request.user
+
+    try:
+        # Query events using Q objects for complex lookups
+        # Condition 1: User is the owner of the event's community
+        # Condition 2: User is listed as a leader for the event's community
+        managed_events_qs = Event.objects.filter(
+            Q(community__owner=user) | Q(community__communityleader__user=user)
+        ).select_related('community', 'event_type').prefetch_related('eventparticipant_set')
+        # Serialize the event data and handle deduplication
+        event_list = []
+        processed_event_ids = set() # Keep track of event IDs already added
+
+        for event in managed_events_qs:
+            # Skip if this event has already been added
+            if event.event_id in processed_event_ids:
+                continue
+
+            event_list.append({
+                'event_id': event.event_id,
+                'title': event.title,
+                'description': event.description,
+                'date': event.date.isoformat() if event.date else None, # Use isoformat for consistency
+                'virtual_link': event.virtual_link,
+                'location': event.location,
+                'event_type': event.event_type.name if event.event_type else None,
+                'community_id': event.community.community_id if event.community else None,
+                'community_name': event.community.name if event.community else None,
+                # You might want participant count or other details here too
+                'participant_count': event.eventparticipant_set.count(), # Efficient count due to prefetch_related
+                'is_participating': event.eventparticipant_set.filter(user=user).exists() # Check if current user participates
+            })
+            # Mark this event ID as processed
+            processed_event_ids.add(event.event_id)
+
+        return Response(event_list, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error fetching managed events for user {user.username}: {e}")
+        print(traceback.format_exc()) # Print full traceback
+        return Response(
+            {"error": "An error occurred while fetching manageable events."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+@transaction.atomic # Ensure the update is atomic
+def update_event_field(request):
+    """
+    Updates a specific field of an event if the user has permission.
+    Expects a PATCH request with JSON body: {"field": "field_name", "value": "new_value"}
+    """
+    user = request.user
+
+    # Get Request Data
+    try:
+        data = request.data
+        field_to_update = data.get('field')
+        new_value = data.get('value')
+        event_id = data.get('eventId')
+
+        if not field_to_update:
+            return Response({"error": "The 'field' to update must be specified."}, status=status.HTTP_400_BAD_REQUEST)
+        # Allow new_value to be None or empty string for fields like description, virtual_link, location
+
+    except Exception as e:
+        return Response({"error": "Invalid request data.", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get the Event and Check Permissions
+    try:
+        event = get_object_or_404(Event.objects.select_related('community', 'event_type'), pk=event_id)
+    except Event.DoesNotExist:
+        return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
+    except ValueError:
+        return Response({"error": "Invalid event ID format."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the user is owner or leader of the event's community
+    community = event.community
+    if not community:
+        # Should not happen if events always belong to a community, but good to check
+        return Response({"error": "Event is not associated with a community."}, status=status.HTTP_400_BAD_REQUEST)
+
+    is_owner = community.owner == user
+    is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
+
+    if not (is_owner or is_leader):
+        return Response({"error": "You do not have permission to edit this event."}, status=status.HTTP_403_FORBIDDEN)
+
+    # Validate and Update Field
+    allowed_fields = ['title', 'description', 'date', 'virtual_link', 'location', 'event_type']
+
+    if field_to_update not in allowed_fields:
+        return Response({"error": f"Updating the field '{field_to_update}' is not allowed."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        original_value = getattr(event, field_to_update)
+
+        # Field-specific validation and processing
+        if field_to_update == 'title':
+            if not new_value:
+                return Response({"error": "Title cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+            setattr(event, field_to_update, str(new_value))
+
+        elif field_to_update == 'description':
+            # Allow empty description
+            setattr(event, field_to_update, str(new_value) if new_value is not None else None)
+
+        elif field_to_update == 'date':
+            if not new_value:
+                return Response({"error": "Date cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # Expecting 'YYYY-MM-DD' format from the frontend input type="date"
+                parsed_date = datetime.strptime(str(new_value), '%Y-%m-%d').date()
+                setattr(event, field_to_update, parsed_date)
+            except ValueError:
+                return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+
+        elif field_to_update == 'virtual_link':
+             # Allow empty/null link
+            setattr(event, field_to_update, str(new_value) if new_value else None)
+            # Optional: Add URL validation here if needed
+
+        elif field_to_update == 'location':
+             # Allow empty/null location
+            setattr(event, field_to_update, str(new_value) if new_value else None)
+
+        elif field_to_update == 'event_type':
+            if not new_value:
+                 return Response({"error": "Event type cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # Find the EventType object by name
+                event_type_obj = EventType.objects.get(name=str(new_value))
+                setattr(event, field_to_update, event_type_obj)
+                original_value = original_value.name if original_value else None # For notification message
+            except EventType.DoesNotExist:
+                return Response({"error": f"Invalid event type: '{new_value}'. Must be 'virtual' or 'in-person'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Notify participants
+        participants = EventParticipant.objects.filter(event=event).select_related('user')
+        for participant in participants:
+            if participant.user != user: # Don't notify the editor
+            if field_to_update == 'title':
+                message = f"The title of an event has been updated to '{new_value}'!" 
+            else:
+                message = f"The details for event '{event.title}' have been updated. The {field_to_update} was changed to '{new_value}'!"
+            create_notification(participant.user.id, message)
+
+
+        event.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error updating event {event_id} field '{field_to_update}' for user {user.username}: {e}")
+        return Response(
+            {"error": "An error occurred while updating the event."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
