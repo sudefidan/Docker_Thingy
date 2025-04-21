@@ -1053,7 +1053,13 @@ def create_event(request):
         community=community
     )
 
-    event.save
+    subscriptions = Subscribed.objects.filter(community=community).select_related('user')
+    for sub in subscriptions:
+        if sub.user != user:
+            message = f"A new event '{event.title}' has been created in the '{community.name}' community!"
+            create_notification(sub.user.id, message)
+
+    event.save()
 
     return Response({"message": "Event created!", "event_id": event.event_id}, status=status.HTTP_201_CREATED)
 
