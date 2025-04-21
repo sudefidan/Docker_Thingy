@@ -4,6 +4,7 @@
 	let access_token;
 	let loggedInUserId = null;
 	let users = []; // List of users fetched from API
+	let managedEvents = [];
 	let communities = []; // Stores the user's owned/managed communities
 	let allowedToCreate = false; // Controls form visibility
 	let title = '';
@@ -16,6 +17,17 @@
 	let searchTerm = '';
 	let events = [];
 	// Search term for filtering
+
+	// Edit Event Form State
+	let editEventId = null; // Still useful to know which event we're editing
+	let editTitle = '';
+	let editDescription = '';
+	let editDate = '';
+	let editVirtualLink = '';
+	let editLocation = '';
+	let editEventType = '';
+	let selectedEventEditCategory = '';
+	let allowedToEdit = false;
 
 	// Retrieve the logged-in user's ID from the JWT token
 	function getLoggedInUserIdFromToken(token) {
@@ -77,6 +89,33 @@
 		}
 	}
 
+	// Fetch user communities
+	async function fetchManagedEvents() {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/events/managed/', {
+				headers: {
+					Authorization: `Bearer ${access_token}`
+				}
+			});
+			if (!response.ok) {
+				throw new Error(`Failed to fetch communities: ${response.status}`);
+			}
+
+			const data = await response.json();
+			console.log('API Response for user communities:', data); // Log the full response
+
+			// Check if the response is an array
+			if (Array.isArray(data)) {
+				managedEvents = data; // Directly assign the array to 'communities'
+				allowedToEdit = managedEvents.length > 0;
+			} else {
+				console.error('Communities data is not an array');
+			}
+		} catch (error) {
+			console.error('Error fetching user communities:', error);
+		}
+	}
+
 	// Submit event form
 	async function submitEvent(event) {
 		event.preventDefault(); // Prevent default form submission
@@ -125,6 +164,64 @@
 		}
 	}
 
+	// Submit event form
+	async function submitEditEvent(event) {
+		event.preventDefault(); // Prevent default form submission
+
+		let value = null;
+		switch (selectedEventEditCategory) {
+			case 'title':
+				value = editTitle;
+				break;
+			case 'description':
+				value = editDescription;
+				break;
+			case 'date':
+				value = editDate;
+				break;
+			case 'virtual_link':
+				value = editVirtualLink;
+				break;
+			case 'location':
+				value = editLocation;
+				break;
+			case 'event_type':
+				value = editEventType;
+				break;
+		}
+
+		const editData = {
+			field: selectedEventEditCategory,
+			value,
+			eventId: editEventId
+		};
+
+		try {
+			console.log('Sending POST request to API...');
+
+			const response = await fetch('http://127.0.0.1:8000/api/events/manage/', {
+				method: 'PATCH',
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(editData)
+			});
+
+			// Check for a successful response
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Error:', errorText); // Log error response body
+				alert(`Error: ${errorText}`);
+				return;
+			}
+
+			window.location.reload();
+		} catch (error) {
+			console.error('Error creating event:', error); // Log error in case of failure
+		}
+	}
+
 	// Fetch events
 	async function fetchEvents() {
 		try {
@@ -144,6 +241,11 @@
 		} catch (error) {
 			console.error('Error fetching events:', error);
 		}
+	}
+
+	// Function to handle action change for community management commands
+	function handleSelectedEventEditCategory(event) {
+		selectedEventEditCategory = event.target.value;
 	}
 
 	// Join event function
@@ -214,6 +316,7 @@
 			await fetchUsers();
 			await fetchUserCommunities();
 			await fetchEvents();
+			await fetchManagedEvents();
 			const response = await fetch('http://127.0.0.1:8000/api/communities/', {
 				headers: {
 					Authorization: `Bearer ${access_token}`
@@ -263,64 +366,181 @@
 	<div class="top-panel">
 		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
 	</div>
-	<div class="card bg-base-100 w-full rounded-3xl">
-		<div class="card-body bg-secondary rounded-3xl">
-			{#if allowedToCreate}
-				<!-- Your form fields here -->
-				<form on:submit={submitEvent} id="createEventForm" class="form-container">
-					<div class="form-group">
-						<label for="title">Title:</label>
-						<input type="text" bind:value={title} id="title" class="form-input" required />
-					</div>
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		<div class="card bg-base-100 w-full rounded-3xl">
+			<div class="card-body bg-secondary rounded-3xl">
+				{#if allowedToCreate}
+					<!-- Your form fields here -->
+					<form on:submit={submitEvent} id="createEventForm" class="form-container">
+						<div class="form-group">
+							<label for="title">Title:</label>
+							<input type="text" bind:value={title} id="title" class="form-input" required />
+						</div>
 
-					<div class="form-group">
-						<label for="description">Description:</label>
-						<textarea bind:value={description} id="description" class="form-input" required
-						></textarea>
-					</div>
+						<div class="form-group">
+							<label for="description">Description:</label>
+							<textarea bind:value={description} id="description" class="form-input" required
+							></textarea>
+						</div>
 
-					<div class="form-group">
-						<label for="date">Date:</label>
-						<input type="date" bind:value={date} id="date" class="form-input" required />
-					</div>
+						<div class="form-group">
+							<label for="date">Date:</label>
+							<input type="date" bind:value={date} id="date" class="form-input" required />
+						</div>
 
-					<div class="form-group">
-						<label for="virtual_link">Virtual Link:</label>
-						<input type="url" bind:value={virtualLinkInput} id="virtual_link" class="form-input" />
-					</div>
+						<div class="form-group">
+							<label for="virtual_link">Virtual Link:</label>
+							<input
+								type="url"
+								bind:value={virtualLinkInput}
+								id="virtual_link"
+								class="form-input"
+							/>
+						</div>
 
-					<div class="form-group">
-						<label for="location">Location:</label>
-						<input type="text" bind:value={locationInput} id="location" class="form-input" />
-					</div>
+						<div class="form-group">
+							<label for="location">Location:</label>
+							<input type="text" bind:value={locationInput} id="location" class="form-input" />
+						</div>
 
-					<div class="form-group">
-						<label for="event_type">Event Type:</label>
-						<select bind:value={event_type} id="event_type" class="form-input" required>
-							<option value="virtual">Virtual</option>
-							<option value="in-person">In-Person</option>
-						</select>
-					</div>
+						<div class="form-group">
+							<label for="event_type">Event Type:</label>
+							<select bind:value={event_type} id="event_type" class="form-input" required>
+								<option value="virtual">Virtual</option>
+								<option value="in-person">In-Person</option>
+							</select>
+						</div>
 
-					<div class="form-group">
-						<label for="community">Community:</label>
-						<select bind:value={community_id} id="community" class="form-input" required>
-							<option value="" disabled selected>-- Choose a community --</option>
-							{#if communities.length === 0}
-								<option disabled>No communities found</option>
-							{:else}
-								{#each communities as community}
-									<option value={community.community_id}>{community.name}</option>
+						<div class="form-group">
+							<label for="community">Community:</label>
+							<select bind:value={community_id} id="community" class="form-input" required>
+								<option value="" disabled selected>-- Choose a community --</option>
+								{#if communities.length === 0}
+									<option disabled>No communities found</option>
+								{:else}
+									{#each communities as community}
+										<option value={community.community_id}>{community.name}</option>
+									{/each}
+								{/if}
+							</select>
+						</div>
+
+						<button type="submit" class="submit-btn">Create Event</button>
+					</form>
+				{:else}
+					<p>You do not have permission to create events.</p>
+				{/if}
+			</div>
+		</div>
+		<div class="card bg-base-100 w-full rounded-3xl">
+			<div class="card-body bg-secondary rounded-3xl">
+				{#if allowedToEdit}
+					<!-- Your form fields here -->
+					<form on:submit={submitEditEvent} id="createEventForm" class="form-container">
+						<div class="relative flex items-center">
+							<select
+								type="text"
+								bind:value={editEventId}
+								required
+								class="select select-bordered custom-input flex-grow"
+							>
+								<option value={null} selected>Select an Event</option>
+								{#each managedEvents as event}
+									<option value={event.event_id}>{event.title}</option>
 								{/each}
-							{/if}
-						</select>
-					</div>
-
-					<button type="submit" class="submit-btn">Create Event</button>
-				</form>
-			{:else}
-				<p>You do not have permission to create events.</p>
-			{/if}
+							</select>
+						</div>
+						{#if editEventId}
+							<div class="w-full">
+								<label for="action" class="label">
+									<span class="label-text">What would you like to do?</span>
+								</label>
+								<div class="relative flex items-center">
+									<select
+										id="action"
+										bind:value={selectedEventEditCategory}
+										required
+										class="select select-bordered custom-input flex-grow"
+										on:change={handleSelectedEventEditCategory}
+									>
+										<option value="" disabled selected>Select an Action</option>
+										<option value="title">Change Event Title</option>
+										<option value="description">Change Event Description</option>
+										<option value="date">Change Event Date</option>
+										<option value="virtual_link">Change Event Link</option>
+										<option value="location">Change Event Location</option>
+										<option value="event_type">Change Event Type</option>
+									</select>
+								</div>
+							</div>
+						{/if}
+						{#if selectedEventEditCategory == 'title'}
+							<div class="form-group">
+								<label for="title">Title:</label>
+								<input
+									type="text"
+									bind:value={editTitle}
+									id="title"
+									class="input bg-white"
+									required
+								/>
+							</div>
+						{/if}
+						{#if selectedEventEditCategory == 'description'}
+							<div class="form-group">
+								<label for="description">Description:</label>
+								<textarea
+									bind:value={editDescription}
+									id="description"
+									class="input bg-white"
+									required
+								></textarea>
+							</div>
+						{/if}
+						{#if selectedEventEditCategory == 'date'}
+							<div class="form-group">
+								<label for="date">Date:</label>
+								<input
+									type="date"
+									bind:value={editDate}
+									id="date"
+									class="input bg-white"
+									required
+								/>
+							</div>
+						{/if}
+						{#if selectedEventEditCategory == 'virtual_link'}
+							<div class="form-group">
+								<label for="virtual_link">Virtual Link:</label>
+								<input
+									type="url"
+									bind:value={editVirtualLink}
+									id="virtual_link"
+									class="input bg-white"
+								/>
+							</div>
+						{/if}
+						{#if selectedEventEditCategory == 'location'}
+							<div class="form-group">
+								<label for="location">Location:</label>
+								<input type="text" bind:value={editLocation} id="location" class="input bg-white" />
+							</div>
+						{/if}
+						{#if selectedEventEditCategory == 'event_type'}
+							<div class="form-group">
+								<label for="event_type">Event Type:</label>
+								<select bind:value={editEventType} id="event_type" class="select bg-white" required>
+									<option value="virtual">Virtual</option>
+									<option value="in-person">In-Person</option>
+								</select>
+							</div>
+						{/if}
+						<button type="submit" class="submit-btn">Update Event</button>
+					</form>
+				{:else}
+					<p>No managed events to edit</p>
+				{/if}
+			</div>
 		</div>
 	</div>
 	<!-- Events List -->
