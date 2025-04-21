@@ -16,7 +16,7 @@ import re
 from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant, UserInterest
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
-from .utils import create_notification
+from .utils import create_notification, create_notification_community_interest
 from django.views import View
 from datetime import datetime
 
@@ -272,6 +272,8 @@ class create_community(APIView):
         # auto subscribe the current userid that is logged to the community
         Subscribed.objects.create(community=community, user_id=owner_id)
 
+        create_notification_community_interest(community)
+
         return Response({
             "community_id": community.community_id,
             "message": "Community created successfully and selected leaders assigned"
@@ -407,45 +409,6 @@ def get_post_image(request, post_id):
             return HttpResponse(status=404)
     except PostImage.DoesNotExist:
         return HttpResponse(status=404)
-
-
-class CreateCommunity(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        name = request.data.get('name')
-        description = request.data.get('description')
-        category = request.data.get('category')
-        leader_ids = request.data.get('leader_ids', [])
-
-        if request.user.is_authenticated:
-            owner_id = request.user.id
-        else:
-            return Response({"error": "User must be logged in"}, status=400)
-
-        # Check if community with the same name already exists
-        existing_community = Community.objects.filter(name=name).first()
-        if existing_community:
-            return Response({"error": "A community with this name already exists."}, status=400)
-
-        # Create the new community
-        community = Community.objects.create(
-            name=name,
-            description=description,
-            category=category,
-            owner_id=owner_id
-        )
-
-        Subscribed.objects.create(user=request.user, community=community)
-        for leader_id in leader_ids:
-            user = get_object_or_404(User, id=leader_id)
-            CommunityLeader.objects.create(community=community, user=user)
-            Subscribed.objects.create(community=community, user=user)
-
-        return Response({
-            "community_id": community.community_id,
-            "message": "Community created successfully and selected leaders assigned"
-        })
 
 def fetch_communities(request):
     if request.method == "GET":
@@ -744,7 +707,7 @@ class update_user_interests(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             UserInterest.objects.filter(user=user).delete()
-            
+
             new_interests = []
             for interest_text in interests_list:
                 if interest_text: # Avoid saving empty strings if necessary
@@ -832,6 +795,8 @@ def update_community_description(request):
         message = f"The community '{community.name}' has changed it's description to '{new_description}'."
         create_notification(user.id, message)
 
+    
+
     community.description = new_description
     community.save()
 
@@ -868,6 +833,8 @@ def update_community_category(request):
 
     community.category = new_category
     community.save()
+
+    create_notification_community_interest(community)
 
     return Response({"message": "Community category updated successfully."}, status=status.HTTP_200_OK)
 
