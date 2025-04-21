@@ -9,10 +9,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.db import transaction
 import requests
 import base64
 import re
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant, UserInterest
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification
@@ -140,6 +141,8 @@ class user_profile_view(APIView):
             if hasattr(user, 'profile_picture') and user.profile_picture:
                 profile_picture = f"data:image/png;base64,{base64.b64encode(user.profile_picture).decode('utf-8')}"
 
+            user_interests_qs = UserInterest.objects.filter(user=user)
+            interests_list = [ui.interest for ui in user_interests_qs]
             return Response({
                 "username": user.username,
                 "first_name": user.first_name,
@@ -149,7 +152,7 @@ class user_profile_view(APIView):
                 "about": user.about if hasattr(user, 'about') else '',
                 "social_type": social_type,
                 "social_username": social_username,
-                "interests": user.interests if hasattr(user, 'interests') else []
+                "interests": interests_list,
             })
 
         except Exception as e:
@@ -724,32 +727,43 @@ class update_user_about(APIView):
 class update_user_interests(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def put(self, request):
         try:
             user = request.user
-            interests = request.data.get('interests', [])
+            interests_list = request.data.get('interests', [])
 
-            # validate interests is a list
-            if not isinstance(interests, list):
+            if not isinstance(interests_list, list):
                 return Response({
-                    "error": "Interests must be a list"
+                    "error": "Interests must be a list of strings"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # update user's interests
-            user.interests = interests
-            user.save()
+            if not all(isinstance(item, str) for item in interests_list):
+                 return Response({
+                    "error": "Each interest must be a string"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            UserInterest.objects.filter(user=user).delete()
+            
+            new_interests = []
+            for interest_text in interests_list:
+                if interest_text: # Avoid saving empty strings if necessary
+                    interest_obj = UserInterest.objects.create(user=user, interest=interest_text)
+                    new_interests.append(interest_obj.interest) # Store the saved interest text
 
             return Response({
                 "message": "Interests updated successfully",
-                "interests": user.interests
+                # Return the list of interests that were actually saved
+                "interests": new_interests
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
+            # Log the exception for debugging
+            print(f"Error updating interests for user {user.id}: {e}")
             return Response({
                 "error": "Failed to update interests",
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
