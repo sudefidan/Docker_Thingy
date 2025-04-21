@@ -55,7 +55,7 @@
 		try {
 			const response = await fetch('http://127.0.0.1:8000/api/user/communities/', {
 				headers: {
-					Authorization: `Bearer ${access_token}`,
+					Authorization: `Bearer ${access_token}`
 				}
 			});
 			if (!response.ok) {
@@ -72,7 +72,6 @@
 			} else {
 				console.error('Communities data is not an array');
 			}
-
 		} catch (error) {
 			console.error('Error fetching user communities:', error);
 		}
@@ -80,51 +79,51 @@
 
 	// Submit event form
 	async function submitEvent(event) {
-    event.preventDefault();  // Prevent default form submission
+		event.preventDefault(); // Prevent default form submission
 
-    console.log("Form submission triggered.");
+		console.log('Form submission triggered.');
 
-    const eventData = {
-        title,
-        description,
-        date,
-        virtual_link: virtualLinkInput.trim() || null,
-        location: locationInput.trim() || null,
-        event_type,
-        community_id
-    };
+		const eventData = {
+			title,
+			description,
+			date,
+			virtual_link: virtualLinkInput.trim() || null,
+			location: locationInput.trim() || null,
+			event_type,
+			community_id
+		};
 
-    // Log event data, including community_id
-    console.log("Event Data:", eventData);
+		// Log event data, including community_id
+		console.log('Event Data:', eventData);
 
-    try {
-        console.log("Sending POST request to API...");
+		try {
+			console.log('Sending POST request to API...');
 
-        const response = await fetch('http://127.0.0.1:8000/api/events/create/', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${access_token}`,
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams(eventData),  // Using URLSearchParams to encode the form data
-        });
+			const response = await fetch('http://127.0.0.1:8000/api/events/create/', {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+					'Content-Type': 'application/x-www-form-urlencoded'
+				},
+				body: new URLSearchParams(eventData) // Using URLSearchParams to encode the form data
+			});
 
-        // Check for a successful response
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Error:', errorText);  // Log error response body
-            alert(`Error: ${errorText}`);
-            return;
-        }
+			// Check for a successful response
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Error:', errorText); // Log error response body
+				alert(`Error: ${errorText}`);
+				return;
+			}
 
-        // Parse the JSON response
-        const result = await response.json();
-        console.log('Event created successfully:', result);  // Log success
-
-    } catch (error) {
-        console.error('Error creating event:', error);  // Log error in case of failure
-    }
-}
+			// Parse the JSON response
+			const result = await response.json();
+			console.log('Event created successfully:', result); // Log success
+			window.location.reload();
+		} catch (error) {
+			console.error('Error creating event:', error); // Log error in case of failure
+		}
+	}
 
 	// Fetch events
 	async function fetchEvents() {
@@ -132,7 +131,7 @@
 			const response = await fetch('http://127.0.0.1:8000/api/events/', {
 				method: 'GET',
 				headers: {
-					Authorization: `Bearer ${access_token}`,  
+					Authorization: `Bearer ${access_token}`
 				}
 			});
 
@@ -142,7 +141,6 @@
 
 			events = await response.json();
 			console.log('Fetched events:', events);
-
 		} catch (error) {
 			console.error('Error fetching events:', error);
 		}
@@ -166,7 +164,7 @@
 
 			const result = await response.json();
 			console.log('Successfully joined event:', result);
-			
+
 			// Refresh the events list to update the UI
 			await fetchEvents();
 		} catch (error) {
@@ -193,7 +191,7 @@
 			}
 
 			console.log('Successfully left event:', data);
-			
+
 			// Refresh the events list to update the UI
 			await fetchEvents();
 		} catch (error) {
@@ -225,7 +223,7 @@
 			const allCommunities = await response.json();
 
 			const permitted = [];
-			console.log("Communities:", communities);
+			console.log('Communities:', communities);
 
 			// Check each community to see if user is owner or leader
 			for (const community of allCommunities) {
@@ -293,7 +291,7 @@
 
 					<div class="form-group">
 						<label for="location">Location:</label>
-						<input type="text" bind:value={locationInput } id="location" class="form-input" />
+						<input type="text" bind:value={locationInput} id="location" class="form-input" />
 					</div>
 
 					<div class="form-group">
@@ -341,21 +339,26 @@
 							<p><strong>Event Type:</strong> {event.event_type}</p>
 							<p><strong>Location:</strong> {event.location || 'Online'}</p>
 							{#if event.virtual_link}
-								<p><strong>Virtual Link:</strong> <a href={event.virtual_link} target="_blank">Join Event</a></p>
+								<p>
+									<strong>Virtual Link:</strong>
+									<a href={event.virtual_link} target="_blank">Join Event</a>
+								</p>
 							{/if}
 							<p><strong>Community:</strong> {event.community}</p>
 							{#if !event.is_participating}
-								<button 
+								<button
 									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto mt-3"
-									on:click={() => joinEvent(event.event_id)}>
+									on:click={() => joinEvent(event.event_id)}
+								>
 									Join Event
 								</button>
 							{:else}
 								<div class="flex flex-col items-start gap-2">
 									<p class="text-primary mt-3">You are participating in this event</p>
-									<button 
+									<button
 										class="btn btn-error text-secondary hover:bg-error-focus w-fit"
-										on:click={() => leaveEvent(event.event_id)}>
+										on:click={() => leaveEvent(event.event_id)}
+									>
 										Leave Event
 									</button>
 								</div>
