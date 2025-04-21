@@ -9,13 +9,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.db import transaction
 import requests
 import base64
 import re
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant, UserInterest
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
-from .utils import create_notification
+from .utils import create_notification, create_notification_community_interest
 from django.views import View
 from datetime import datetime
 
@@ -140,6 +141,8 @@ class user_profile_view(APIView):
             if hasattr(user, 'profile_picture') and user.profile_picture:
                 profile_picture = f"data:image/png;base64,{base64.b64encode(user.profile_picture).decode('utf-8')}"
 
+            user_interests_qs = UserInterest.objects.filter(user=user)
+            interests_list = [ui.interest for ui in user_interests_qs]
             return Response({
                 "username": user.username,
                 "first_name": user.first_name,
@@ -149,7 +152,7 @@ class user_profile_view(APIView):
                 "about": user.about if hasattr(user, 'about') else '',
                 "social_type": social_type,
                 "social_username": social_username,
-                "interests": user.interests if hasattr(user, 'interests') else []
+                "interests": interests_list,
             })
 
         except Exception as e:
@@ -268,6 +271,8 @@ class create_community(APIView):
 
         # auto subscribe the current userid that is logged to the community
         Subscribed.objects.create(community=community, user_id=owner_id)
+
+        create_notification_community_interest(community)
 
         return Response({
             "community_id": community.community_id,
@@ -404,45 +409,6 @@ def get_post_image(request, post_id):
             return HttpResponse(status=404)
     except PostImage.DoesNotExist:
         return HttpResponse(status=404)
-
-
-class CreateCommunity(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        name = request.data.get('name')
-        description = request.data.get('description')
-        category = request.data.get('category')
-        leader_ids = request.data.get('leader_ids', [])
-
-        if request.user.is_authenticated:
-            owner_id = request.user.id
-        else:
-            return Response({"error": "User must be logged in"}, status=400)
-
-        # Check if community with the same name already exists
-        existing_community = Community.objects.filter(name=name).first()
-        if existing_community:
-            return Response({"error": "A community with this name already exists."}, status=400)
-
-        # Create the new community
-        community = Community.objects.create(
-            name=name,
-            description=description,
-            category=category,
-            owner_id=owner_id
-        )
-
-        Subscribed.objects.create(user=request.user, community=community)
-        for leader_id in leader_ids:
-            user = get_object_or_404(User, id=leader_id)
-            CommunityLeader.objects.create(community=community, user=user)
-            Subscribed.objects.create(community=community, user=user)
-
-        return Response({
-            "community_id": community.community_id,
-            "message": "Community created successfully and selected leaders assigned"
-        })
 
 def fetch_communities(request):
     if request.method == "GET":
@@ -724,32 +690,43 @@ class update_user_about(APIView):
 class update_user_interests(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def put(self, request):
         try:
             user = request.user
-            interests = request.data.get('interests', [])
+            interests_list = request.data.get('interests', [])
 
-            # validate interests is a list
-            if not isinstance(interests, list):
+            if not isinstance(interests_list, list):
                 return Response({
-                    "error": "Interests must be a list"
+                    "error": "Interests must be a list of strings"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # update user's interests
-            user.interests = interests
-            user.save()
+            if not all(isinstance(item, str) for item in interests_list):
+                 return Response({
+                    "error": "Each interest must be a string"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            UserInterest.objects.filter(user=user).delete()
+
+            new_interests = []
+            for interest_text in interests_list:
+                if interest_text: # Avoid saving empty strings if necessary
+                    interest_obj = UserInterest.objects.create(user=user, interest=interest_text)
+                    new_interests.append(interest_obj.interest) # Store the saved interest text
 
             return Response({
                 "message": "Interests updated successfully",
-                "interests": user.interests
+                # Return the list of interests that were actually saved
+                "interests": new_interests
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
+            # Log the exception for debugging
+            print(f"Error updating interests for user {user.id}: {e}")
             return Response({
                 "error": "Failed to update interests",
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
@@ -818,6 +795,8 @@ def update_community_description(request):
         message = f"The community '{community.name}' has changed it's description to '{new_description}'."
         create_notification(user.id, message)
 
+    
+
     community.description = new_description
     community.save()
 
@@ -854,6 +833,8 @@ def update_community_category(request):
 
     community.category = new_category
     community.save()
+
+    create_notification_community_interest(community)
 
     return Response({"message": "Community category updated successfully."}, status=status.HTTP_200_OK)
 
