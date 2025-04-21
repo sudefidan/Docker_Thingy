@@ -1400,11 +1400,11 @@ def update_event_field(request):
         participants = EventParticipant.objects.filter(event=event).select_related('user')
         for participant in participants:
             if participant.user != user: # Don't notify the editor
-            if field_to_update == 'title':
-                message = f"The title of an event has been updated to '{new_value}'!" 
-            else:
-                message = f"The details for event '{event.title}' have been updated. The {field_to_update} was changed to '{new_value}'!"
-            create_notification(participant.user.id, message)
+                if field_to_update == 'title':
+                    message = f"The title of an event has been updated to '{new_value}'!" 
+                else:
+                    message = f"The details for event '{event.title}' have been updated. The {field_to_update} was changed to '{new_value}'!"
+                create_notification(participant.user.id, message)
 
 
         event.save()
