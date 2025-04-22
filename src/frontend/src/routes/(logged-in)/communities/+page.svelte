@@ -34,7 +34,8 @@
 	$: filteredCommunities = communities.filter(
 		(community) =>
 			community.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			(community.description && community.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+			(community.description &&
+				community.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
 			(community.category && community.category.toLowerCase().includes(searchTerm.toLowerCase()))
 	);
 
@@ -51,35 +52,34 @@
 	}
 
 	onMount(async () => {
-        try {
-            // Retrieve the access_token from localStorage
-            access_token = localStorage.getItem('access_token');
+		try {
+			// Retrieve the access_token from localStorage
+			access_token = localStorage.getItem('access_token');
 
-            // If there's no access_token, redirect to the login page or home
-            if (!access_token) {
-                goto('http://localhost:5173/'); // Or wherever you want the user to go if they are not logged in
-                return;
-            }
+			// If there's no access_token, redirect to the login page or home
+			if (!access_token) {
+				goto('http://localhost:5173/'); // Or wherever you want the user to go if they are not logged in
+				return;
+			}
 
-            // Decode the logged-in user's ID from the token
-            loggedInUserId = getLoggedInUserIdFromToken(access_token);
+			// Decode the logged-in user's ID from the token
+			loggedInUserId = getLoggedInUserIdFromToken(access_token);
 
-            // Fetch users and subscribed communities
-            await fetchUsers();
-            await fetchSubscribedCommunities();
+			// Fetch users and subscribed communities
+			await fetchUsers();
+			await fetchSubscribedCommunities();
 
-            // Fetch all communities
-            const response = await fetch('http://127.0.0.1:8000/api/communities/');
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            communities = data;
-        } catch (error) {
-            console.error('Error during initialization:', error);
-        }
-    });
-
+			// Fetch all communities
+			const response = await fetch('http://127.0.0.1:8000/api/communities/');
+			if (!response.ok) {
+				throw new Error(`HTTP error! Status: ${response.status}`);
+			}
+			const data = await response.json();
+			communities = data;
+		} catch (error) {
+			console.error('Error during initialization:', error);
+		}
+	});
 
 	// Placeholder color for option
 	function updateSelectClass(event) {
@@ -416,76 +416,74 @@
 	<div
 		class="gap-13 flex grid w-full max-w-full grid-cols-1 flex-col justify-center md:grid-cols-2"
 	>
-		<!-- Left Column -->
-		<div class="space-y-10">
-			<!-- Communities Section-->
-			<div class="flex flex-wrap justify-center space-y-10">
-				<!-- List Communities and Join Button -->
-				{#each filteredCommunities as community}
-					<div class="card bg-base-100 w-full rounded-3xl">
-						<div class="card-body bg-secondary rounded-3xl">
-							<div class="mb-4 flex items-center justify-between">
-								<div class="flex-grow text-center">
-									<h1 class="text-primary text-4xl font-bold">{community.name}</h1>
-								</div>
-								<!-- Show "Leave" button if the user is subscribed and not the owner of the community -->
-								{#if subscribedCommunities.some((sub) => sub.id === community.community_id) && community.owner_id != loggedInUserId}
-									<div class="tooltip-container">
-										<button
-											on:click={() => leave_community(community.community_id)}
-											class="hover:text-primary"
-											aria-label="Leave Community">
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="currentColor"
-												class="bi bi-box-arrow-right size-7"
-
-												viewBox="0 0 16 16"
-											>
-												<path
-													fill-rule="evenodd"
-													d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"
-												/>
-												<path
-													fill-rule="evenodd"
-													d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"
-												/>
-											</svg>
-										</button>
-										<span class="tooltip">Leave this community</span>
-									</div>
-									<!-- Show "Join" button if the user is not subscribed, or leader or owner -->
-								{:else if !subscribedCommunities.some((sub) => sub.id === community.community_id)}
-									<div class="tooltip-container">
-										<button
-											on:click={() => join_community(community.community_id)}
-											class="hover:text-primary"
+		<!-- Left Column: Communities Section  -->
+		<div class="flex flex-wrap justify-center space-y-5">
+			<!-- List Communities and Join Button -->
+			{#each filteredCommunities as community}
+				<div class="card bg-base-100 w-full rounded-3xl">
+					<div class="card-body bg-secondary rounded-3xl">
+						<div class="mb-4 flex items-center justify-between">
+							<div class="flex-grow text-center">
+								<h1 class="text-primary text-4xl font-bold">{community.name}</h1>
+							</div>
+							<!-- Show "Leave" button if the user is subscribed and not the owner of the community -->
+							{#if subscribedCommunities.some((sub) => sub.id === community.community_id) && community.owner_id != loggedInUserId}
+								<div class="tooltip-container">
+									<button
+										on:click={() => leave_community(community.community_id)}
+										class="hover:text-primary"
+										aria-label="Leave Community"
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="currentColor"
+											class="bi bi-box-arrow-right size-7"
+											viewBox="0 0 16 16"
 										>
-											<AddIcon/>
-										</button>
-										<span class="tooltip">Join this community</span>
-									</div>
-								{/if}
-							</div>
-							<div class="mb-4">
-								<p>Category: {community.category}</p>
-								<p class="community-description">{community.description}</p>
-							</div>
+											<path
+												fill-rule="evenodd"
+												d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"
+											/>
+											<path
+												fill-rule="evenodd"
+												d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"
+											/>
+										</svg>
+									</button>
+									<span class="tooltip">Leave this community</span>
+								</div>
+								<!-- Show "Join" button if the user is not subscribed, or leader or owner -->
+							{:else if !subscribedCommunities.some((sub) => sub.id === community.community_id)}
+								<div class="tooltip-container">
+									<button
+										on:click={() => join_community(community.community_id)}
+										class="hover:text-primary"
+									>
+										<AddIcon />
+									</button>
+									<span class="tooltip">Join this community</span>
+								</div>
+							{/if}
+						</div>
+						<div class="mb-4">
+							<p>Category: {community.category}</p>
+							<p class="community-description">{community.description}</p>
 						</div>
 					</div>
-				{/each}
-			</div>
+				</div>
+			{/each}
 		</div>
+
 		<!-- Right Column -->
-		<div class="space-y-10">
+		<div class="space-y-5">
 			<!-- Community Management -->
-			<div class="card bg-base-100 w-full rounded-3xl">
+			<div class="card bg-base-100 w-full rounded-3xl space-y-5">
 				<div class="card-body bg-secondary rounded-3xl">
 					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Community Management</h1>
 					<div class="form-control mb-2 flex flex-col gap-3">
 						<div class="w-full">
 							<label for="name" class="label">
-								<span class="label-text">Which one of your communities do you want to change?</span>
+								<span class="label-text wrap">Which one of your communities do you want to change?</span>
 							</label>
 							<div class="relative flex items-center">
 								<select
@@ -773,7 +771,7 @@
 						<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
 							<div class="w-full">
 								<label for="name" class="label">
-									<span class="label-text">Community Leaders(Optional)</span>
+									<span class="label-text wrap">Community Leaders(Optional)</span>
 								</label>
 								<div class="relative">
 									<MultiSelect

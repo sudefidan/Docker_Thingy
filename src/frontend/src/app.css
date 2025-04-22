@@ -99,6 +99,7 @@
 .search-bar {
 	@apply w-full rounded-2xl p-2 border-primary bg-primary text-secondary pl-5 pr-5;
 }
+
 .search-bar::placeholder {
 	@apply text-base-100;
 }
@@ -149,7 +150,7 @@ input::selection {
 }
 
 .custom-input {
-	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2  w-full;
+	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2 w-full;
 }
 
 .placeholder-selected option[value=""] {
@@ -182,6 +183,15 @@ select:not(.placeholder-selected) {
 	outline: var(--color-primary);
 }
 
+h1, h2, h3, .wrap {
+white-space: normal;
+	/* Allow text to wrap */
+	word-break: break-word;
+	/* Break long words if necessary */
+	overflow-wrap: break-word;
+	/* Ensure proper wrapping for long words */
+
+}
 h1::selection {
 	background: var(--color-primary);
 	color: var(--color-secondary);
@@ -199,17 +209,19 @@ h3::selection {
 
 .community-description {
 	@apply text-center;
-		/* Centers the text horizontally */
-		white-space: normal;
-		/* Allows text to wrap */
-		word-break: break-word;
-		/* Breaks long words if necessary */
-		overflow-wrap: break-word;
-		/* Ensures proper wrapping for long words */
+	/* Centers the text horizontally */
+	white-space: normal;
+	/* Allows text to wrap */
+	word-break: break-word;
+	/* Breaks long words if necessary */
+	overflow-wrap: break-word;
+	/* Ensures proper wrapping for long words */
 }
-p{
+
+p {
 	@apply text-base-100;
 }
+
 p::selection {
 	background: var(--color-primary);
 	color: var(--color-secondary);
@@ -261,6 +273,13 @@ p::selection {
 	/* Prevents the image from resizing */
 }
 
+
+/* Floating button styles */
+button.fixed {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
 
 button.fixed:hover {
 	transform: scale(1.2);
