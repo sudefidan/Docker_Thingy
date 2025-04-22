@@ -309,10 +309,6 @@
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
-	<!-- Top panel with search bar -->
-	<div class="top-panel">
-		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
-	</div>
 	<!-- Main content area -->
 	<div
 		class="gap-13 flex grid w-full max-w-full grid-cols-1 flex-col justify-center md:grid-cols-2"
@@ -320,7 +316,7 @@
 		<!-- Left Column -->
 		<div class="space-y-10">
 			<!-- Profile Section -->
-			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
+			<div class="card bg-base-100 min-h-[35%] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="flex flex-end justify-end">
 						<div class="tooltip-container">
@@ -338,7 +334,7 @@
 					</div>
 					<!-- Profile Image Container -->
 					<div class="flex flex-col items-center">
-						<div class="relative w-50 h-50 mb-5">
+						<div class="relative w-50 h-50 mt-0">
 							<!-- Profile Image or Placeholder -->
 							{#if tempProfilePicture || userProfile.profile_picture}
 								<img
@@ -468,7 +464,7 @@
 									<p class="text-user-info">{userProfile.email}</p>
 								{/if}
 							</div>
-							<div class="flex justify-end gap-2 mt-4" class:invisible={!isEditingProfile}>
+							<div class="flex justify-end gap-2 mt-4 mb-0" class:invisible={!isEditingProfile}>
 								<button
 									class="btn btn-ghost"
 									on:click={cancelEditingProfile}
@@ -494,11 +490,11 @@
 				</div>
 			</div>
 			<!-- Change Password Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-1/2 w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[31%] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
-					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Change Password</h1>
+					<h1 class="text-primary mb-4 text-center text-4xl font-bold">Change Password</h1>
 					<form class="space-y-3" on:submit={handlePasswordChange}>
-						<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
+						<div class="form-control flex flex-col sm:flex-row">
 							<div class="w-full">
 								<label for="current_password" class="label">
 									<span class="label-text">Current Password</span>
@@ -542,7 +538,7 @@
 								</div>
 							</div>
 						</div>
-						<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
+						<div class="form-control flex flex-col gap-3 sm:flex-row">
 							<div class="w-full">
 								<label for="new_password" class="label">
 									<span class="label-text">New Password</span>
@@ -630,7 +626,7 @@
 								</div>
 							</div>
 						</div>
-						<div class="form-control flex justify-center mt-3 mb-0">
+						<div class="form-control flex justify-center mb-0">
 							<button
 								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
 								type="submit"
@@ -652,7 +648,7 @@
 		<!-- Right Column -->
 		<div class="space-y-10">
 			<!-- About Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[32%]  w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
@@ -672,7 +668,7 @@
 						</div>
 					</div>
 					{#if isEditingAbout}
-						<div class="form-control mb-2 flex flex-col gap-3 w-full">
+						<div class="form-control flex flex-col gap-3 w-full">
 							<textarea
 								bind:value={editedAbout}
 								rows="5"
@@ -709,7 +705,7 @@
 				</div>
 			</div>
 			<!-- Socials Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[33%] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
@@ -729,7 +725,7 @@
 						</div>
 					</div>
 					{#if isAddingSocial}
-						<form class="form-control mb-2 flex flex-col gap-3" on:submit={handleAddSocial}>
+						<form class="form-control flex flex-col gap-3" on:submit={handleAddSocial}>
 							<div class="w-full">
 								<label class="label">
 									<span class="label-text">Select Social Media</span>
@@ -824,7 +820,7 @@
 				</div>
 			</div>
 			<!-- Interests Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-1/3 w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[26.5%] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
@@ -846,7 +842,7 @@
 
 					{#if isEditingInterests}
 						<!-- Form to Add Interests -->
-						<form class="form-control mb-2 flex flex-col gap-3" on:submit={addInterest}>
+						<form class="form-control flex flex-col gap-3" on:submit={addInterest}>
 							<div class="w-full">
 								<label class="label">
 									<span class="label-text">Select an interest</span>

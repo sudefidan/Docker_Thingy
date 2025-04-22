@@ -47,7 +47,7 @@
 }
 
 .left-panel {
-	@apply w-1/4 p-4;
+	@apply w-1/4 p-4 flex flex-col;
 }
 
 .main-container {
@@ -118,11 +118,13 @@ input::selection {
 	stroke: var(--color-primary);
 }
 
+.panel-item-user-text {
+	@apply text-secondary;
+}
+
 .custom-input {
 	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2  w-full;
 }
-
-
 
 .placeholder-selected option[value=""] {
 	color: #697282;
