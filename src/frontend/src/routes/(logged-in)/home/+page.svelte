@@ -350,7 +350,7 @@
 				<div class="flex items-center">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						fill="var(--color-base-100)"
+						fill="var(--color-base-content)"
 						viewBox="0 0 24 24"
 						class="w-6 h-6 mr-2 ml-8 mb-0 mt-0"
 					>

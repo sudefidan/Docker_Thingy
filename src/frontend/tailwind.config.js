@@ -23,6 +23,6 @@ module.exports = {
 	},
 	plugins: [require('daisyui')],
 	daisyui: {
-		themes: ['light', 'dark', 'cupcake']
+		themes: ['light', 'dark', 'cupcake', 'autumn', 'forest', 'synthwave', 'retro', 'cyberpunk', 'valentine', 'halloween', 'garden', 'lofi', 'dracula', 'cmyk', 'pastel', 'fantasy']
 	}
 };

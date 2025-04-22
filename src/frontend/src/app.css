@@ -15,11 +15,14 @@
 	color-scheme: dark;
 
 	/* colors*/
-	--color-base-100: #535657;
+	--color-base-100: oklch(82.4% 0 0);
+	--color-base-200: oklch(98% 0 0);
 	/* base color: davy's gray */
-	--color-primary: #b0413e;
+	--color-base-content: oklch(19.162% 0 0);
+
+	--color-primary: oklch(40.723% 0.161 17.53);
 	/* primary color: redwood */
-	--color-secondary: #f4faff;
+	--color-secondary: oklch(98% 0 0);
 	/* secondary color: alice blue */
 	--color-accent: #DEE7E7;
 	--color-placeholder: #A9A9A9;
@@ -46,21 +49,26 @@
 	--noise: 0;
 }
 
-.left-panel {
-	@apply w-1/6 p-4 flex flex-col;
-	min-width: 220px;
-}
 
 .main-container {
 	@apply flex min-h-screen;
 }
 
-.left-panel {
-	@apply w-1/6 p-4 pt-10;
-}
 
 .main-content {
 	@apply flex flex-1 justify-center;
+}
+
+
+
+/*Right panel styles */
+.left-panel {
+	@apply w-1/7 p-4 pt-10 flex flex-col bg-secondary;
+	min-width: 220px;
+}
+
+.left-panel .ul {
+	@apply text-base-content text-2xl;
 }
 
 .panel-item {
@@ -92,6 +100,7 @@
 	/* Align text properly */
 }
 
+/* Top panel styles */
 .top-panel {
 	@apply bg-base-100 w-full pb-4;
 }
@@ -118,15 +127,15 @@ input::selection {
 }
 
 .custom-input-profile {
-	@apply text-base focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2 p-1 h-auto pl-2;
+	@apply text-base-content focus:border-primary bg-secondary text-base-content w-full rounded-md focus:border-2 focus:-outline-offset-2 p-1 h-auto pl-2 outline-none;
 }
 
 .text-user-info {
-	@apply text-lg text-right mr-2 text-base-100 w-full mb-1.75;
+	@apply text-lg text-right mr-2 text-base-content w-full mb-1.75;
 }
 
 .text-user-details {
-	@apply text-lg text-center text-base-100;
+	@apply text-lg text-center text-base-content;
 }
 
 .text-add-more {
@@ -134,11 +143,11 @@ input::selection {
 }
 
 .text-community-category {
-	@apply text-center text-base-100;
+	@apply text-center text-base-content;
 }
 
 .panel-item button svg {
-	stroke: var(--color-base-100);
+	stroke: var(--color-base-content);
 }
 
 .panel-item button:hover svg {
@@ -150,17 +159,16 @@ input::selection {
 }
 
 .custom-input {
-	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2 w-full;
+	@apply focus:border-primary bg-secondary text-base-content w-full rounded-md focus:border-2 focus:-outline-offset-2 w-full outline-none;
 }
 
 .placeholder-selected option[value=""] {
-	color: #697282;
 	outline: var(--color-primary);
 }
 
 
 .text-area-input {
-	@apply focus:border-primary bg-secondary text-base-100 w-full rounded-md focus:border-2 focus:-outline-offset-2;
+	@apply focus:border-primary bg-secondary text-base-content w-full rounded-md focus:border-2 focus:-outline-offset-2 outline-none;
 	white-space: pre-wrap !important;
 	height: auto;
 	word-break: break-word !important;
@@ -179,12 +187,15 @@ input::selection {
 }
 
 select:not(.placeholder-selected) {
-	color: var(--color-base-100);
+	color: var(--color-base-content);
 	outline: var(--color-primary);
 }
 
-h1, h2, h3, .wrap {
-white-space: normal;
+h1,
+h2,
+h3,
+.wrap {
+	white-space: normal;
 	/* Allow text to wrap */
 	word-break: break-word;
 	/* Break long words if necessary */
@@ -192,6 +203,7 @@ white-space: normal;
 	/* Ensure proper wrapping for long words */
 
 }
+
 h1::selection {
 	background: var(--color-primary);
 	color: var(--color-secondary);
@@ -207,6 +219,7 @@ h3::selection {
 	color: var(--color-secondary);
 }
 
+
 .community-description {
 	@apply text-center;
 	/* Centers the text horizontally */
@@ -219,7 +232,7 @@ h3::selection {
 }
 
 p {
-	@apply text-base-100;
+	@apply text-base-content;
 }
 
 p::selection {

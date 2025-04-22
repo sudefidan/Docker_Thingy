@@ -715,7 +715,7 @@
 								</label>
 								<div class="relative flex items-center">
 									<select
-										class="select select-bordered custom-input flex-grow"
+										class="select select-bordered custom-input flex-grow placeholder-selected"
 										bind:value={selectedSocialType}
 										required
 									>
@@ -832,7 +832,7 @@
 								</label>
 								<div class="relative flex items-center">
 									<select
-										class="select select-bordered custom-input flex-grow"
+										class="select select-bordered custom-input flex-grow placeholder-selected"
 										bind:value={newInterest}
 										required
 									>

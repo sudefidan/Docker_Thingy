@@ -490,7 +490,7 @@
 									type="text"
 									bind:value={community_management_selected}
 									required
-									class="select select-bordered custom-input flex-grow"
+									class="select select-bordered validator custom-input placeholder-selected"
 									on:change={get_community_leaders}
 								>
 									<option value={null}>Select a Community</option>
@@ -512,7 +512,7 @@
 										id="action"
 										bind:value={selectedAction}
 										required
-										class="select select-bordered custom-input flex-grow"
+										class="select select-bordered custom-input flex-grow placeholder-selected"
 										on:change={handleActionChange}
 									>
 										<option value="" disabled selected>Select an Action</option>
@@ -590,7 +590,7 @@
 										id="category"
 										bind:value={new_community_category}
 										required
-										class="select select-bordered custom-input flex-grow"
+										class="select select-bordered custom-input flex-grow placeholder-selected"
 									>
 										<option value={null} disabled selected>Pick a new category</option>
 										{#each categories as category}
@@ -620,7 +620,7 @@
 										id="demoteLeader"
 										bind:value={community_member_to_demote}
 										required
-										class="select select-bordered custom-input flex-grow"
+										class="select select-bordered custom-input flex-grow placeholder-selected"
 									>
 										{#if community_leaders.length > 0}
 											<option value={null} disabled selected>Select a User</option>
@@ -652,7 +652,7 @@
 										id="promoteLeader"
 										bind:value={community_member_to_promote}
 										required
-										class="select select-bordered custom-input flex-grow"
+										class="select select-bordered custom-input flex-grow placeholder-selected"
 									>
 										{#if usersList.length > 0}
 											<option value={null} disabled selected>Select a User</option>
@@ -739,7 +739,7 @@
 										id="category"
 										bind:value={category}
 										required
-										class="select select-bordered validator custom-input placeholder-selected outline-base-100 border-base-100"
+										class="select select-bordered validator custom-input placeholder-selected"
 										on:change={updateSelectClass}
 									>
 										<option value="" disabled selected style="color: var(--color-primary);"
