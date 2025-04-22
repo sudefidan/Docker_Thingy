@@ -47,7 +47,8 @@
 }
 
 .left-panel {
-	@apply w-1/4 p-4 flex flex-col;
+	@apply w-1/6 p-4 flex flex-col;
+	min-width: 220px;
 }
 
 .main-container {
@@ -64,6 +65,31 @@
 
 .panel-item {
 	@apply mb-8;
+	/* Flexbox for alignment */
+	font-size: 1.25rem;
+	/* Use relative units for text size */
+	min-width: 200px;
+	/* Prevent excessive shrinking */
+}
+
+.panel-item svg {
+	width: 1.5em;
+	/* Icon size scales with text */
+	height: 1.5em;
+	/* Icon size scales with text */
+	flex-shrink: 0;
+	/* Prevent the icon from shrinking */
+}
+
+.panel-item span {
+	font-size: 1em;
+	/* Text size scales with the parent font size */
+	white-space: nowrap;
+	/* Prevent text from wrapping */
+	flex-grow: 1;
+	/* Allow text to grow proportionally */
+	text-align: left;
+	/* Align text properly */
 }
 
 .top-panel {
