@@ -373,7 +373,7 @@
 								>
 									<BinIcon size={20} />
 
-									<span class="tooltip">Delete</span>
+									<span class="tooltip">Delete Post</span>
 								</button>
 							</div>
 						</div>
