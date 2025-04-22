@@ -16,6 +16,7 @@
 	let community_id = ''; // This is where the selected community will be stored
 	let searchTerm = '';
 	let events = [];
+	let filteredPosts = [];
 	// Search term for filtering
 
 	// Edit Event Form State
@@ -324,6 +325,21 @@
   }
 }
 
+$: filteredEvents = events.filter((e) => {
+  const lowerSearch = searchTerm.toLowerCase();
+  return (
+    e.title.toLowerCase().includes(lowerSearch) ||
+    e.description.toLowerCase().includes(lowerSearch) ||
+    e.event_type.toLowerCase().includes(lowerSearch) ||
+    (e.location && e.location.toLowerCase().includes(lowerSearch)) ||
+    (e.date && e.date.toLowerCase().includes(lowerSearch)) ||
+    (e.community && e.community.toLowerCase().includes(lowerSearch)) ||
+    (e.virtual_link && e.virtual_link.toLowerCase().includes(lowerSearch))
+  );
+});
+
+
+
 	// Run the functions when the component loads
 	onMount(async () => {
 		try {
@@ -565,6 +581,7 @@
 			</div>
 		</div>
 	</div>
+	{#each filteredEvents as event}
 	<!-- Events List -->
 	<div class="card bg-base-100 w-full rounded-3xl mt-5">
 		<div class="card-body bg-secondary rounded-3xl">
@@ -573,7 +590,6 @@
 				<p>No events available.</p>
 			{:else}
 				<div class="events-list">
-					{#each events as event}
 						<div class="event-card">
 							<h3>{event.title}</h3>
 							<p>{event.description}</p>
@@ -614,9 +630,10 @@
 								</button>
 							{/if}
 						</div>
-					{/each}
 				</div>
 			{/if}
 		</div>
 	</div>
+
+	{/each}
 </main>
