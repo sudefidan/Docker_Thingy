@@ -431,11 +431,3 @@
 	</button>
 </main>
 
-<style>
-	/* Floating button styles */
-	button.fixed {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-</style>
