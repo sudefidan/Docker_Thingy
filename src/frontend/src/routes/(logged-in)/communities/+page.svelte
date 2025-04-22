@@ -407,7 +407,7 @@
 	};
 </script>
 
-<main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
+<main class="px-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
 	<!-- Top panel with search bar -->
 	<div class="top-panel">
 		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
