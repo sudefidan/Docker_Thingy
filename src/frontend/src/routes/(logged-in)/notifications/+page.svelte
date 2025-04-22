@@ -59,10 +59,10 @@
 </script>
 
 {#if notifications && Array.isArray(notifications) && notifications.length > 0}
-	<main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
+	<main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5 mt-5">
 		<div class="grid grid-cols-1 gap-4 w-full">
 			{#each notifications as notification}
-				<div class="card bg-base-100 mb-10 shadow-4xl w-full rounded-3xl">
+				<div class="card bg-base-100 mb-5 shadow-4xl w-full rounded-3xl">
 					<div class="card-body bg-secondary rounded-3xl">
 						<div class="w-full">
 							 <p class="text-primary text-2xl">{notification.message}</p>
