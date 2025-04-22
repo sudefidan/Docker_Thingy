@@ -32,6 +32,7 @@
 		interests: []
 	};
 
+	// Function to toggle the post creation modal
 	const togglePostModal = () => {
 		if (showPostModal) {
             // Reset the image preview when closing the modal
@@ -40,10 +41,14 @@
 		showPostModal = !showPostModal;
 	};
 
+	// Function to open the image modal
+	// This function is called when an image is clicked
 	const openImageModal = (imageUrl) => {
 		selectedImage = imageUrl;
 	};
 
+	// Function to close the image modal
+	// This function is called when the modal background is clicked
 	const closeImageModal = () => {
 		selectedImage = null;
 	};
