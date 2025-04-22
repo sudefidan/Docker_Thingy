@@ -302,6 +302,28 @@
 		}
 	}
 
+	async function cancelEvent(eventId) {
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/api/events/${eventId}/cancel/`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      alert('Event cancelled!');
+      // You could reload or redirect here
+    } else {
+      const error = await response.json();
+      alert('Failed to cancel event: ' + error.detail);
+    }
+  } catch (error) {
+    console.error('Error cancelling event:', error);
+  }
+}
+
 	// Run the functions when the component loads
 	onMount(async () => {
 		try {
@@ -582,6 +604,14 @@
 										Leave Event
 									</button>
 								</div>
+							{/if}
+							{#if event.can_cancel}
+								<button
+									class="btn bg-primary text-white hover:bg-primary-focus w-full mt-2"
+									on:click={() => cancelEvent(event.event_id)}
+								>
+									Cancel Event
+								</button>
 							{/if}
 						</div>
 					{/each}
