@@ -44,6 +44,7 @@ class Event(models.Model):
     location = models.CharField(max_length=255, blank=True, null=True)
     event_type = models.ForeignKey(EventType, on_delete=models.CASCADE)
     community = models.ForeignKey(Community, on_delete=models.CASCADE, blank=True, null=True)
+    cancelled = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'Event'

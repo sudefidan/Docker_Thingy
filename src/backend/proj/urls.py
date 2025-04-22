@@ -3,7 +3,7 @@ from django.urls import path, re_path, include
 from app import views
 from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests, GetUserProfile, DeletePostView
 from rest_framework import routers, serializers, viewsets
-from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event, list_events, join_event, leave_event, get_user_managed_events, update_event_field
+from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event, list_events, join_event, leave_event, cancel_event, get_user_managed_events, update_event_field
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -70,6 +70,7 @@ urlpatterns = [
     path('api/events/create/', create_event, name='create_event'),
     path('api/events/<int:event_id>/join/', join_event, name='join_event'),
     path('api/events/<int:event_id>/leave/', leave_event, name='leave_event'),
+    path('api/events/<int:event_id>/cancel/', cancel_event, name='cancel_event'),
     path('api/events/managed/', get_user_managed_events, name='get_user_managed_events'),
     path('api/events/manage/', update_event_field, name='update_event_field'),
 ]

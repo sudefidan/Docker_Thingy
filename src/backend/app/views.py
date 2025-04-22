@@ -1082,12 +1082,48 @@ def list_events(request):
             'event_type': event.event_type.name if event.event_type else None,
             'community': event.community.name if event.community else None,
             'participant_count': EventParticipant.objects.filter(event=event).count(),
-            'is_participating': EventParticipant.objects.filter(event=event, user=user).exists()
+            'is_participating': EventParticipant.objects.filter(event=event, user=user).exists(),
+            'can_cancel': event.community.owner == user or CommunityLeader.objects.filter(community=event.community, user=user).exists()
         }
         for event in events
     ]
 
     return Response(event_list, status=200)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_event(request, event_id):
+    user = request.user
+
+    try:
+        # Get the event
+        event = Event.objects.get(event_id=event_id)
+    except Event.DoesNotExist:
+        return Response({"error": "Event not found."}, status=404)
+
+    # Check if the user is authorized to cancel this event (owner or leader)
+    is_owner = event.community.owner == user
+    is_leader = CommunityLeader.objects.filter(community=event.community, user=user).exists()
+
+    if not (is_owner or is_leader):
+        return Response({"error": "Permission denied."}, status=403)
+
+    # Cancel the event
+    event.is_cancelled = True 
+    event.save()
+
+    # Get the attendees (participants) for the event
+    attendees = EventParticipant.objects.filter(event=event)
+
+    # Send notifications to the attendees about the event cancellation
+    for attendee in attendees:
+        message = f"The event '{event.title}' has been cancelled."
+        create_notification(attendee.user.id, message)
+        
+    # Deletes event after sending notification
+    event.delete()
+
+    return Response({"message": f"Event '{event.title}' has been cancelled."})
 
 # @api_view(['GET', 'POST'])
 # @permission_classes([IsAuthenticated])
