@@ -199,23 +199,20 @@ p::selection {
 .tooltip {
 	visibility: hidden;
 	background-color: var(--color-primary);
-	/* Customize the background color */
 	color: var(--color-secondary);
-	/* Customize the text color */
 	text-align: center;
 	padding: 5px 10px;
 	border-radius: 5px;
 	position: absolute;
 	z-index: 9999;
 	top: 125%;
-	/* Position below the button */
 	left: 50%;
 	transform: translateX(-50%);
 	opacity: 0;
 	transition: opacity 0.3s;
 	font-size: 0.875rem;
-	/* Adjust font size */
 }
+
 
 /* Show the tooltip on hover */
 .tooltip-container:hover .tooltip {
@@ -225,7 +222,26 @@ p::selection {
 
 /* Upload Image button */
 .upload-button {
-	@apply bg-base-100/75 text-gray-800 rounded-full p-2 absolute inset-0 flex items-center justify-center;
+	@apply bg-base-100 text-primary rounded-full opacity-80;
 }
+
+/*Home Page Profile Pictures on Posts */
+.profile-picture {
+	width: 50px;
+	height: 50px;
+	border-radius: 50%;
+	object-fit: cover;
+	flex-shrink: 0;
+	/* Prevents the image from resizing */
+}
+
+
+button.fixed:hover {
+	transform: scale(1.2);
+	/* Makes the button 20% bigger */
+	transition: transform 0.2s ease-in-out;
+	/* Smooth transition */
+}
+
 
 @source "../node_modules/flowbite-svelte/dist";
