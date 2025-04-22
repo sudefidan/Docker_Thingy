@@ -252,7 +252,7 @@
 							<select
 								id="community"
 								bind:value={selectedCommunityId}
-								class="select select-bordered custom-input mb-3"
+								class="select select-bordered custom-input mb-3 placeholder-selected"
 							>
 								<option value="" disabled selected>Everyone</option>
 								{#each subscribedCommunities as community}
