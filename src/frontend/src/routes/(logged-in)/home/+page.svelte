@@ -35,9 +35,9 @@
 	// Function to toggle the post creation modal
 	const togglePostModal = () => {
 		if (showPostModal) {
-            // Reset the image preview when closing the modal
-            postImage = null;
-        }
+			// Reset the image preview when closing the modal
+			postImage = null;
+		}
 		showPostModal = !showPostModal;
 	};
 
@@ -71,7 +71,6 @@
 			await fetchPosts();
 			await fetchSubscribedCommunities();
 			await fetchPosts();
-			
 		}
 	});
 
@@ -97,28 +96,25 @@
 	// Fetch all posts made
 	// only include posts from subscribed communities
 	const fetchPosts = async () => {
-  	const response = await fetch('http://127.0.0.1:8000/api/get_posts/', {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${access_token}` }
-  });
+		const response = await fetch('http://127.0.0.1:8000/api/get_posts/', {
+			method: 'GET',
+			headers: { Authorization: `Bearer ${access_token}` }
+		});
 
-  const data = await response.json();
-  if (response.ok) {
-    posts = await Promise.all(
-      data
-        .filter((post) => !post.community_id || isUserSubscribedToCommunity(post.community_id)) // Only include posts from subscribed communities
-        .map(async (post) => {
-          const userProfile = await fetchUserProfileForPost(post.user_id);
-          return { ...post, userProfile };
-        })
-    );
-  } else {
-    console.error('Failed to fetch posts:', data);
-  }
-};
-
-
-
+		const data = await response.json();
+		if (response.ok) {
+			posts = await Promise.all(
+				data
+					.filter((post) => !post.community_id || isUserSubscribedToCommunity(post.community_id)) // Only include posts from subscribed communities
+					.map(async (post) => {
+						const userProfile = await fetchUserProfileForPost(post.user_id);
+						return { ...post, userProfile };
+					})
+			);
+		} else {
+			console.error('Failed to fetch posts:', data);
+		}
+	};
 
 	// Fetch the user's profile for a given post
 	const fetchUserProfileForPost = async (userId) => {
@@ -229,35 +225,34 @@
 	};
 	// checks if user is subscribed to that community
 	function isUserSubscribedToCommunity(communityId) {
-  	return subscribedCommunities.some((community) => community.id === communityId);
-}
-// retrieves the users details, but more importantly their profile picture for the creation of a post
-const fetchUserProfile = async () => {
-    try {
-        const response = await fetch(`http://127.0.0.1:8000/api/user-profile/${loggedInUserId}/`, {
-            method: 'GET',
-            headers: { Authorization: `Bearer ${access_token}` }
-        });
+		return subscribedCommunities.some((community) => community.id === communityId);
+	}
+	// retrieves the users details, but more importantly their profile picture for the creation of a post
+	const fetchUserProfile = async () => {
+		try {
+			const response = await fetch(`http://127.0.0.1:8000/api/user-profile/${loggedInUserId}/`, {
+				method: 'GET',
+				headers: { Authorization: `Bearer ${access_token}` }
+			});
 
-        if (response.ok) {
-            const profileData = await response.json();
-            userProfile = {
-                username: profileData.username,
-                profile_picture: profileData.profile_picture || '',
-                first_name: profileData.first_name,
-                last_name: profileData.last_name,
-                email: profileData.email,
-                social_type: profileData.social_type,
-                social_username: profileData.social_username,
-                about: profileData.about,
-                interests: profileData.interests
-            };
-        }
-    } catch (error) {
-        console.error('Error fetching user profile:', error);
-    }
-};
-
+			if (response.ok) {
+				const profileData = await response.json();
+				userProfile = {
+					username: profileData.username,
+					profile_picture: profileData.profile_picture || '',
+					first_name: profileData.first_name,
+					last_name: profileData.last_name,
+					email: profileData.email,
+					social_type: profileData.social_type,
+					social_username: profileData.social_username,
+					about: profileData.about,
+					interests: profileData.interests
+				};
+			}
+		} catch (error) {
+			console.error('Error fetching user profile:', error);
+		}
+	};
 </script>
 
 <main class="px-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -272,7 +267,10 @@ const fetchUserProfile = async () => {
 			class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
 			on:click={togglePostModal}
 		>
-			<div class="card bg-secondary pl-5 pb-7 pr-7 pt-10 rounded-3xl w-full max-w-5xl" on:click|stopPropagation>
+			<div
+				class="card bg-secondary pl-5 pb-7 pr-7 pt-10 rounded-3xl w-full max-w-5xl"
+				on:click|stopPropagation
+			>
 				<form id="post-form" class="space-y-4" on:submit|preventDefault={createPost}>
 					<div class="flex items-start">
 						<!-- TODO: Show User's Profile Picture -->
@@ -367,16 +365,15 @@ const fetchUserProfile = async () => {
 								</div>
 							</div>
 							<!-- Add Post Button -->
-						<div class="flex justify-end w-full">
-							<button
-								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
-								type="submit"
-							>
-								Post
-							</button>
+							<div class="flex justify-end w-full">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									type="submit"
+								>
+									Post
+								</button>
+							</div>
 						</div>
-						</div>
-
 					</div>
 				</form>
 			</div>
@@ -388,20 +385,22 @@ const fetchUserProfile = async () => {
 			<div class="card-body bg-secondary rounded-3xl">
 				<!-- Community name next to the icon -->
 				<div class="flex items-center">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						fill="var(--color-base-content)"
-						viewBox="0 0 24 24"
-						class="w-6 h-6 mr-2 ml-8 mb-0 mt-0"
-					>
-						<path
-							d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z"
-						/>
-						<path
-							d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z"
-						/>
-					</svg>
-					<p class="text-accent text-sm">{p.community_name}</p>
+
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="var(--color-base-content)"
+							viewBox="0 0 24 24"
+							class="w-6 h-6 mr-2 ml-8 mb-0 mt-0"
+						>
+							<path
+								d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z"
+							/>
+							<path
+								d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z"
+							/>
+						</svg>
+						<p class="text-accent text-sm">{p.community_name}</p>
+					
 					<!-- Remove button for the post -->
 					{#if p.user_id === loggedInUserId}
 						<div class="flex flex-end justify-end">
@@ -475,4 +474,3 @@ const fetchUserProfile = async () => {
 		<AddIconNoCircle size={28} />
 	</button>
 </main>
-

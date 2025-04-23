@@ -88,7 +88,7 @@ class login_user(APIView):
             else:
                 username = identifier
         except User.DoesNotExist:
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)    
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
         user = authenticate(username=username, password=password)
         if user:
@@ -317,11 +317,11 @@ def get_users(request):
 @permission_classes([IsAuthenticated])
 def get_posts(request):
     posts = Post.objects.all().order_by('-date')
-    
+
     posts_data = []
     for post in posts:
         community_id = post.community.community_id if post.community else None
-        community_name = post.community.name if post.community else 'No Community'
+        community_name = post.community.name if post.community else 'Everyone'
         posts_data.append({
             'id': post.post_id,
             'title': post.title,
@@ -332,7 +332,7 @@ def get_posts(request):
             'community_id': community_id,
             'community_name': community_name,
         })
-    
+
     return JsonResponse(posts_data, safe=False, status=200)
 
 
@@ -348,11 +348,11 @@ def create_post(request):
         content = request.data.get('content')
         date = request.data.get('date')
         community_id = request.data.get('community_id', None)
-        image_file = request.FILES.get('image') 
+        image_file = request.FILES.get('image')
 
         if not title or not content:
             return Response({'error': 'Title and content are required!'}, status=400)
-        
+
         if community_id == 'null':
             community_id = None
 
@@ -381,7 +381,7 @@ def create_post(request):
                 image_data = image_file.read()
                 post_image = PostImage.objects.create(
                     post=post,
-                    image=image_data  
+                    image=image_data
                 )
 
             except Exception as e:
@@ -406,7 +406,7 @@ def get_post_image(request, post_id):
     try:
         post_image = PostImage.objects.get(post__post_id=post_id)
         if post_image.image:
-            return HttpResponse(post_image.image, content_type='image/jpeg') 
+            return HttpResponse(post_image.image, content_type='image/jpeg')
         else:
             return HttpResponse(status=404)
     except PostImage.DoesNotExist:
@@ -797,7 +797,7 @@ def update_community_description(request):
         message = f"The community '{community.name}' has changed it's description to '{new_description}'."
         create_notification(user.id, message)
 
-    
+
 
     community.description = new_description
     community.save()
@@ -1016,7 +1016,7 @@ def create_event(request):
     date_str = data.get('date')
     virtual_link = data.get('virtual_link')
     location = data.get('location')
-    event_type_name = data.get('event_type') 
+    event_type_name = data.get('event_type')
     community_id = data.get('community_id')
 
     # Validate required fields
@@ -1110,7 +1110,7 @@ def cancel_event(request, event_id):
         return Response({"error": "Permission denied."}, status=403)
 
     # Cancel the event
-    event.is_cancelled = True 
+    event.is_cancelled = True
     event.save()
 
     # Get the attendees (participants) for the event
@@ -1120,7 +1120,7 @@ def cancel_event(request, event_id):
     for attendee in attendees:
         message = f"The event '{event.title}' has been cancelled."
         create_notification(attendee.user.id, message)
-        
+
     # Deletes event after sending notification
     event.delete()
 
@@ -1220,8 +1220,8 @@ class GetUserProfile(APIView):
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "about": user.about, 
-                "profile_picture": profile_picture_base64, 
+                "about": user.about,
+                "profile_picture": profile_picture_base64,
                 "social_links": [
                     {"social_type": link['social_type__social_type'], "social_username": link['social_username']}
                     for link in social_links
@@ -1235,7 +1235,7 @@ class GetUserProfile(APIView):
             return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
         except Exception as e:
-    
+
             return Response({"error": "An error occurred.", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeletePostView(APIView):
@@ -1245,7 +1245,7 @@ class DeletePostView(APIView):
             post = Post.objects.get(pk=post_id)
             if post.user.id != request.user.id:
                 return Response({"detail": "Not authorized to delete this post."}, status=status.HTTP_403_FORBIDDEN)
-            
+
             post.delete()
             return Response({"detail": "Post deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
@@ -1283,11 +1283,11 @@ def leave_event(request, event_id):
     try:
         participant = EventParticipant.objects.get(event=event, user=user)
         participant.delete()
-        
+
         # Create notification for event creator
         message = f"{user.username} has left your event '{event.title}'"
         create_notification(event.community.owner.id, message)
-        
+
         return Response({"message": "Successfully left the event!"}, status=status.HTTP_200_OK)
     except EventParticipant.DoesNotExist:
         return Response({"error": "You are not participating in this event!"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1444,7 +1444,7 @@ def update_event_field(request):
         for participant in participants:
             if participant.user != user: # Don't notify the editor
                 if field_to_update == 'title':
-                    message = f"The title of an event has been updated to '{new_value}'!" 
+                    message = f"The title of an event has been updated to '{new_value}'!"
                 else:
                     message = f"The details for event '{event.title}' have been updated. The {field_to_update} was changed to '{new_value}'!"
                 create_notification(participant.user.id, message)
