@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import BinIcon from '../../../assets/BinIcon.svelte';
 	import MediaIcon from '../../../assets/MediaIcon.svelte';
@@ -19,6 +19,7 @@
 	let postImage = null; // To store the selected image file
 	let selectedImage = null; // To store the selected image for enlargement
 	let showPostModal = false; // To control the visibility of the post modal
+	let currentTime = new Date(); // Track the current time
 
 	let userProfile = {
 		profile_picture: '',
@@ -31,6 +32,57 @@
 		about: '',
 		interests: []
 	};
+
+	// Function to format the date
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        const diffInMs = currentTime - date; // Difference in milliseconds
+        const diffInSeconds = Math.floor(diffInMs / 1000); // Difference in seconds
+        const diffInMinutes = Math.floor(diffInSeconds / 60); // Difference in minutes
+        const diffInHours = Math.floor(diffInMinutes / 60); // Difference in hours
+        const diffInDays = Math.floor(diffInHours / 24); // Difference in days
+
+        if (diffInSeconds < 60) {
+            // If less than a minute, show seconds as "sec"
+            return "Just now";
+        } else if (diffInMinutes < 60) {
+            // If less than an hour, show minutes as "m"
+            return `${diffInMinutes}m`;
+        } else if (diffInHours < 24) {
+            // If less than 24 hours, show hours as "h"
+            return `${diffInHours}h`;
+        } else if (diffInDays < 7) {
+            // If within the last week, show days as "d"
+            return `${diffInDays}d`;
+        } else {
+            // Otherwise, format as "MMM dd" or "MMM dd, yyyy" if not the current year
+            const currentYear = new Date().getFullYear();
+            const options = {
+                month: 'short',
+                day: 'numeric',
+            };
+
+            if (date.getFullYear() !== currentYear) {
+                options.year = 'numeric';
+            }
+
+            return new Intl.DateTimeFormat('en-US', options).format(date);
+        }
+    }
+
+
+	// Update the current time every second
+    let interval;
+    onMount(() => {
+        interval = setInterval(() => {
+            currentTime = new Date(); // Update the current time
+        }, 1000); // Update every second
+    });
+
+    onDestroy(() => {
+        clearInterval(interval); // Clear the interval when the component is destroyed
+    });
+
 
 	// Function to toggle the post creation modal
 	const togglePostModal = () => {
@@ -111,6 +163,7 @@
 						return { ...post, userProfile };
 					})
 			);
+			console.log('Posts:', posts);
 		} else {
 			console.error('Failed to fetch posts:', data);
 		}
@@ -400,7 +453,7 @@
 							/>
 						</svg>
 						<p class="text-accent text-sm">{p.community_name}</p>
-					
+
 					<!-- Remove button for the post -->
 					{#if p.user_id === loggedInUserId}
 						<div class="flex flex-end justify-end">
@@ -434,6 +487,7 @@
 							{p.userProfile.first_name}
 							{p.userProfile.last_name}
 							<span class="font-normal">@{p.userProfile.username}</span>
+							<span class="font-normal">· {formatDate(p.date)}</span>
 						</p>
 						<h3 class="text-primary text-lg font-bold">{p.title}</h3>
 						<p class="text-base-100 overflow-auto text-ellipsis" style="word-break: break-word;">
