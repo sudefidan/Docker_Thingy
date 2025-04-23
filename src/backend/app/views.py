@@ -343,17 +343,18 @@ def get_posts(request):
 @permission_classes([IsAuthenticated])
 def create_post(request):
     if request.method == 'POST':
-        print(request.data)  # Log incoming data to check what is sent from the frontend
-        print(request.FILES) # Log uploaded files
 
         title = request.data.get('title')
         content = request.data.get('content')
         date = request.data.get('date')
-        community_id = request.data.get('community_id')
-        image_file = request.FILES.get('image')  # Get the uploaded image file
+        community_id = request.data.get('community_id', None)
+        image_file = request.FILES.get('image') 
 
         if not title or not content:
             return Response({'error': 'Title and content are required!'}, status=400)
+        
+        if community_id == 'null':
+            community_id = None
 
         # If no community_id is provided or it's empty set community to None
         if not community_id:
@@ -371,7 +372,7 @@ def create_post(request):
             content=content,
             date=date,
             user=request.user,
-            community=community  # If community is None, post will have no community
+            community=community
         )
         image_url = None
         # if an image is attached to the post this will handle it

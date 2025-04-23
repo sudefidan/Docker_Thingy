@@ -69,6 +69,7 @@
 			loggedInUserId = getLoggedInUserIdFromToken(access_token);
 			await fetchPosts();
 			await fetchSubscribedCommunities();
+			await fetchPosts();
 		}
 	});
 
@@ -92,24 +93,30 @@
 	};
 
 	// Fetch all posts made
+	// only include posts from subscribed communities
 	const fetchPosts = async () => {
-		const response = await fetch('http://127.0.0.1:8000/api/get_posts/', {
-			method: 'GET',
-			headers: { Authorization: `Bearer ${access_token}` }
-		});
+  	const response = await fetch('http://127.0.0.1:8000/api/get_posts/', {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${access_token}` }
+  });
 
-		const data = await response.json();
-		if (response.ok) {
-			posts = await Promise.all(
-				data.map(async (post) => {
-					const userProfile = await fetchUserProfileForPost(post.user_id);
-					return { ...post, userProfile };
-				})
-			);
-		} else {
-			console.error('Failed to fetch posts:', data);
-		}
-	};
+  const data = await response.json();
+  if (response.ok) {
+    posts = await Promise.all(
+      data
+        .filter((post) => !post.community_id || isUserSubscribedToCommunity(post.community_id)) // Only include posts from subscribed communities
+        .map(async (post) => {
+          const userProfile = await fetchUserProfileForPost(post.user_id);
+          return { ...post, userProfile };
+        })
+    );
+  } else {
+    console.error('Failed to fetch posts:', data);
+  }
+};
+
+
+
 
 	// Fetch the user's profile for a given post
 	const fetchUserProfileForPost = async (userId) => {
@@ -218,6 +225,11 @@
 			alert('An error occurred while deleting the post');
 		}
 	};
+	// checks if user is subscribed to that community
+	function isUserSubscribedToCommunity(communityId) {
+  	return subscribedCommunities.some((community) => community.id === communityId);
+}
+
 </script>
 
 <main class="px-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
