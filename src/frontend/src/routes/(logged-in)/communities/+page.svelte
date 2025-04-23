@@ -493,7 +493,7 @@
 									class="select select-bordered validator custom-input placeholder-selected"
 									on:change={get_community_leaders}
 								>
-									<option value={null}>Select a Community</option>
+									<option value={null} disabled selected>Select a Community</option>
 									{#each communities as community}
 										{#if community.owner_id === loggedInUserId}
 											<option value={community.community_id}>{community.name}</option>

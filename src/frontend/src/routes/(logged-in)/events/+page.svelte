@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import AddIconNoCircle from '../../../assets/AddIconNoCircle.svelte';
 
 	let access_token;
 	let loggedInUserId = null;
@@ -12,12 +13,11 @@
 	let date = '';
 	let virtualLinkInput = '';
 	let locationInput = '';
-	let event_type = 'in-person';
+	let event_type = '';
 	let community_id = ''; // This is where the selected community will be stored
-	let searchTerm = '';
-	let events = [];
-	let filteredPosts = [];
-	// Search term for filtering
+	let searchTerm = ''; // Search term for filtering events
+	let events = []; // List of events fetched from API
+	let showEventModal = false; // Controls the visibility of the event modal
 
 	// Edit Event Form State
 	let editEventId = null; // Still useful to know which event we're editing
@@ -29,6 +29,18 @@
 	let editEventType = '';
 	let selectedEventEditCategory = '';
 	let allowedToEdit = false;
+
+	// Function to toggle the post creation modal
+	const toggleEventModal = () => {
+		showEventModal = !showEventModal;
+	};
+
+	// Function to adjust the height of the textarea dynamically
+	function adjustTextareaHeight(event) {
+		const textarea = event.target;
+		textarea.style.height = 'auto'; // Reset the height
+		textarea.style.height = `${textarea.scrollHeight}px`; // Set the height to the scroll height
+	}
 
 	// Retrieve the logged-in user's ID from the JWT token
 	function getLoggedInUserIdFromToken(token) {
@@ -304,41 +316,39 @@
 	}
 
 	async function cancelEvent(eventId) {
-  try {
-    const response = await fetch(`http://127.0.0.1:8000/api/events/${eventId}/cancel/`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+		try {
+			const response = await fetch(`http://127.0.0.1:8000/api/events/${eventId}/cancel/`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+					'Content-Type': 'application/json'
+				}
+			});
 
-    if (response.ok) {
-      alert('Event cancelled!');
-      // You could reload or redirect here
-    } else {
-      const error = await response.json();
-      alert('Failed to cancel event: ' + error.detail);
-    }
-  } catch (error) {
-    console.error('Error cancelling event:', error);
-  }
-}
+			if (response.ok) {
+				alert('Event cancelled!');
+				// You could reload or redirect here
+			} else {
+				const error = await response.json();
+				alert('Failed to cancel event: ' + error.detail);
+			}
+		} catch (error) {
+			console.error('Error cancelling event:', error);
+		}
+	}
 
-$: filteredEvents = events.filter((e) => {
-  const lowerSearch = searchTerm.toLowerCase();
-  return (
-    e.title.toLowerCase().includes(lowerSearch) ||
-    e.description.toLowerCase().includes(lowerSearch) ||
-    e.event_type.toLowerCase().includes(lowerSearch) ||
-    (e.location && e.location.toLowerCase().includes(lowerSearch)) ||
-    (e.date && e.date.toLowerCase().includes(lowerSearch)) ||
-    (e.community && e.community.toLowerCase().includes(lowerSearch)) ||
-    (e.virtual_link && e.virtual_link.toLowerCase().includes(lowerSearch))
-  );
-});
-
-
+	$: filteredEvents = events.filter((e) => {
+		const lowerSearch = searchTerm.toLowerCase();
+		return (
+			e.title.toLowerCase().includes(lowerSearch) ||
+			e.description.toLowerCase().includes(lowerSearch) ||
+			e.event_type.toLowerCase().includes(lowerSearch) ||
+			(e.location && e.location.toLowerCase().includes(lowerSearch)) ||
+			(e.date && e.date.toLowerCase().includes(lowerSearch)) ||
+			(e.community && e.community.toLowerCase().includes(lowerSearch)) ||
+			(e.virtual_link && e.virtual_link.toLowerCase().includes(lowerSearch))
+		);
+	});
 
 	// Run the functions when the component loads
 	onMount(async () => {
@@ -405,71 +415,169 @@ $: filteredEvents = events.filter((e) => {
 		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
 	</div>
 	<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-		<div class="card bg-base-100 w-full rounded-3xl">
-			<div class="card-body bg-secondary rounded-3xl">
-				{#if allowedToCreate}
-					<!-- Your form fields here -->
-					<form on:submit={submitEvent} id="createEventForm" class="form-container">
-						<div class="form-group">
-							<label for="title">Title:</label>
-							<input type="text" bind:value={title} id="title" class="form-input" required />
+		<!-- Create Event Form -->
+		{#if allowedToCreate && showEventModal}
+			<div
+				style="background-color: rgba(0, 0, 0, 0.8);"
+				class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+				on:click={toggleEventModal}
+			>
+				<div class="card bg-secondary pl-5 pb-7 pr-7 pt-10 rounded-3xl w-full max-w-3xl" on:click|stopPropagation>
+					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Create Event</h1>
+					<form on:submit|preventDefault={submitEvent} id="createEventForm" class="form-container">
+						<!-- Community Selection -->
+						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+							<div class="w-full">
+								<label for="community" class="label">
+									<span class="label-text">Community</span>
+								</label>
+								<div class="relative">
+									<select
+										id="community"
+										bind:value={community_id}
+										required
+										class="select select-bordered validator custom-input placeholder-selected"
+									>
+										<option value="" disabled selected>Select a community</option>
+										{#if communities.length === 0}
+											<option disabled>No communities found</option>
+										{:else}
+											{#each communities as community}
+												<option value={community.community_id}>{community.name}</option>
+											{/each}
+										{/if}
+									</select>
+								</div>
+							</div>
 						</div>
-
-						<div class="form-group">
-							<label for="description">Description:</label>
-							<textarea bind:value={description} id="description" class="form-input" required
-							></textarea>
+						<!-- Title Input -->
+						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row w-full">
+							<div class="w-full">
+								<label for="title" class="label">
+									<span class="label-text">Title</span>
+								</label>
+								<div class="relative">
+									<input
+										type="text"
+										id="title"
+										bind:value={title}
+										required
+										class="input input-bordered validator custom-input"
+										placeholder="What's your event's title?"
+									/>
+								</div>
+							</div>
 						</div>
-
-						<div class="form-group">
-							<label for="date">Date:</label>
-							<input type="date" bind:value={date} id="date" class="form-input" required />
+						<!-- Description Input -->
+						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+							<div class="w-full">
+								<label for="description" class="label">
+									<span class="label-text">Description</span>
+								</label>
+								<div class="relative">
+									<textarea
+										id="description"
+										bind:value={description}
+										required
+										class="input input-bordered text-area-input"
+										placeholder="What's your event's description?"
+										on:input={adjustTextareaHeight}
+									/>
+								</div>
+							</div>
 						</div>
-
-						<div class="form-group">
-							<label for="virtual_link">Virtual Link:</label>
-							<input
-								type="url"
-								bind:value={virtualLinkInput}
-								id="virtual_link"
-								class="form-input"
-							/>
+						<!-- Date Input -->
+						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+							<div class="w-full">
+								<label for="date" class="label">
+									<span class="label-text">Date</span>
+								</label>
+								<div class="relative">
+									<input
+										type="date"
+										id="date"
+										bind:value={date}
+										required
+										class="input input-bordered validator custom-input placeholder-selected"
+										placeholder="When is the event?"
+									/>
+								</div>
+							</div>
 						</div>
-
-						<div class="form-group">
-							<label for="location">Location:</label>
-							<input type="text" bind:value={locationInput} id="location" class="form-input" />
+						<!-- Type Input -->
+						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+							<div class="w-full">
+								<label for="event_type" class="label">
+									<span class="label-text">Type</span>
+								</label>
+								<div class="relative">
+									<select
+										id="event_type"
+										bind:value={event_type}
+										required
+										class="select select-bordered validator custom-input placeholder-selected"
+									>
+										<option value="" disabled selected>Is it virtual or in person event?</option>
+										<option value="in-person">In-Person</option>
+										<option value="virtual">Virtual</option>
+									</select>
+								</div>
+							</div>
 						</div>
+						<!-- Location Input -->
+						{#if event_type === 'in-person'}
+							<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row w-full">
+								<div class="w-full">
+									<label for="location" class="label">
+										<span class="label-text">Venue</span>
+									</label>
+									<div class="relative">
+										<input
+											type="text"
+											id="location"
+											bind:value={locationInput}
+											required
+											class="input input-bordered validator custom-input"
+											placeholder="Where's the location of the event?"
+										/>
+									</div>
+								</div>
+							</div>
+						{/if}
 
-						<div class="form-group">
-							<label for="event_type">Event Type:</label>
-							<select bind:value={event_type} id="event_type" class="form-input" required>
-								<option value="virtual">Virtual</option>
-								<option value="in-person">In-Person</option>
-							</select>
+						<!-- Virtual Link Input -->
+						{#if event_type === 'virtual'}
+							<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row w-full">
+								<div class="w-full">
+									<label for="virtual_link" class="label">
+										<span class="label-text">Virtual Link</span>
+									</label>
+									<div class="relative">
+										<input
+											type="url"
+											id="location"
+											bind:value={virtualLinkInput}
+											required
+											class="input input-bordered validator custom-input placeholder-selected"
+											placeholder="Type the link to your event"
+										/>
+									</div>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Submit Button -->
+						<div class="mb-2 mt-2 flex justify-center text-center">
+							<button
+								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+								type="submit">Create</button
+							>
 						</div>
-
-						<div class="form-group">
-							<label for="community">Community:</label>
-							<select bind:value={community_id} id="community" class="form-input" required>
-								<option value="" disabled selected>-- Choose a community --</option>
-								{#if communities.length === 0}
-									<option disabled>No communities found</option>
-								{:else}
-									{#each communities as community}
-										<option value={community.community_id}>{community.name}</option>
-									{/each}
-								{/if}
-							</select>
-						</div>
-
-						<button type="submit" class="submit-btn">Create Event</button>
 					</form>
-				{:else}
-					<p>You do not have permission to create events.</p>
-				{/if}
+				</div>
 			</div>
-		</div>
+		{/if}
+
 		<div class="card bg-base-100 w-full rounded-3xl">
 			<div class="card-body bg-secondary rounded-3xl">
 				{#if allowedToEdit}
@@ -582,14 +690,14 @@ $: filteredEvents = events.filter((e) => {
 		</div>
 	</div>
 	{#each filteredEvents as event}
-	<!-- Events List -->
-	<div class="card bg-base-100 w-full rounded-3xl mt-5">
-		<div class="card-body bg-secondary rounded-3xl">
-			<h2>Your Events</h2>
-			{#if events.length === 0}
-				<p>No events available.</p>
-			{:else}
-				<div class="events-list">
+		<!-- Events List -->
+		<div class="card bg-base-100 w-full rounded-3xl mt-5">
+			<div class="card-body bg-secondary rounded-3xl">
+				<h2>Your Events</h2>
+				{#if events.length === 0}
+					<p>No events available.</p>
+				{:else}
+					<div class="events-list">
 						<div class="event-card">
 							<h3>{event.title}</h3>
 							<p>{event.description}</p>
@@ -630,10 +738,17 @@ $: filteredEvents = events.filter((e) => {
 								</button>
 							{/if}
 						</div>
-				</div>
-			{/if}
+					</div>
+				{/if}
+			</div>
 		</div>
-	</div>
-
 	{/each}
+
+	<!-- Floating Add Button -->
+	<button
+		class="fixed bottom-5 right-5 bg-primary text-secondary p-4 rounded-full shadow-lg hover:bg-primary-focus z-50"
+		on:click={toggleEventModal}
+	>
+		<AddIconNoCircle size={28} />
+	</button>
 </main>
