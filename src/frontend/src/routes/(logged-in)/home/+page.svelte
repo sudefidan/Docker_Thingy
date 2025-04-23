@@ -67,9 +67,11 @@
 			goto('http://localhost:5173/');
 		} else {
 			loggedInUserId = getLoggedInUserIdFromToken(access_token);
+			await fetchUserProfile();
 			await fetchPosts();
 			await fetchSubscribedCommunities();
 			await fetchPosts();
+			
 		}
 	});
 
@@ -229,6 +231,32 @@
 	function isUserSubscribedToCommunity(communityId) {
   	return subscribedCommunities.some((community) => community.id === communityId);
 }
+// retrieves the users details, but more importantly their profile picture for the creation of a post
+const fetchUserProfile = async () => {
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/api/user-profile/${loggedInUserId}/`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${access_token}` }
+        });
+
+        if (response.ok) {
+            const profileData = await response.json();
+            userProfile = {
+                username: profileData.username,
+                profile_picture: profileData.profile_picture || '',
+                first_name: profileData.first_name,
+                last_name: profileData.last_name,
+                email: profileData.email,
+                social_type: profileData.social_type,
+                social_username: profileData.social_username,
+                about: profileData.about,
+                interests: profileData.interests
+            };
+        }
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+    }
+};
 
 </script>
 
