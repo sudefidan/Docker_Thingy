@@ -3,7 +3,6 @@
 	import { goto } from '$app/navigation';
 	import BinIcon from '../../../assets/BinIcon.svelte';
 	import MediaIcon from '../../../assets/MediaIcon.svelte';
-	import LocationIcon from '../../../assets/LocationIcon.svelte';
 	import ProfilePictureIcon from '../../../assets/ProfilePictureIcon.svelte';
 	import AddIconNoCircle from '../../../assets/AddIconNoCircle.svelte';
 
@@ -397,24 +396,6 @@
 										on:change={handleImageChange}
 									/>
 									<span class="tooltip">Add Media</span>
-								</div>
-								<!-- Add Location-->
-								<div class="relative tooltip-container">
-									<label
-										for="file-upload"
-										class="cursor-pointer flex items-center justify-center text-base-100 hover:text-primary"
-									>
-										<LocationIcon size={24} />
-										<span class="tooltip">Add Location</span>
-									</label>
-									<!-- TODO: It is copied from file input but it must changed to location -->
-									<input
-										id="file-upload"
-										type="file"
-										accept="image/*"
-										class="hidden"
-										on:change={handleImageChange}
-									/>
 								</div>
 							</div>
 							<!-- Add Post Button -->
