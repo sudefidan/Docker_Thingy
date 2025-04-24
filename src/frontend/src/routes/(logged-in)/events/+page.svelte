@@ -711,32 +711,36 @@
 								</p>
 							{/if}
 							<p><strong>Community:</strong> {event.community}</p>
-							{#if !event.is_participating}
+							{#if !event.is_owner}
+								{#if !event.is_participating}
 								<button
 									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto mt-3"
 									on:click={() => joinEvent(event.event_id)}
 								>
 									Join Event
 								</button>
-							{:else}
+								{:else}
 								<div class="flex flex-col items-start gap-2">
 									<p class="text-primary mt-3">You are participating in this event</p>
 									<button
-										class="btn btn-error text-secondary hover:bg-error-focus w-fit"
-										on:click={() => leaveEvent(event.event_id)}
+									class="btn btn-error text-secondary hover:bg-error-focus w-fit"
+									on:click={() => leaveEvent(event.event_id)}
 									>
-										Leave Event
+									Leave Event
 									</button>
 								</div>
+								{/if}
 							{/if}
-							{#if event.can_cancel}
-								<button
-									class="btn bg-primary text-white hover:bg-primary-focus w-full mt-2"
-									on:click={() => cancelEvent(event.event_id)}
-								>
-									Cancel Event
-								</button>
-							{/if}
+
+						<!-- Show Cancel Event button only if the user is the owner or a leader -->
+						{#if event.can_cancel}
+							<button
+							class="btn bg-primary text-white hover:bg-primary-focus w-full mt-2"
+							on:click={() => cancelEvent(event.event_id)}
+							>
+							Cancel Event
+							</button>
+						{/if}
 						</div>
 					</div>
 				{/if}

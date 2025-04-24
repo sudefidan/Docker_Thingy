@@ -1051,8 +1051,11 @@ def create_event(request):
         virtual_link=virtual_link,
         location=location,
         event_type=event_type,
-        community=community
+        community=community,
     )
+
+    if not is_owner:
+        EventParticipant.objects.create(event=event, user=user)
 
     subscriptions = Subscribed.objects.filter(community=community).select_related('user')
     for sub in subscriptions:
@@ -1084,7 +1087,8 @@ def list_events(request):
             'community': event.community.name if event.community else None,
             'participant_count': EventParticipant.objects.filter(event=event).count(),
             'is_participating': EventParticipant.objects.filter(event=event, user=user).exists(),
-            'can_cancel': event.community.owner == user or CommunityLeader.objects.filter(community=event.community, user=user).exists()
+            'can_cancel': event.community.owner == user or CommunityLeader.objects.filter(community=event.community, user=user).exists(),
+            'is_owner': event.community.owner == user
         }
         for event in events
     ]
