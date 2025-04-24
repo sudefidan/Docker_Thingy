@@ -4,10 +4,11 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { MultiSelect, Badge } from 'flowbite-svelte';
+	import AddIconNoCircle from '../../../assets/AddIconNoCircle.svelte';
 
 	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())), 'Other']; // Sort the categories alphabetically
 
-	let access_token;
+	let access_token; // Access token for API authentication
 	let name = ''; // Community name
 	let description = ''; // Community description
 	let category = ''; // Community category
@@ -27,7 +28,7 @@
 	let community_member_to_demote = null; // Member to demote from leader
 	let community_member_to_promote = null; // Member to promote to leader
 	let selectedAction = ''; // Variable to store the selected action
-
+	let showCommunityCreateModal = false; // Flag to show/hide the create community modal
 	let searchTerm = ''; // Search term for filtering
 
 	// Add reactive statement to filter communities
@@ -50,6 +51,11 @@
 	function handleActionChange(event) {
 		selectedAction = event.target.value;
 	}
+
+	// Function to toggle the community creation modal
+	const toggleCommunityCreateModal = () => {
+		showCommunityCreateModal = !showCommunityCreateModal;
+	};
 
 	onMount(async () => {
 		try {
@@ -412,6 +418,135 @@
 	<div class="top-panel">
 		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
 	</div>
+
+	<!-- Community Creation Modal -->
+	{#if showCommunityCreateModal}
+		<div
+			style="background-color: rgba(0, 0, 0, 0.8);"
+			class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+			on:click={toggleCommunityCreateModal}
+		>
+			<div
+				class="card bg-secondary pl-5 pb-7 pr-7 pt-10 rounded-3xl w-full max-w-3xl"
+				on:click|stopPropagation
+			>
+				<h1 class="text-primary mb-6 text-center text-4xl font-bold">Create Community</h1>
+				<form id="community-form" class="space-y-4" on:submit|preventDefault={submitForm}>
+					<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text">Name</span>
+							</label>
+							<div class="relative">
+								<input
+									type="text"
+									id="name"
+									bind:value={name}
+									required
+									class="input input-bordered validator custom-input"
+									placeholder="What's your community's name?"
+								/>
+							</div>
+						</div>
+					</div>
+
+					<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+						<div class="w-full">
+							<label for="description" class="label">
+								<span class="label-text">Description</span>
+							</label>
+							<div class="relative">
+								<textarea
+									id="description"
+									bind:value={description}
+									required
+									class="input input-bordered text-area-input"
+									placeholder="What's your community's description?"
+									on:input={adjustTextareaHeight}
+								/>
+							</div>
+						</div>
+					</div>
+					<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+						<div class="w-full">
+							<label for="category" class="label">
+								<span class="label-text">Category</span>
+							</label>
+							<div class="relative">
+								<select
+									id="category"
+									bind:value={category}
+									required
+									class="select select-bordered validator custom-input placeholder-selected"
+									on:change={updateSelectClass}
+								>
+									<option value="" disabled selected style="color: var(--color-primary);"
+										>Which category suits your community?</option
+									>
+									{#each categories as category}
+										<option value={category}>{category}</option>
+									{/each}
+								</select>
+							</div>
+						</div>
+					</div>
+					{#if category === 'Other'}
+						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+							<div class="w-full">
+								<div class="relative">
+									<input
+										type="text"
+										id="customCategory"
+										bind:value={customCategory}
+										required
+										class="input input-bordered validator custom-input"
+										placeholder="Got a category in mind?"
+									/>
+								</div>
+							</div>
+						</div>
+					{/if}
+					<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
+						<div class="w-full">
+							<label for="name" class="label">
+								<span class="label-text wrap">Community Leaders(Optional)</span>
+							</label>
+							<div class="relative">
+								<MultiSelect
+									items={usersList}
+									underline="true"
+									bind:value={selectedUsersForCommunityCreation}
+									placeholder="Who are the leaders of your community?"
+									class="border-base-100 custom-input ring-transparent"
+									dropdownClass="bg-secondary"
+									let:item
+									let:clear
+								>
+									<Badge
+										class="border"
+										dismissable
+										style="border-color: var(--color-accent);"
+										params={{ duration: 100 }}
+										on:close={clear}
+									>
+										{item.name}
+									</Badge>
+								</MultiSelect>
+							</div>
+						</div>
+					</div>
+
+					<div class="form-control mb-2 mt-6 flex justify-center">
+						<button
+							class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+							type="submit">Create</button
+						>
+					</div>
+				</form>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Main Section -->
 	<div
 		class="gap-13 flex grid w-full max-w-full grid-cols-1 flex-col justify-center md:grid-cols-2"
@@ -483,7 +618,9 @@
 					<div class="form-control mb-2 flex flex-col gap-3">
 						<div class="w-full">
 							<label for="name" class="label">
-								<span class="label-text wrap">Which one of your communities do you want to change?</span>
+								<span class="label-text wrap"
+									>Which one of your communities do you want to change?</span
+								>
 							</label>
 							<div class="relative flex items-center">
 								<select
@@ -689,124 +826,14 @@
 					{/if}
 				</div>
 			</div>
-			<!-- Community Creation Card -->
-			<div class="card bg-base-100 min-h-1/2 w-full rounded-3xl">
-				<div class="card-body bg-secondary rounded-3xl">
-					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Create Community</h1>
-					<form id="community-form" class="space-y-4" on:submit={submitForm}>
-						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
-							<div class="w-full">
-								<label for="name" class="label">
-									<span class="label-text">Name</span>
-								</label>
-								<div class="relative">
-									<input
-										type="text"
-										id="name"
-										bind:value={name}
-										required
-										class="input input-bordered validator custom-input"
-										placeholder="What's your community's name?"
-									/>
-								</div>
-							</div>
-						</div>
-
-						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
-							<div class="w-full">
-								<label for="description" class="label">
-									<span class="label-text">Description</span>
-								</label>
-								<div class="relative">
-									<textarea
-										id="description"
-										bind:value={description}
-										required
-										class="input input-bordered text-area-input"
-										placeholder="What's your community's description?"
-										on:input={adjustTextareaHeight}
-									/>
-								</div>
-							</div>
-						</div>
-						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
-							<div class="w-full">
-								<label for="category" class="label">
-									<span class="label-text">Category</span>
-								</label>
-								<div class="relative">
-									<select
-										id="category"
-										bind:value={category}
-										required
-										class="select select-bordered validator custom-input placeholder-selected"
-										on:change={updateSelectClass}
-									>
-										<option value="" disabled selected style="color: var(--color-primary);"
-											>Which category suits your community?</option
-										>
-										{#each categories as category}
-											<option value={category}>{category}</option>
-										{/each}
-									</select>
-								</div>
-							</div>
-						</div>
-						{#if category === 'Other'}
-							<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
-								<div class="w-full">
-									<div class="relative">
-										<input
-											type="text"
-											id="customCategory"
-											bind:value={customCategory}
-											required
-											class="input input-bordered validator custom-input"
-											placeholder="Got a category in mind?"
-										/>
-									</div>
-								</div>
-							</div>
-						{/if}
-						<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
-							<div class="w-full">
-								<label for="name" class="label">
-									<span class="label-text wrap">Community Leaders(Optional)</span>
-								</label>
-								<div class="relative">
-									<MultiSelect
-										items={usersList}
-										underline="true"
-										bind:value={selectedUsersForCommunityCreation}
-										placeholder="Who are the leaders of your community?"
-										class="border-base-100 custom-input ring-transparent"
-										dropdownClass="bg-secondary"
-										let:item
-										let:clear
-									>
-										<Badge
-											class="border"
-											dismissable
-											style="border-color: var(--color-accent);"
-											params={{ duration: 100 }}
-											on:close={clear}
-										>
-											{item.name}
-										</Badge>
-									</MultiSelect>
-								</div>
-							</div>
-						</div>
-
-						<div class="form-control mb-2 mt-6 flex justify-center">
-							<button
-								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
-								type="submit">Create</button
-							>
-						</div>
-					</form>
-				</div>
-			</div>
 		</div>
 	</div>
+
+	<!-- Floating Add Button -->
+	<button
+		class="fixed bottom-5 right-5 bg-primary text-secondary p-4 rounded-full shadow-lg hover:bg-primary-focus z-50"
+		on:click={toggleCommunityCreateModal}
+	>
+		<AddIconNoCircle size={28} />
+	</button>
 </main>
