@@ -5,6 +5,9 @@
 	import MediaIcon from '../../../assets/MediaIcon.svelte';
 	import ProfilePictureIcon from '../../../assets/ProfilePictureIcon.svelte';
 	import AddIconNoCircle from '../../../assets/AddIconNoCircle.svelte';
+	import LikeIcon from '../../../assets/LikeIcon.svelte';
+	import LikedIcon from '../../../assets/LikedIcon.svelte';
+	import CommentIcon from '../../../assets/CommentIcon.svelte';
 
 	let access_token;
 	let loggedInUserId;
@@ -33,55 +36,53 @@
 	};
 
 	// Function to format the date
-    function formatDate(dateString) {
-        const date = new Date(dateString);
-        const diffInMs = currentTime - date; // Difference in milliseconds
-        const diffInSeconds = Math.floor(diffInMs / 1000); // Difference in seconds
-        const diffInMinutes = Math.floor(diffInSeconds / 60); // Difference in minutes
-        const diffInHours = Math.floor(diffInMinutes / 60); // Difference in hours
-        const diffInDays = Math.floor(diffInHours / 24); // Difference in days
+	function formatDate(dateString) {
+		const date = new Date(dateString);
+		const diffInMs = currentTime - date; // Difference in milliseconds
+		const diffInSeconds = Math.floor(diffInMs / 1000); // Difference in seconds
+		const diffInMinutes = Math.floor(diffInSeconds / 60); // Difference in minutes
+		const diffInHours = Math.floor(diffInMinutes / 60); // Difference in hours
+		const diffInDays = Math.floor(diffInHours / 24); // Difference in days
 
-        if (diffInSeconds < 60) {
-            // If less than a minute, show seconds as "sec"
-            return "Just now";
-        } else if (diffInMinutes < 60) {
-            // If less than an hour, show minutes as "m"
-            return `${diffInMinutes}m`;
-        } else if (diffInHours < 24) {
-            // If less than 24 hours, show hours as "h"
-            return `${diffInHours}h`;
-        } else if (diffInDays < 7) {
-            // If within the last week, show days as "d"
-            return `${diffInDays}d`;
-        } else {
-            // Otherwise, format as "MMM dd" or "MMM dd, yyyy" if not the current year
-            const currentYear = new Date().getFullYear();
-            const options = {
-                month: 'short',
-                day: 'numeric',
-            };
+		if (diffInSeconds < 60) {
+			// If less than a minute, show seconds as "sec"
+			return 'Just now';
+		} else if (diffInMinutes < 60) {
+			// If less than an hour, show minutes as "m"
+			return `${diffInMinutes}m`;
+		} else if (diffInHours < 24) {
+			// If less than 24 hours, show hours as "h"
+			return `${diffInHours}h`;
+		} else if (diffInDays < 7) {
+			// If within the last week, show days as "d"
+			return `${diffInDays}d`;
+		} else {
+			// Otherwise, format as "MMM dd" or "MMM dd, yyyy" if not the current year
+			const currentYear = new Date().getFullYear();
+			const options = {
+				month: 'short',
+				day: 'numeric'
+			};
 
-            if (date.getFullYear() !== currentYear) {
-                options.year = 'numeric';
-            }
+			if (date.getFullYear() !== currentYear) {
+				options.year = 'numeric';
+			}
 
-            return new Intl.DateTimeFormat('en-US', options).format(date);
-        }
-    }
-
+			return new Intl.DateTimeFormat('en-US', options).format(date);
+		}
+	}
 
 	// Update the current time every second
-    let interval;
-    onMount(() => {
-        interval = setInterval(() => {
-            currentTime = new Date(); // Update the current time
-        }, 1000); // Update every second
-    });
+	let interval;
+	onMount(() => {
+		interval = setInterval(() => {
+			currentTime = new Date(); // Update the current time
+		}, 1000); // Update every second
+	});
 
-    onDestroy(() => {
-        clearInterval(interval); // Clear the interval when the component is destroyed
-    });
-
+	onDestroy(() => {
+		clearInterval(interval); // Clear the interval when the component is destroyed
+	});
 
 	// Function to toggle the post creation modal
 	const togglePostModal = () => {
@@ -419,21 +420,20 @@
 			<div class="card-body bg-secondary rounded-3xl">
 				<!-- Community name next to the icon -->
 				<div class="flex items-center">
-
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="var(--color-base-content)"
-							viewBox="0 0 24 24"
-							class="w-6 h-6 mr-2 ml-8 mb-0 mt-0"
-						>
-							<path
-								d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z"
-							/>
-							<path
-								d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z"
-							/>
-						</svg>
-						<p class="text-accent text-sm">{p.community_name}</p>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="var(--color-base-content)"
+						viewBox="0 0 24 24"
+						class="w-6 h-6 mr-2 ml-8 mb-0 mt-0"
+					>
+						<path
+							d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z"
+						/>
+						<path
+							d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z"
+						/>
+					</svg>
+					<p class="text-accent text-sm">{p.community_name}</p>
 
 					<!-- Remove button for the post -->
 					{#if p.user_id === loggedInUserId}
@@ -484,6 +484,16 @@
 								on:click={() => openImageModal(`http://127.0.0.1:8000/post_image/${p.id}/`)}
 							/>
 						{/if}
+					</div>
+				</div>
+				<div class="flex items-center gap-x-4">
+					<div class="flex items-center gap-x-1">
+						<LikeIcon />
+						<p>Liked Count</p>
+					</div>
+					<div class="flex items-center gap-x-1">
+						<CommentIcon />
+						<p>Comment Count</p>
 					</div>
 				</div>
 			</div>
