@@ -142,15 +142,17 @@ class Notification(models.Model):
     class Meta:
         db_table = 'Notification'
 
+# Comment already exists - just added unique constraint on user and post
 class Comment(models.Model):
     comment_id = models.AutoField(primary_key=True)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=False)
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
     comment = models.TextField(null=False)
     timestamp = models.DateTimeField(auto_now_add=True, null=False)
 
     class Meta:
         db_table = 'Comment'
+        unique_together = (('post', 'user'),)
 
 class UserInterest(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
