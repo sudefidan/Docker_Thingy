@@ -7,6 +7,7 @@ class User(AbstractUser):
     about = models.CharField(max_length=255, blank=True, null=True)
     profile_picture = models.BinaryField(blank=True, null=True)
     program = models.CharField(max_length=255, blank=True, null=True)
+    uni_year = models.IntegerField(blank=True, null=True)
 
     def __str__(self):
         return self.username
