@@ -48,6 +48,7 @@ class Event(models.Model):
     event_type = models.ForeignKey(EventType, on_delete=models.CASCADE)
     community = models.ForeignKey(Community, on_delete=models.CASCADE, blank=True, null=True)
     cancelled = models.BooleanField(default=False)
+    max_capacity = models.IntegerField(blank=False, null=False, default=20)
 
     class Meta:
         db_table = 'Event'
