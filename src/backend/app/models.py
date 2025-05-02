@@ -50,6 +50,7 @@ class Event(models.Model):
     community = models.ForeignKey(Community, on_delete=models.CASCADE, blank=True, null=True)
     cancelled = models.BooleanField(default=False)
     max_capacity = models.IntegerField(blank=False, null=False, default=20)
+    materials = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
         db_table = 'Event'
