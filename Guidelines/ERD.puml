@@ -14,6 +14,9 @@ entity User {
     * access_level: int
     about: string
     profile_picture: blob
+    program: string
+    uni_year: int
+    address: string
 }
 
 entity Subscribed {
@@ -29,8 +32,10 @@ entity Event {
     * date: date
     * virtual_link: string
     * location: string
+    * max_capacity: int
     * event_type : string <<FK>>
     * community_id: int <<FK>>
+    materials: string
 }
 
 entity Community {
@@ -40,6 +45,7 @@ entity Community {
     * description: string
     * category: string
     * owner_id: int <<FK>>
+    community_image: blob
 }
 
 entity EventType {
@@ -95,6 +101,11 @@ entity Comment {
     * timestamp: date
 }
 
+entity PostLikes {
+    * post_id: int <<FK>>
+    * user_id: int <<FK>>
+}
+
 User ||--o{ Subscribed
 User }o-up-o{ Post
 User ||--o{ Community
@@ -112,5 +123,8 @@ Community }o--o{ Subscribed
 Community ||-right-o{ Event
 
 Event ||--|| EventType
+
+PostLikes }o--|| User
+PostLikes }o--|| Post
 
 @enduml
