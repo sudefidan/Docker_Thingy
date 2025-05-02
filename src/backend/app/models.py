@@ -20,6 +20,7 @@ class Community(models.Model):
     description = models.TextField(blank=True, null=True)
     category = models.CharField(max_length=255, blank=True, null=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
+    community_picture = models.BinaryField(blank=True, null=True)
 
     class Meta:
         db_table = 'Community'
