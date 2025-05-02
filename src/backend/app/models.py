@@ -165,3 +165,11 @@ class PostImage(models.Model):
 
     class Meta:
         db_table = 'PostImage'
+
+class PostLikes(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, null=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+
+    class Meta:
+        db_table = 'PostLikes'
+        unique_together = (('post', 'user'),)
