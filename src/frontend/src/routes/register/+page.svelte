@@ -5,6 +5,7 @@
 
 	let showPassword = false;
 	let registerForm: HTMLFormElement;
+	let showVerificationModal = false; // Control modal visibility
 
 	interface CustomResult {
 		message?: string;
@@ -12,6 +13,11 @@
 		access?: string;
 		refresh?: string;
 	}
+
+	// Function to close the verification modal
+    const closeVerificationModal = () => {
+        showVerificationModal = false;
+    };
 
 </script>
 
@@ -27,13 +33,16 @@
 					return async ({ update, result }) => {
 						const customResult = result as CustomResult;
 						if (customResult?.message) {
+							// Show verification modal
+            				showVerificationModal = true;
+
 							// Save the tokens to local storage and push onto the main ;D
 							if (customResult.access && customResult.refresh) {
 								localStorage.setItem('access_token', customResult.access);
 								localStorage.setItem('refresh_token', customResult.refresh);
 							}
 							// Redirect to the home page like a boss :D
-							goto('/home');
+							//goto('/home');
 							registerForm.reset();
 						} else if (customResult?.error) {
 							alert(customResult.error);
@@ -170,4 +179,35 @@
 			</form>
 		</div>
 	</div>
+
+	<!-- Verification Modal -->
+	{#if showVerificationModal}
+		<div
+			class="fixed inset-x-0 top-0 mt-4 flex items-center justify-center z-50"
+		>
+			<div class="bg-secondary rounded-lg p-4 shadow-lg max-w-md">
+				<div class="flex items-center">
+					<!-- Success Icon -->
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+					</svg>
+
+					<div class="flex-1">
+						<p class="font-medium">Please check your email to verify your account before logging in.</p>
+
+					</div>
+
+					<!-- Close Button -->
+					<button
+						class="ml-4 text-primary hover:text-base-100"
+						on:click={closeVerificationModal}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </main>
