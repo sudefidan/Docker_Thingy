@@ -33,29 +33,48 @@ account_activation_token = PasswordResetTokenGenerator()
 def send_verification_email(request, user):
     uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
     token = account_activation_token.make_token(user)
-    # Adjust frontend URL as needed - this assumes a frontend route handles verification
     verification_url = f"{CSRF_TRUSTED_ORIGINS[1]}/api/verify-email/{uidb64}/{token}/"
     subject = 'Activate Your Account'
     message = f'Hi {user.username},\n\nPlease click the link to activate your account:\n{verification_url}\n\nThanks!'
     try:
-        print("--- Attempting to send verification email ---")
+        print("Attempting to send verification email")
         print(f"To: {user.email}")
         print(f"From: {DEFAULT_FROM_EMAIL}")
         print(f"Host: {EMAIL_HOST}:{EMAIL_PORT}")
-        # send_mail(
-        #     subject, message, DEFAULT_FROM_EMAIL, [user.email], fail_silently=False
-        # )
-        print(f"Verification email sent to {user.email}") # For debugging
-        print(f"Verification URL: {verification_url}") # For debugging
-        print("--- send_mail function completed successfully ---")
-        print(f"Verification email ostensibly sent to {user.email}")
+        send_mail(
+            subject, message, DEFAULT_FROM_EMAIL, [user.email], fail_silently=False
+        )
+        print(f"Verification email sent to {user.email}")
+        print(f"Verification URL: {verification_url}")
         print(f"Verification URL generated: {verification_url}")
     except Exception as e:
-        print(f"Error sending verification email: {e}") # Log error
+        print(f"Error sending verification email: {e}")
 
-        print(f"--- ERROR sending verification email ---")
+        print(f"ERROR sending verification email")
         print(f"Error type: {type(e).__name__}")
         print(f"Error details: {e}")
+
+def send_email_change_verification(request, user, new_email):
+    """Sends the email change verification email to the new address."""
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+    token = account_activation_token.make_token(user)
+
+    verification_url = f"{CSRF_TRUSTED_ORIGINS[1]}/api/verify-email-change/{uidb64}/{token}/"
+
+    subject = 'Confirm Your New Email Address'
+    message = f'Hi {user.username},\n\nPlease click the link below to confirm your new email address ({new_email}):\n{verification_url}\n\nIf you did not request this change, please ignore this email.\n\nThanks!'
+    try:
+        print(f"--- Attempting to send email change verification to {new_email} ---")
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [new_email], # Send to the NEW email address
+            fail_silently=False,
+        )
+        print(f"--- Email change verification sent successfully to {new_email} ---")
+    except Exception as e:
+        print(f"--- ERROR sending email change verification to {new_email}: {e} ---")
 
 
 def index(request):
@@ -537,6 +556,7 @@ class update_user_profile(APIView):
         try:
             user = request.user
             data = request.data
+            email_changed_pending = False
 
             # validate required fields
             if not all([data.get('username'), data.get('first_name'), data.get('last_name'), data.get('email')]):
@@ -595,21 +615,37 @@ class update_user_profile(APIView):
                     "error": "Email is already in use"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+            new_email = data['email']
+            if new_email != user.email:
+                # Check if this new email is already pending verification for this user
+                if user.pending_email == new_email:
+                     # Avoid resending if already pending for the same address
+                    return Response({
+                        "message": "Profile updated successfully. Verification for this email address is already pending.",
+                        "username": user.username, "first_name": user.first_name,
+                        "last_name": user.last_name, "email": user.email # Return current email
+                        }, status=status.HTTP_200_OK)
+
+                # Store pending email and send verification
+                user.pending_email = new_email
+                send_email_change_verification(request, user, new_email) # Call the verification email function
+                email_changed_pending = True
+
             # update user information
             user.username = username
             user.first_name = first_name
             user.last_name = last_name
-            user.email = email
             user.save()
 
             return Response({
-                "message": "Profile updated successfully",
+                "message": "Profile updated successfully, email changes must be verified.",
                 "username": user.username,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "email": user.email
-            }, status=status.HTTP_200_OK)
-
+                # Add a specific message if email change is pending
+            },
+            status=status.HTTP_200_OK)
         except Exception as e:
             return Response({
                 "error": "Failed to update profile",
@@ -1513,3 +1549,32 @@ class verify_email(APIView):
             # Invalid token or user
             return Response({'error': 'Activation link is invalid or expired!'}, status=status.HTTP_400_BAD_REQUEST)
 
+class verify_email_change(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, uidb64, token):
+        try:
+            # Decode uidb64 to get user primary key
+            user_pk = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=user_pk)
+
+            # Check if the token is valid for the user
+            if not account_activation_token.check_token(user, token):
+                raise ValueError("Invalid token")
+
+            # Check if there is a pending email change
+            if not user.pending_email:
+                 return Response({'error': 'No pending email change found or it was already completed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Update the user's actual email address
+            new_email = user.pending_email # Get the email from the pending field
+            user.email = new_email
+            user.pending_email = None # Clear the pending email field
+            user.save(update_fields=['email', 'pending_email'])
+
+            # Redirect to profile page after successful change
+            login_url = f"http://localhost:5173/profile"
+            return HttpResponseRedirect(login_url)
+
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+             return Response({'error': 'Email change verification link is invalid or expired!'}, status=status.HTTP_400_BAD_REQUEST)
