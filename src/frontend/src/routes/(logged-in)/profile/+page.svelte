@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { CATEGORIES } from '../../../assets/categories.json';
 	import AddIcon from '../../../assets/AddIcon.svelte';
 	import EditIcon from '../../../assets/EditIcon.svelte';
@@ -59,6 +59,8 @@
 		program: '',
 		uni_year: ''
 	};
+
+	// Settings menu state
 	let showSettingsMenu = false;
 	let showDeleteConfirmation = false;
 	let showPasswordChangeModal = false;
@@ -85,6 +87,22 @@
 	// Notification modal state
 	let showNotificationModal = false;
 	let notificationMessage = '';
+
+	let clickOutsideHandler: any; // Variable to store the click event handler
+
+	// Function to handle click outside the settings menu
+	function handleClickOutside(event: MouseEvent) {
+		const settingsMenuElement = document.getElementById('settings-menu');
+		const settingsButtonElement = document.getElementById('settings-button');
+
+		if (
+			settingsMenuElement &&
+			!settingsMenuElement.contains(event.target as Node) &&
+			!settingsButtonElement?.contains(event.target as Node)
+		) {
+			showSettingsMenu = false;
+		}
+	}
 
 	// Function to toggle settings menu
 	function toggleSettingsMenu() {
@@ -358,6 +376,17 @@
 		}
 	});
 
+	// Add event listener for click outside the settings menu
+	onMount(() => {
+		clickOutsideHandler = (event: MouseEvent) => handleClickOutside(event);
+		document.addEventListener('click', clickOutsideHandler);
+	});
+
+	// Cleanup event listener on component destroy
+	onDestroy(() => {
+		document.removeEventListener('click', clickOutsideHandler);
+	});
+
 	// Function to handle delete account action
 	async function handleDeleteAccount() {
 		const confirmed = confirm(
@@ -401,8 +430,9 @@
 	>
 		<!-- Floating Settings Button -->
 		<button
+			id="settings-button"
 			class="fixed bottom-5 right-5 bg-primary text-secondary pl-3 pr-4 pt-4 pb-4 rounded-full shadow-lg hover:bg-primary-focus z-50"
-			on:click={toggleSettingsMenu}
+			on:click|stopPropagation={toggleSettingsMenu}
 		>
 			<SettingsIcon size={30} />
 		</button>
@@ -410,6 +440,7 @@
 		<!-- Settings dropdown menu -->
 		{#if showSettingsMenu}
 			<div
+				id="settings-menu"
 				class="absolute right-0 bottom-16 w-56 bg-secondary rounded-lg shadow-xl z-50 border border-base-100"
 				on:click|stopPropagation
 			>
@@ -799,7 +830,7 @@
 								{/if}
 							</div>
 
-							<div class="mb-3  mt-2 flex justify-between items-center">
+							<div class="mb-3 mt-2 flex justify-between items-center">
 								<label for="year" class="label text-primary">
 									<p class="label-text">Year:</p>
 								</label>
