@@ -127,3 +127,12 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
     "x-sveltekit-action",
 ]
+
+# --- Email Settings (Mailjet) ---
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = env_config.get('EMAIL_HOST', default='in-v3.mailjet.com')
+EMAIL_PORT = env_config.get('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = env_config.get('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = env_config.get('MAILJET_API_KEY', default='')
+EMAIL_HOST_PASSWORD = env_config.get('MAILJET_SECRET_KEY', default='')
+DEFAULT_FROM_EMAIL = env_config.get('DEFAULT_FROM_EMAIL', default='')

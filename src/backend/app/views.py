@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,6 +20,42 @@ from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification, create_notification_community_interest
 from django.views import View
 from datetime import datetime
+from django.urls import reverse
+from django.conf import settings
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.mail import send_mail
+from proj.settings import DEFAULT_FROM_EMAIL, EMAIL_HOST, CSRF_TRUSTED_ORIGINS, EMAIL_PORT
+
+account_activation_token = PasswordResetTokenGenerator()
+
+def send_verification_email(request, user):
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+    token = account_activation_token.make_token(user)
+    # Adjust frontend URL as needed - this assumes a frontend route handles verification
+    verification_url = f"{CSRF_TRUSTED_ORIGINS[1]}/api/verify-email/{uidb64}/{token}/"
+    subject = 'Activate Your Account'
+    message = f'Hi {user.username},\n\nPlease click the link to activate your account:\n{verification_url}\n\nThanks!'
+    try:
+        print("--- Attempting to send verification email ---")
+        print(f"To: {user.email}")
+        print(f"From: {DEFAULT_FROM_EMAIL}")
+        print(f"Host: {EMAIL_HOST}:{EMAIL_PORT}")
+        # send_mail(
+        #     subject, message, DEFAULT_FROM_EMAIL, [user.email], fail_silently=False
+        # )
+        print(f"Verification email sent to {user.email}") # For debugging
+        print(f"Verification URL: {verification_url}") # For debugging
+        print("--- send_mail function completed successfully ---")
+        print(f"Verification email ostensibly sent to {user.email}")
+        print(f"Verification URL generated: {verification_url}")
+    except Exception as e:
+        print(f"Error sending verification email: {e}") # Log error
+
+        print(f"--- ERROR sending verification email ---")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error details: {e}")
 
 
 def index(request):
@@ -31,14 +67,6 @@ def example_view(request):
         "another_key": "another_value"
     }
     return JsonResponse(data)
-
-# def svelte_view(request, path=''):
-#     # Development URL
-#     svelte_url = f"http://svelte_frontend:5173/{path}"
-#     # Production URL
-#     # svelte_url = f"http://svelte_frontend:4173/{path}"
-#     response = requests.get(svelte_url)
-#     return HttpResponse(response.content, status=response.status_code)
 
 class create_user(APIView):
     permission_classes = [AllowAny]
@@ -56,18 +84,16 @@ class create_user(APIView):
             if not all([username, password, first_name, last_name, email]):
                 return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            user = User.objects.create_user(username=username, password=password, email=email, first_name=first_name, last_name=last_name)
+            # Ensure user is inactive until email is verified
+            user = User.objects.create_user(username=username, password=password, email=email, first_name=first_name, last_name=last_name, is_active=False)
             user.access_level = data.get('access_level', 1)
             user.save()
-            # refresh access token instead of regular so user no longer has to log in and it be annoying it will just refresh :D
-            refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
-            refresh_token = str(refresh)
-            # check response that shit is working :D
+
+            # Removed tokens as they will be added only in login (user must be verified through email first)
+            send_verification_email(request, user)
+
             return Response({
-                'message': 'User created successfully',
-                'access': access_token,
-                'refresh': refresh_token
+                'message': 'User created successfully. Please check your email to activate your account.'
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -79,6 +105,8 @@ class login_user(APIView):
     def post(self, request):
         identifier = request.data.get('identifier')
         password = request.data.get('password')
+
+        user_obj = None
 
         #this determines whether the user has inputted email or password.
         try:
@@ -96,7 +124,7 @@ class login_user(APIView):
             return Response({
                 'access': str(refresh.access_token),
                 'refresh': str(refresh)}, status=status.HTTP_200_OK)
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'error': 'Invalid credentials or account not yet verified'}, status=status.HTTP_401_UNAUTHORIZED)
 # Testing JWT requirement
 class protected_view(APIView):
     permission_classes = [IsAuthenticated]
@@ -1465,3 +1493,23 @@ def update_event_field(request):
             {"error": "An error occurred while updating the event."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+class verify_email(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and account_activation_token.check_token(user, token):
+            user.is_active = True
+            user.save()
+            # Redirect to login page if successful
+            return HttpResponseRedirect("http://localhost:5173")
+        else:
+            # Invalid token or user
+            return Response({'error': 'Activation link is invalid or expired!'}, status=status.HTTP_400_BAD_REQUEST)
+

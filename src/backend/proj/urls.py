@@ -3,7 +3,7 @@ from django.urls import path, re_path, include
 from app import views
 from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests, GetUserProfile, DeletePostView
 from rest_framework import routers, serializers, viewsets
-from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event, list_events, join_event, leave_event, cancel_event, get_user_managed_events, update_event_field
+from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event, list_events, join_event, leave_event, cancel_event, get_user_managed_events, update_event_field, verify_email
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/logout/', logout_user.as_view()),
     path('api/protected/', views.protected_view.as_view()),
     path('api/change-password/', change_password.as_view(), name='change_password'),
+    re_path(r'^api/verify-email/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$', verify_email.as_view(), name='verify_email'),
 
     # profile related endpoints
     path('api/user-profile/', user_profile_view.as_view(), name='user_profile'),
