@@ -153,7 +153,7 @@ class Comment(models.Model):
 
     class Meta:
         db_table = 'Comment'
-        unique_together = (('post', 'user'),)
+        # unique_together = (('post', 'user'),)
 
 class UserInterest(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)

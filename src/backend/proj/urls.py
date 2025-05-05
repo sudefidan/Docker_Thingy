@@ -3,7 +3,7 @@ from django.urls import path, re_path, include
 from app import views
 from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests, GetUserProfile, DeletePostView
 from rest_framework import routers, serializers, viewsets
-from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event, list_events, join_event, leave_event, cancel_event, get_user_managed_events, update_event_field, verify_email, verify_email_change
+from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event, list_events, join_event, leave_event, cancel_event, get_user_managed_events, update_event_field, verify_email, verify_email_change, comment_list_create
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -46,6 +46,8 @@ urlpatterns = [
     path('api/create_posts/', views.create_post, name='create_post'),
     path('api/delete_post/<int:post_id>/', DeletePostView.as_view(), name='delete_post'),
     path('post_image/<int:post_id>/', views.get_post_image, name='get_post_image'),
+    path('comments/<int:post_id>/', comment_list_create, name='comment-list-create'),
+    path('comments/<int:post_id>/', views.comment_list_create, name='comment-list-create'),
 
 
     # community related endpoints
