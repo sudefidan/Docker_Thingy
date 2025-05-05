@@ -456,6 +456,50 @@ const postComment = async (postId) => {
         }
     };
 
+    const likeUnlikePost = async (postId) => {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            goto('http://localhost:5173/'); // Or handle unauthenticated state
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://127.0.0.1:8000/api/posts/${postId}/like/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                // Update the local posts array
+                posts = posts.map((post) => {
+                    if (post.id === postId) {
+                        const newUserLiked = !post.user_liked;
+                        const newLikeCount = newUserLiked ? post.like_count + 1 : post.like_count - 1;
+                        return { ...post, user_liked: newUserLiked, like_count: newLikeCount };
+                    }
+                    return post;
+                });
+                filteredPosts = filteredPosts.map((post) => {
+                    if (post.id === postId) {
+                        const newUserLiked = !post.user_liked;
+                        const newLikeCount = newUserLiked ? post.like_count + 1 : post.like_count - 1;
+                        return { ...post, user_liked: newUserLiked, like_count: newLikeCount };
+                    }
+                    return post;
+                });
+            } else {
+                console.error('Failed to like/unlike post:', await response.text());
+                alert('Failed to like/unlike post.');
+            }
+        } catch (error) {
+            console.error('Error liking/unliking post:', error);
+            alert('An error occurred while liking/unliking the post.');
+        }
+    };
 </script>
 
 <main class="px-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -637,10 +681,14 @@ const postComment = async (postId) => {
 					</div>
 				</div>
 				<div class="flex items-center gap-x-4">
-					<div class="flex items-center gap-x-1">
-						<LikeIcon />
-						<p>Liked Count</p>
-					</div>
+                    <button class="flex items-center gap-x-1" on:click={() => likeUnlikePost(p.id)}>
+                        {#if p.user_liked}
+                            <LikedIcon />
+                        {:else}
+                            <LikeIcon />
+                        {/if}
+                        <p>{p.like_count !== undefined ? p.like_count : 0} Likes</p>
+                    </button>
 					<div class="flex items-center gap-x-1 cursor-pointer" on:click={() => toggleComments(p.id)}>
 						<CommentIcon />
 						<p>{p.comment_count !== undefined ? p.comment_count : 'View'} Comments</p>
