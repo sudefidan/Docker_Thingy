@@ -204,6 +204,9 @@ class user_profile_view(APIView):
                 "social_type": social_type,
                 "social_username": social_username,
                 "interests": interests_list,
+                "address": user.address,
+                "program": user.program,
+                "uni_year": user.uni_year,
             })
 
         except Exception as e:
@@ -559,7 +562,7 @@ class change_password(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # handles user profile updates
-# allows updating username, first name, last name, and email
+# allows updating username, first name, last name, email, address, program, year
 class update_user_profile(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -570,7 +573,7 @@ class update_user_profile(APIView):
             email_changed_pending = False
 
             # validate required fields
-            if not all([data.get('username'), data.get('first_name'), data.get('last_name'), data.get('email')]):
+            if not all([data.get('username'), data.get('first_name'), data.get('last_name'), data.get('email'), data.get('address'), data.get('program'), data.get('uni_year')]):
                 return Response({
                     "error": "All fields are required"
                 }, status=status.HTTP_400_BAD_REQUEST)
@@ -642,10 +645,17 @@ class update_user_profile(APIView):
                 send_email_change_verification(request, user, new_email) # Call the verification email function
                 email_changed_pending = True
 
+            address = data['address']
+            program = data['program']
+            uni_year = data['uni_year']
+
             # update user information
             user.username = username
             user.first_name = first_name
             user.last_name = last_name
+            user.address = address
+            user.program = program
+            user.uni_year = uni_year
             user.save()
 
             return Response({
@@ -653,8 +663,10 @@ class update_user_profile(APIView):
                 "username": user.username,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "email": user.email
-                # Add a specific message if email change is pending
+                "email": user.email,
+                "address": user.address,
+                "program": user.program,
+                "uni_year": user.uni_year,
             },
             status=status.HTTP_200_OK)
         except Exception as e:
@@ -1589,7 +1601,7 @@ class verify_email_change(APIView):
 
         except (User.DoesNotExist, ValueError, TypeError, OverflowError):
              return Response({'error': 'Email change verification link is invalid or expired!'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def comment_list_create(request, post_id):
@@ -1640,7 +1652,7 @@ def comment_list_create(request, post_id):
                 "username": new_comment.user.username
             }
         }, status=status.HTTP_201_CREATED)
-    
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def like_unlike_post(request, post_id):
@@ -1658,4 +1670,3 @@ def like_unlike_post(request, post_id):
             message = f"{user.username} liked your post: {post.title}"  # Construct message
             create_notification(user_id=post.user.id, message=message)
         return Response({'message': 'Post liked'}, status=status.HTTP_201_CREATED)
-    
