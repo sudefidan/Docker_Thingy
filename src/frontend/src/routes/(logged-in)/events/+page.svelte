@@ -1,6 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
 	import AddIconNoCircle from '../../../assets/AddIconNoCircle.svelte';
+	import AddIcon from '../../../assets/AddIcon.svelte';
+	import SettingsIcon from '../../../assets/SettingsIcon.svelte';
 
 	let access_token;
 	let loggedInUserId = null;
@@ -18,6 +20,9 @@
 	let searchTerm = ''; // Search term for filtering events
 	let events = []; // List of events fetched from API
 	let showEventModal = false; // Controls the visibility of the event modal
+	let showEventManagementModal = false;
+	let selectedEventId = null;
+	let selectedEventAction = '';
 
 	// Edit Event Form State
 	let editEventId = null; // Still useful to know which event we're editing
@@ -29,6 +34,45 @@
 	let editEventType = '';
 	let selectedEventEditCategory = '';
 	let allowedToEdit = false;
+
+	// Function to toggle event management modal
+	const toggleEventManagementModal = (eventId) => {
+		selectedEventId = eventId;
+		if (eventId) {
+			// Prefill form fields with the selected event's data
+			const selectedEvent = events.find((e) => e.event_id === eventId);
+			if (selectedEvent) {
+				editTitle = selectedEvent.title;
+				editDescription = selectedEvent.description;
+				editDate = selectedEvent.date;
+				editEventType = selectedEvent.event_type;
+
+				// Initialise location and virtual link fields based on event type
+				if (selectedEvent.event_type === 'virtual') {
+					editVirtualLink = selectedEvent.virtual_link || '';
+					editLocation = ''; // Clear location field for virtual events
+				} else {
+					editLocation = selectedEvent.location || '';
+					editVirtualLink = ''; // Clear virtual link field for in-person events
+				}
+			}
+		} else {
+			// Reset form fields when closing the modal
+			editTitle = '';
+			editDescription = '';
+			editDate = '';
+			editVirtualLink = '';
+			editLocation = '';
+			editEventType = '';
+		}
+		showEventManagementModal = !showEventManagementModal;
+		selectedEventAction = '';
+	};
+
+	// Function to handle event action change
+	function handleEventActionChange(event) {
+		selectedEventAction = event.target.value;
+	}
 
 	// Function to toggle the post creation modal
 	const toggleEventModal = () => {
@@ -177,6 +221,105 @@
 		}
 	}
 
+	// Function to update event
+	async function updateEvent(field, value, skipReload = false) {
+		try {
+			const editData = {
+				field,
+				value,
+				eventId: selectedEventId
+			};
+
+			const response = await fetch('http://127.0.0.1:8000/api/events/manage/', {
+				method: 'PATCH',
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(editData)
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Error:', errorText);
+				alert(`Error: ${errorText}`);
+				return;
+			}
+
+			// Only reload if skipReload is false
+			if (!skipReload) {
+				// Success - reload page
+				alert('Event updated successfully');
+				window.location.reload();
+			}
+
+			return true; // Indicate success
+		} catch (error) {
+			console.error('Error updating event:', error);
+		}
+	}
+
+	// Function to handle event type changes
+	async function handleEventTypeChange() {
+		try {
+			// First update the event type (skip reload)
+			const typeUpdated = await updateEvent('event_type', editEventType, true);
+			if (!typeUpdated) return;
+
+			let locationUpdated = true;
+
+			// Next, update either location or virtual link based on the new event type
+			if (editEventType === 'virtual' && editVirtualLink) {
+				locationUpdated = await updateEvent('virtual_link', editVirtualLink, true);
+				if (locationUpdated) {
+					// Clear the location since it's a virtual event
+					await updateEvent('location', null, true);
+				}
+			} else if (editEventType === 'in-person' && editLocation) {
+				locationUpdated = await updateEvent('location', editLocation, true);
+				if (locationUpdated) {
+					// Clear the virtual link since it's an in-person event
+					await updateEvent('virtual_link', null, true);
+				}
+			}
+
+			if (!locationUpdated) return;
+
+			// Show success message
+			alert('Event updated successfully!');
+			toggleEventManagementModal(null); // Close the modal
+
+			// Reload the page
+			window.location.reload();
+		} catch (error) {
+			console.error('Error updating event type:', error);
+			alert('Failed to update event. Please try again.');
+		}
+	}
+
+	// Updated cancelEvent function
+	async function cancelEvent(eventId) {
+		try {
+			const response = await fetch(`http://127.0.0.1:8000/api/events/${eventId}/cancel/`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${access_token}`,
+					'Content-Type': 'application/json'
+				}
+			});
+
+			if (response.ok) {
+				alert('Event cancelled successfully!');
+				window.location.reload();
+			} else {
+				const error = await response.json();
+				alert('Failed to cancel event: ' + error.detail);
+			}
+		} catch (error) {
+			console.error('Error cancelling event:', error);
+		}
+	}
+
 	// Submit event form
 	async function submitEditEvent(event) {
 		event.preventDefault(); // Prevent default form submission
@@ -315,28 +458,6 @@
 		}
 	}
 
-	async function cancelEvent(eventId) {
-		try {
-			const response = await fetch(`http://127.0.0.1:8000/api/events/${eventId}/cancel/`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${access_token}`,
-					'Content-Type': 'application/json'
-				}
-			});
-
-			if (response.ok) {
-				alert('Event cancelled!');
-				// You could reload or redirect here
-			} else {
-				const error = await response.json();
-				alert('Failed to cancel event: ' + error.detail);
-			}
-		} catch (error) {
-			console.error('Error cancelling event:', error);
-		}
-	}
-
 	$: filteredEvents = events.filter((e) => {
 		const lowerSearch = searchTerm.toLowerCase();
 		return (
@@ -353,18 +474,24 @@
 	// Run the functions when the component loads
 	onMount(async () => {
 		try {
+			// Get the access token from local storage
 			access_token = localStorage.getItem('access_token');
+
+			// Redirect to login page if no token found
 			if (!access_token) {
 				goto('http://localhost:5173/');
 				return;
 			}
 
+			// Extract user ID from the JWT token
 			loggedInUserId = getLoggedInUserIdFromToken(access_token);
 
-			await fetchUsers();
-			await fetchUserCommunities();
-			await fetchEvents();
-			await fetchManagedEvents();
+			await fetchUsers(); // Load all users for the user selection UI
+			await fetchUserCommunities(); // Load communities the user is part of
+			await fetchEvents(); // Load all events to display
+			await fetchManagedEvents(); // Load events the user can manage
+
+			 // Fetch all communities from the server
 			const response = await fetch('http://127.0.0.1:8000/api/communities/', {
 				headers: {
 					Authorization: `Bearer ${access_token}`
@@ -373,11 +500,13 @@
 			if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 			const allCommunities = await response.json();
 
+			// This array will store communities the user is allowed to create events for
 			const permitted = [];
 			console.log('Communities:', communities);
 
 			// Check each community to see if user is owner or leader
 			for (const community of allCommunities) {
+				 // Check if user is the owner of this community
 				const isOwner = community.owner_id === loggedInUserId;
 
 				// Get leaders for this community
@@ -394,14 +523,20 @@
 					continue;
 				}
 				const leaders = await leadersResponse.json();
-				const isLeader = leaders.some((leader) => leader.id === loggedInUserId);
 
+				// Check if user is a leader of this community
+      			const isLeader = leaders.some((leader) => leader.id === loggedInUserId);
+
+				// If user is either owner or leader, add community to permitted list
 				if (isOwner || isLeader) {
 					permitted.push(community);
 				}
 			}
 
+			// Update the communities array with only those the user can create events for
 			communities = permitted;
+
+			// Set the flag that determines if the "Create Event" button should be shown
 			allowedToCreate = permitted.length > 0;
 		} catch (error) {
 			console.error('Error during initialization:', error);
@@ -414,7 +549,7 @@
 	<div class="top-panel">
 		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
 	</div>
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+	<div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
 		<!-- Create Event Form -->
 		{#if allowedToCreate && showEventModal}
 			<div
@@ -422,7 +557,10 @@
 				class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
 				on:click={toggleEventModal}
 			>
-				<div class="card bg-secondary pl-5 pb-7 pr-7 pt-10 rounded-3xl w-full max-w-3xl" on:click|stopPropagation>
+				<div
+					class="card bg-secondary pl-5 pb-7 pr-7 pt-10 rounded-3xl w-full max-w-3xl"
+					on:click|stopPropagation
+				>
 					<h1 class="text-primary mb-6 text-center text-4xl font-bold">Create Event</h1>
 					<form on:submit|preventDefault={submitEvent} id="createEventForm" class="form-container">
 						<!-- Community Selection -->
@@ -578,181 +716,360 @@
 			</div>
 		{/if}
 
-		<div class="card bg-base-100 w-full rounded-3xl">
-			<div class="card-body bg-secondary rounded-3xl">
-				{#if allowedToEdit}
-					<!-- Your form fields here -->
-					<form on:submit={submitEditEvent} id="createEventForm" class="form-container">
+		<!-- Event Management Modal -->
+		{#if showEventManagementModal}
+			<div
+				style="background-color: rgba(0, 0, 0, 0.8);"
+				class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+				on:click={() => toggleEventManagementModal(null)}
+			>
+				<div
+					class="card bg-secondary pl-5 pb-7 pr-7 pt-10 rounded-3xl w-full max-w-3xl"
+					on:click|stopPropagation
+				>
+					<h1 class="text-primary mb-6 text-center text-4xl font-bold">
+						Manage Event: {events.find((e) => e.event_id === selectedEventId)?.title}
+					</h1>
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<label for="action" class="label">
+							<span class="label-text">What would you like to do?</span>
+						</label>
 						<div class="relative flex items-center">
 							<select
-								type="text"
-								bind:value={editEventId}
+								id="action"
+								bind:value={selectedEventAction}
 								required
-								class="select select-bordered custom-input flex-grow"
+								class="select select-bordered custom-input flex-grow placeholder-selected"
+								on:change={handleEventActionChange}
 							>
-								<option value={null} selected>Select an Event</option>
-								{#each managedEvents as event}
-									<option value={event.event_id}>{event.title}</option>
-								{/each}
+								<option value="" disabled selected>Select an Action</option>
+								<option value="changeTitle">Change Event Title</option>
+								<option value="changeDescription">Change Event Description</option>
+								<option value="changeDate">Change Event Date</option>
+								<option value="changeEventType">Change Event Type</option>
+
+								<!-- Show virtual link option only for virtual events -->
+								{#if events.find((e) => e.event_id === selectedEventId)?.event_type === 'virtual'}
+									<option value="changeVirtualLink">Change Virtual Link</option>
+								{/if}
+
+								<!-- Show location option only for in-person events -->
+								{#if events.find((e) => e.event_id === selectedEventId)?.event_type === 'in-person'}
+									<option value="changeLocation">Change Location</option>
+								{/if}
+
+								<option value="cancelEvent">Cancel Event</option>
 							</select>
 						</div>
-						{#if editEventId}
+					</div>
+
+					<!-- Change Title -->
+					{#if selectedEventAction === 'changeTitle'}
+						<div class="form-control mb-2 flex flex-col gap-3">
 							<div class="w-full">
-								<label for="action" class="label">
-									<span class="label-text">What would you like to do?</span>
+								<label for="title" class="label">
+									<span class="label-text">New Title</span>
+								</label>
+								<div class="relative flex items-center">
+									<input
+										type="text"
+										bind:value={editTitle}
+										required
+										class="input input-bordered validator custom-input"
+										placeholder="Enter new title..."
+									/>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => updateEvent('title', editTitle)}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Change Description -->
+					{#if selectedEventAction === 'changeDescription'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="description" class="label">
+									<span class="label-text">New Description</span>
+								</label>
+								<div class="relative flex items-center">
+									<textarea
+										bind:value={editDescription}
+										required
+										class="input input-bordered text-area-input"
+										placeholder="Enter new description..."
+										on:input={adjustTextareaHeight}
+									></textarea>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => updateEvent('description', editDescription)}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Change Date -->
+					{#if selectedEventAction === 'changeDate'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="date" class="label">
+									<span class="label-text">New Date</span>
+								</label>
+								<div class="relative flex items-center">
+									<input
+										type="date"
+										bind:value={editDate}
+										required
+										class="input input-bordered validator custom-input"
+									/>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => updateEvent('date', editDate)}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Change Virtual Link -->
+					{#if selectedEventAction === 'changeVirtualLink'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="virtual_link" class="label">
+									<span class="label-text">New Virtual Link</span>
+								</label>
+								<div class="relative flex items-center">
+									<input
+										type="url"
+										bind:value={editVirtualLink}
+										required
+										class="input input-bordered validator custom-input"
+										placeholder="Enter new virtual link..."
+									/>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => updateEvent('virtual_link', editVirtualLink)}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Change Location -->
+					{#if selectedEventAction === 'changeLocation'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="location" class="label">
+									<span class="label-text">New Location</span>
+								</label>
+								<div class="relative flex items-center">
+									<input
+										type="text"
+										bind:value={editLocation}
+										required
+										class="input input-bordered validator custom-input"
+										placeholder="Enter new location..."
+									/>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => updateEvent('location', editLocation)}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Change Event Type -->
+					{#if selectedEventAction === 'changeEventType'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="event_type" class="label">
+									<span class="label-text">New Event Type</span>
 								</label>
 								<div class="relative flex items-center">
 									<select
-										id="action"
-										bind:value={selectedEventEditCategory}
+										id="event_type"
+										bind:value={editEventType}
 										required
-										class="select select-bordered custom-input flex-grow"
-										on:change={handleSelectedEventEditCategory}
+										class="select select-bordered custom-input placeholder-selected"
+										on:change={() => {
+											// Clear the fields when switching event types
+											if (editEventType === 'virtual') {
+												editLocation = ''; // Clear location when switching to virtual
+											} else {
+												editVirtualLink = ''; // Clear virtual link when switching to in-person
+											}
+										}}
 									>
-										<option value="" disabled selected>Select an Action</option>
-										<option value="title">Change Event Title</option>
-										<option value="description">Change Event Description</option>
-										<option value="date">Change Event Date</option>
-										<option value="virtual_link">Change Event Link</option>
-										<option value="location">Change Event Location</option>
-										<option value="event_type">Change Event Type</option>
+										<option value="virtual">Virtual</option>
+										<option value="in-person">In-Person</option>
 									</select>
 								</div>
 							</div>
-						{/if}
-						{#if selectedEventEditCategory == 'title'}
-							<div class="form-group">
-								<label for="title">Title:</label>
-								<input
-									type="text"
-									bind:value={editTitle}
-									id="title"
-									class="input bg-white"
-									required
-								/>
-							</div>
-						{/if}
-						{#if selectedEventEditCategory == 'description'}
-							<div class="form-group">
-								<label for="description">Description:</label>
-								<textarea
-									bind:value={editDescription}
-									id="description"
-									class="input bg-white"
-									required
-								></textarea>
-							</div>
-						{/if}
-						{#if selectedEventEditCategory == 'date'}
-							<div class="form-group">
-								<label for="date">Date:</label>
-								<input
-									type="date"
-									bind:value={editDate}
-									id="date"
-									class="input bg-white"
-									required
-								/>
-							</div>
-						{/if}
-						{#if selectedEventEditCategory == 'virtual_link'}
-							<div class="form-group">
-								<label for="virtual_link">Virtual Link:</label>
-								<input
-									type="url"
-									bind:value={editVirtualLink}
-									id="virtual_link"
-									class="input bg-white"
-								/>
-							</div>
-						{/if}
-						{#if selectedEventEditCategory == 'location'}
-							<div class="form-group">
-								<label for="location">Location:</label>
-								<input type="text" bind:value={editLocation} id="location" class="input bg-white" />
-							</div>
-						{/if}
-						{#if selectedEventEditCategory == 'event_type'}
-							<div class="form-group">
-								<label for="event_type">Event Type:</label>
-								<select bind:value={editEventType} id="event_type" class="select bg-white" required>
-									<option value="virtual">Virtual</option>
-									<option value="in-person">In-Person</option>
-								</select>
-							</div>
-						{/if}
-						<button type="submit" class="submit-btn">Update Event</button>
-					</form>
-				{:else}
-					<p>No managed events to edit</p>
-				{/if}
-			</div>
-		</div>
-	</div>
-	{#each filteredEvents as event}
-		<!-- Events List -->
-		<div class="card bg-base-100 w-full rounded-3xl mt-5">
-			<div class="card-body bg-secondary rounded-3xl">
-				<h2>Your Events</h2>
-				{#if events.length === 0}
-					<p>No events available.</p>
-				{:else}
-					<div class="events-list">
-						<div class="event-card">
-							<h3>{event.title}</h3>
-							<p>{event.description}</p>
-							<p><strong>Date:</strong> {event.date}</p>
-							<p><strong>Event Type:</strong> {event.event_type}</p>
-							<p><strong>Location:</strong> {event.location || 'Online'}</p>
-							{#if event.virtual_link}
-								<p>
-									<strong>Virtual Link:</strong>
-									<a href={event.virtual_link} target="_blank">Join Event</a>
-								</p>
-							{/if}
-							<p><strong>Community:</strong> {event.community}</p>
-							{#if !event.is_owner}
-								{#if !event.is_participating}
-								<button
-									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto mt-3"
-									on:click={() => joinEvent(event.event_id)}
-								>
-									Join Event
-								</button>
-								{:else}
-								<div class="flex flex-col items-start gap-2">
-									<p class="text-primary mt-3">You are participating in this event</p>
-									<button
-									class="btn btn-error text-secondary hover:bg-error-focus w-fit"
-									on:click={() => leaveEvent(event.event_id)}
-									>
-									Leave Event
-									</button>
+
+							<!-- Show virtual link input immediately if "virtual" is selected -->
+							{#if editEventType === 'virtual' && events.find((e) => e.event_id === selectedEventId)?.event_type !== 'virtual'}
+								<div class="w-full mt-3">
+									<label for="virtual_link" class="label">
+										<span class="label-text">Virtual Link</span>
+									</label>
+									<div class="relative flex items-center">
+										<input
+											type="url"
+											id="virtual_link"
+											bind:value={editVirtualLink}
+											required
+											class="input input-bordered validator custom-input"
+											placeholder="Enter virtual meeting link..."
+										/>
+									</div>
 								</div>
-								{/if}
 							{/if}
 
-						<!-- Show Cancel Event button only if the user is the owner or a leader -->
-						{#if event.can_cancel}
-							<button
-							class="btn bg-primary text-white hover:bg-primary-focus w-full mt-2"
-							on:click={() => cancelEvent(event.event_id)}
-							>
-							Cancel Event
-							</button>
-						{/if}
-						</div>
-					</div>
-				{/if}
-			</div>
-		</div>
-	{/each}
+							<!-- Show location input immediately if "in-person" is selected -->
+							{#if editEventType === 'in-person' && events.find((e) => e.event_id === selectedEventId)?.event_type !== 'in-person'}
+								<div class="w-full mt-3">
+									<label for="location" class="label">
+										<span class="label-text">Location</span>
+									</label>
+									<div class="relative flex items-center">
+										<input
+											type="text"
+											id="location"
+											bind:value={editLocation}
+											required
+											class="input input-bordered validator custom-input"
+											placeholder="Enter location..."
+										/>
+									</div>
+								</div>
+							{/if}
 
-	<!-- Floating Add Button -->
-	<button
-		class="fixed bottom-5 right-5 bg-primary text-secondary p-4 rounded-full shadow-lg hover:bg-primary-focus z-50"
-		on:click={toggleEventModal}
-	>
-		<AddIconNoCircle size={28} />
-	</button>
+							<div class="mb-2 mt-4 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={handleEventTypeChange}>Update</button
+								>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Cancel Event -->
+					{#if selectedEventAction === 'cancelEvent'}
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="mb-2 mt-2 flex justify-center">
+								<button
+									class="btn btn-error text-secondary hover:bg-error-focus w-auto pl-10 pr-10"
+									on:click={() => cancelEvent(selectedEventId)}>Cancel Event</button
+								>
+							</div>
+						</div>
+					{/if}
+				</div>
+			</div>
+		{/if}
+		{#each filteredEvents as event}
+			<div class="card bg-base-100 w-full rounded-3xl mt-5">
+				<div class="card-body bg-secondary rounded-3xl">
+					<div class="mb-4 flex items-center justify-between">
+						<div class="flex-grow">
+							<h3 class="text-primary text-2xl font-bold">{event.title}</h3>
+						</div>
+
+						<!-- Show "Manage" button if user is the organizer/owner of the event -->
+						{#if event.is_owner}
+							<div class="tooltip-container">
+								<button
+									on:click={() => toggleEventManagementModal(event.event_id)}
+									class="hover:text-primary"
+									aria-label="Manage Event"
+								>
+									<SettingsIcon />
+								</button>
+								<span class="tooltip">Manage this event</span>
+							</div>
+						{/if}
+
+						<!-- Show "Leave" button if user is participating and not the owner -->
+						{#if event.is_participating && !event.is_owner}
+							<div class="tooltip-container">
+								<button
+									on:click={() => leaveEvent(event.event_id)}
+									class="hover:text-primary"
+									aria-label="Leave Event"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										fill="currentColor"
+										class="bi bi-box-arrow-right size-7"
+										viewBox="0 0 16 16"
+									>
+										<path
+											fill-rule="evenodd"
+											d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"
+										/>
+										<path
+											fill-rule="evenodd"
+											d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"
+										/>
+									</svg>
+								</button>
+								<span class="tooltip">Leave this event</span>
+							</div>
+							<!-- Show "Join" button if the user is not participating -->
+						{:else if !event.is_participating && !event.is_owner}
+							<div class="tooltip-container">
+								<button on:click={() => joinEvent(event.event_id)} class="hover:text-primary">
+									<AddIcon />
+								</button>
+								<span class="tooltip">Join this event</span>
+							</div>
+						{/if}
+					</div>
+
+					<div class="event-details">
+						<p>{event.description}</p>
+						<p><strong>Date:</strong> {event.date}</p>
+						<p><strong>Community:</strong> {event.community}</p>
+						{#if event.event_type === 'in-person' && event.location}
+							<p>
+								<strong>Location:</strong>
+								{event.location}
+							</p>
+						{:else if event.event_type === 'virtual' && event.virtual_link}
+							<p>
+								<strong>Link:</strong>
+								<a href={event.virtual_link} target="_blank">{event.virtual_link}</a>
+							</p>
+						{:else}
+							<p><strong>Location:</strong> Online</p>
+						{/if}
+					</div>
+				</div>
+			</div>
+		{/each}
+
+		<!-- Floating Add Button -->
+		{#if allowedToCreate}
+			<button
+				class="fixed bottom-5 right-5 bg-primary text-secondary p-4 rounded-full shadow-lg hover:bg-primary-focus z-50"
+				on:click={toggleEventModal}
+			>
+				<AddIconNoCircle size={28} />
+			</button>
+		{/if}
+	</div>
 </main>
