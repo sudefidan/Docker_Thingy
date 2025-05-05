@@ -73,7 +73,7 @@
 	let editedInterests: string[] = []; // Define editedInterests as an array
 
 	// Notification modal state
-	let showNotificationModal = true;
+	let showNotificationModal = false;
 	let notificationMessage = '';
 
 	// Function to show notification
