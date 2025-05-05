@@ -48,6 +48,7 @@ urlpatterns = [
     path('post_image/<int:post_id>/', views.get_post_image, name='get_post_image'),
     path('comments/<int:post_id>/', comment_list_create, name='comment-list-create'),
     path('comments/<int:post_id>/', views.comment_list_create, name='comment-list-create'),
+    path('api/posts/<int:post_id>/like/', views.like_unlike_post, name='like_unlike_post'),
 
 
     # community related endpoints
