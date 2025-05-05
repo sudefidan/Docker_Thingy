@@ -72,6 +72,26 @@
 	let newInterest = '';
 	let editedInterests: string[] = []; // Define editedInterests as an array
 
+	// Notification modal state
+	let showNotificationModal = true;
+	let notificationMessage = '';
+
+	// Function to show notification
+	function showNotification(message: string) {
+		notificationMessage = message;
+		showNotificationModal = true;
+
+		// Automatically hide the notification after 5 seconds
+		setTimeout(() => {
+			showNotificationModal = false;
+		}, 5000);
+	}
+
+	// Function to close the notification
+	function closeNotification() {
+		showNotificationModal = false;
+	}
+
 	// Function to handle profile picture upload
 	async function handleProfilePictureUpload(event: Event) {
 		const input = event.target as HTMLInputElement;
@@ -136,6 +156,9 @@
 		try {
 			isUpdatingProfile = true;
 
+			// Check if email was changed
+			const emailChanged = userProfile.email !== editedProfile.email;
+
 			// Update the profile picture if a new one was uploaded
 			if (tempProfilePicture) {
 				await updateProfilePicture(tempProfilePicture);
@@ -150,6 +173,13 @@
 			userProfile.last_name = editedProfile.last_name;
 			userProfile.email = editedProfile.email;
 			isEditingProfile = false;
+
+			// Show notification if email was changed
+			if (emailChanged) {
+				showNotification(
+					'A verification email has been sent to your new email address. Please verify your email to complete the change.'
+				);
+			}
 		} catch (error) {
 			console.error('Failed to update profile:', error);
 			let errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
@@ -286,7 +316,7 @@
 			isEditingInterests = false;
 		} catch (error) {
 			console.error('Failed to add interest:', error);
-      let errorMessage = error instanceof Error ? error.message : 'Failed to update interests';
+			let errorMessage = error instanceof Error ? error.message : 'Failed to update interests';
 			alert(errorMessage + '. Please try again!');
 		} finally {
 			isUpdatingInterests = false;
@@ -358,7 +388,7 @@
 							{#if isEditingProfile}
 								<div class="absolute inset-0 flex items-center justify-center upload-button">
 									<label class="flex items-center justify-center cursor-pointer" for="file-upload">
-										<MediaIcon size={28}/>
+										<MediaIcon size={28} />
 									</label>
 									<!-- Hidden File Input -->
 									<input
@@ -631,7 +661,7 @@
 		<!-- Right Column -->
 		<div class="space-y-10">
 			<!-- About Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-[32%]  w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[32%] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
@@ -888,11 +918,59 @@
 									</button>
 								</div>
 							{/each}
-
 						</div>
 					{/if}
 				</div>
 			</div>
 		</div>
 	</div>
+
+	<!-- Notification Modal -->
+	{#if showNotificationModal}
+		<div
+			class="fixed inset-x-0 top-0 mt-4 flex items-center justify-center z-50"
+		>
+			<div class="bg-secondary rounded-lg p-4 shadow-lg max-w-md mx-auto">
+				<div class="flex items-center">
+					<!-- Email Icon -->
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-6 w-6 text-primary mr-2"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+						/>
+					</svg>
+
+					<div class="flex-1">
+						<p class="font-medium">{notificationMessage}</p>
+					</div>
+
+					<!-- Close Button -->
+					<button class="ml-4 text-primary hover:text-base-100" on:click={closeNotification}>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </main>
