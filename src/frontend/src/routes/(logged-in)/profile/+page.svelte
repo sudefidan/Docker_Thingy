@@ -4,6 +4,7 @@
 	import AddIcon from '../../../assets/AddIcon.svelte';
 	import EditIcon from '../../../assets/EditIcon.svelte';
 	import ShowPasswordIcon from '../../../assets/ShowPasswordIcon.svelte';
+	import SettingsIcon from '../../../assets/SettingsIcon.svelte';
 	import { page } from '$app/stores';
 	import {
 		fetchUserProfile,
@@ -32,7 +33,10 @@
 		social_type: [],
 		social_username: [],
 		about: '',
-		interests: []
+		interests: [],
+		address: '',
+		program: '',
+		uni_year: ''
 	};
 
 	// Initialise variables for profile editing
@@ -50,8 +54,14 @@
 		username: '',
 		first_name: '',
 		last_name: '',
-		email: ''
+		email: '',
+		address: '',
+		program: '',
+		uni_year: ''
 	};
+	let showSettingsMenu = false;
+	let showDeleteConfirmation = false;
+	let showPasswordChangeModal = false;
 
 	let tempProfilePicture = ''; // Temporary variable for profile picture upload
 
@@ -61,7 +71,7 @@
 	let socialUsername = '';
 	let isUpdatingSocial = false;
 
-	// About section editing
+	// About editing
 	let isEditingAbout = false;
 	let editedAbout = '';
 	let isUpdatingAbout = false;
@@ -75,6 +85,11 @@
 	// Notification modal state
 	let showNotificationModal = false;
 	let notificationMessage = '';
+
+	// Function to toggle settings menu
+	function toggleSettingsMenu() {
+		showSettingsMenu = !showSettingsMenu;
+	}
 
 	// Function to show notification
 	function showNotification(message: string) {
@@ -172,6 +187,9 @@
 			userProfile.first_name = editedProfile.first_name;
 			userProfile.last_name = editedProfile.last_name;
 			userProfile.email = editedProfile.email;
+			userProfile.address = editedProfile.address;
+			userProfile.program = editedProfile.program;
+			userProfile.uni_year = editedProfile.uni_year;
 			isEditingProfile = false;
 
 			// Show notification if email was changed
@@ -195,7 +213,10 @@
 			username: userProfile.username,
 			first_name: userProfile.first_name,
 			last_name: userProfile.last_name,
-			email: userProfile.email
+			email: userProfile.email,
+			address: userProfile.address,
+			program: userProfile.program,
+			uni_year: userProfile.uni_year
 		};
 		isEditingProfile = true;
 	}
@@ -336,6 +357,41 @@
 			console.error('Failed to fetch user profile:', error);
 		}
 	});
+
+	// Function to handle delete account action
+	async function handleDeleteAccount() {
+		const confirmed = confirm(
+			'Are you sure you want to delete your account? This action cannot be undone.'
+		);
+		if (confirmed) {
+			try {
+				// Call your API to delete account
+				const response = await fetch('http://127.0.0.1:8000/api/users/delete/', {
+					method: 'DELETE',
+					headers: {
+						Authorization: `Bearer ${localStorage.getItem('access_token')}`
+					}
+				});
+
+				if (response.ok) {
+					// Clear local storage and redirect to login
+					localStorage.removeItem('access_token');
+					window.location.href = '/';
+				} else {
+					const data = await response.json();
+					alert(data.error || 'Failed to delete account');
+				}
+			} catch (error) {
+				console.error('Error deleting account:', error);
+				alert('An error occurred while trying to delete your account');
+			}
+		}
+	}
+
+	// Function to toggle delete confirmation modal
+	function togglePasswordChangeModal() {
+		showPasswordChangeModal = !showPasswordChangeModal;
+	}
 </script>
 
 <main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -343,10 +399,238 @@
 	<div
 		class="gap-13 flex grid w-full max-w-full grid-cols-1 flex-col justify-center md:grid-cols-2"
 	>
+		<!-- Floating Settings Button -->
+		<button
+			class="fixed bottom-5 right-5 bg-primary text-secondary pl-3 pr-4 pt-4 pb-4 rounded-full shadow-lg hover:bg-primary-focus z-50"
+			on:click={toggleSettingsMenu}
+		>
+			<SettingsIcon size={30} />
+		</button>
+
+		<!-- Settings dropdown menu -->
+		{#if showSettingsMenu}
+			<div
+				class="absolute right-0 bottom-16 w-56 bg-secondary rounded-lg shadow-xl z-50 border border-base-100"
+				on:click|stopPropagation
+			>
+				<div class="p-2">
+					<h3 class="text-primary font-bold text-lg px-3 py-2">Account Settings</h3>
+
+					<!-- Show password change option -->
+					<button
+						class="w-full text-left px-3 py-2 hover:bg-base-200 rounded-md flex items-center"
+						on:click={() => {
+							toggleSettingsMenu();
+							showPasswordChangeModal = true;
+						}}
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5 mr-2"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+							/>
+						</svg>
+						Change Password
+					</button>
+
+					<!-- Delete account option -->
+					<button
+						class="w-full text-left px-3 py-2 hover:bg-base-200 rounded-md flex items-center"
+						on:click={() => {
+							toggleSettingsMenu();
+							handleDeleteAccount();
+						}}
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5 mr-2"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+							/>
+						</svg>
+						Delete Account
+					</button>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Password Change Modal -->
+		{#if showPasswordChangeModal}
+			<div
+				style="background-color: rgba(0, 0, 0, 0.8);"
+				class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+				on:click={togglePasswordChangeModal}
+			>
+				<div
+					class="card bg-secondary pl-5 pb-7 pr-7 pt-10 rounded-3xl w-full max-w-md"
+					on:click|stopPropagation
+				>
+					<h1 class="text-primary mb-6 text-center text-3xl font-bold">Change Password</h1>
+
+					<form class="space-y-4" on:submit|preventDefault={handlePasswordChange}>
+						<div class="form-control">
+							<label for="current_password" class="label">
+								<span class="label-text">Current Password</span>
+							</label>
+							<div class="relative">
+								<input
+									type={showCurrentPassword ? 'text' : 'password'}
+									name="current_password"
+									bind:value={currentPassword}
+									class="input input-bordered validator w-full custom-input pr-9"
+									required
+									minlength="8"
+									autocomplete="current-password"
+									placeholder="Enter your current password"
+								/>
+								<button
+									type="button"
+									class="absolute inset-y-0 right-0 flex items-center pr-3 text-sm leading-5"
+									on:click={() => (showCurrentPassword = !showCurrentPassword)}
+								>
+									{#if showCurrentPassword}
+										<ShowPasswordIcon />
+									{:else}
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="1.5"
+											stroke="currentColor"
+											class="size-5"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+											/>
+										</svg>
+									{/if}
+								</button>
+							</div>
+						</div>
+						<div class="form-control">
+							<label for="new_password" class="label">
+								<span class="label-text">New Password</span>
+							</label>
+							<div class="relative">
+								<input
+									type={showNewPassword ? 'text' : 'password'}
+									name="new_password"
+									bind:value={newPassword}
+									class="input input-bordered validator w-full custom-input pr-9"
+									required
+									minlength="8"
+									autocomplete="new-password"
+									placeholder="Enter your new password"
+								/>
+								<button
+									type="button"
+									class="absolute inset-y-0 right-0 flex items-center pr-3 text-sm leading-5"
+									on:click={() => (showNewPassword = !showNewPassword)}
+								>
+									{#if showNewPassword}
+										<ShowPasswordIcon />
+									{:else}
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="1.5"
+											stroke="currentColor"
+											class="size-5"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+											/>
+										</svg>
+									{/if}
+								</button>
+							</div>
+						</div>
+
+						<div class="form-control">
+							<label for="confirm_password" class="label">
+								<span class="label-text">Confirm Password</span>
+							</label>
+							<div class="relative">
+								<input
+									type={showConfirmPassword ? 'text' : 'password'}
+									name="confirm_password"
+									bind:value={confirmPassword}
+									class="input input-bordered validator w-full custom-input pr-9"
+									required
+									minlength="8"
+									autocomplete="new-password"
+									placeholder="Confirm your new password"
+								/>
+								<button
+									type="button"
+									class="absolute inset-y-0 right-0 flex items-center pr-3 text-sm leading-5"
+									on:click={() => (showConfirmPassword = !showConfirmPassword)}
+								>
+									{#if showConfirmPassword}
+										<ShowPasswordIcon />
+									{:else}
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="1.5"
+											stroke="currentColor"
+											class="size-5"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+											/>
+										</svg>
+									{/if}
+								</button>
+							</div>
+						</div>
+
+						<div class="fform-control mb-2 mt-6 flex justify-center">
+							<button
+								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+								type="submit"
+								disabled={isChangingPassword}
+							>
+								{#if isChangingPassword}
+									<span class="loading loading-spinner loading-xs"></span>
+									Changing...
+								{:else}
+									Confirm
+								{/if}
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		{/if}
+
 		<!-- Left Column -->
 		<div class="space-y-10">
 			<!-- Profile Section -->
-			<div class="card bg-base-100 min-h-[35%] w-full rounded-3xl">
+			<div class="card bg-base-100 min-h-[80vh] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="flex flex-end justify-end">
 						<div class="tooltip-container">
@@ -364,7 +648,7 @@
 					</div>
 					<!-- Profile Image Container -->
 					<div class="flex flex-col items-center">
-						<div class="relative w-50 h-50 mt-0">
+						<div class="relative w-70 h-70 mt-0 mb-20">
 							<!-- Profile Image or Placeholder -->
 							{#if tempProfilePicture || userProfile.profile_picture}
 								<img
@@ -404,7 +688,7 @@
 						</div>
 						<!-- Profile Information Section -->
 						<div class="w-full">
-							<div class="mb-2 flex justify-between items-center">
+							<div class="mb-3 flex justify-between items-center">
 								<label for="user_name" class="label text-primary">
 									<p class="label-text">Username:</p>
 								</label>
@@ -425,7 +709,7 @@
 									<p class="text-user-info">{userProfile.username}</p>
 								{/if}
 							</div>
-							<div class="mb-2 flex justify-between items-center">
+							<div class="mb-3 flex justify-between items-center">
 								<label for="name" class="label text-primary">
 									<p class="label-text">Name:</p>
 								</label>
@@ -459,7 +743,7 @@
 									<p class="text-user-info">{userProfile.first_name} {userProfile.last_name}</p>
 								{/if}
 							</div>
-							<div class="mb-2 flex justify-between items-center">
+							<div class="mb-3 flex justify-between items-center">
 								<label for="email" class="label text-primary">
 									<p class="label-text">Email:</p>
 								</label>
@@ -477,7 +761,77 @@
 									<p class="text-user-info">{userProfile.email}</p>
 								{/if}
 							</div>
-							<div class="flex justify-end gap-2 mt-4 mb-0" class:invisible={!isEditingProfile}>
+
+							<!-- Add these fields after the email section in the profile information -->
+							<div class="mb-3 flex justify-between items-center">
+								<label for="address" class="label text-primary">
+									<p class="label-text">Address:</p>
+								</label>
+								{#if isEditingProfile}
+									<div class="ml-auto justify-center">
+										<input
+											type="text"
+											id="address"
+											bind:value={editedProfile.address}
+											class="input input-bordered validator custom-input-profile"
+										/>
+									</div>
+								{:else}
+									<p class="text-user-info">{userProfile.address}</p>
+								{/if}
+							</div>
+
+							<div class="mb-3 flex justify-between items-center">
+								<label for="program" class="label text-primary">
+									<p class="label-text">Program:</p>
+								</label>
+								{#if isEditingProfile}
+									<div class="ml-auto justify-center">
+										<input
+											type="text"
+											id="program"
+											bind:value={editedProfile.program}
+											class="input input-bordered validator custom-input-profile"
+										/>
+									</div>
+								{:else}
+									<p class="text-user-info">{userProfile.program}</p>
+								{/if}
+							</div>
+
+							<div class="mb-3  mt-2 flex justify-between items-center">
+								<label for="year" class="label text-primary">
+									<p class="label-text">Year:</p>
+								</label>
+								{#if isEditingProfile}
+									<div class="flex flex-col ml-2">
+										<select
+											id="year"
+											bind:value={editedProfile.uni_year}
+											class="select select-bordered validator custom-input placeholder-selected"
+										>
+											<option value="">Select year</option>
+											<option value={1} selected={userProfile.uni_year === '1'}>Year 1</option>
+											<option value={2} selected={userProfile.uni_year === '2'}>Year 2</option>
+											<option value={3} selected={userProfile.uni_year === '3'}>Year 3</option>
+										</select>
+									</div>
+								{:else}
+									<p class="text-user-info">
+										{#if userProfile.uni_year === '1'}
+											Year 1
+										{:else if userProfile.uni_year === '2'}
+											Year 2
+										{:else if userProfile.uni_year === '3'}
+											Year 3
+										{:else}
+											{userProfile.uni_year || 'Not specified'}
+										{/if}
+									</p>
+								{/if}
+							</div>
+
+							<div class="flex justify-end gap-2 mt-6 mb-0" class:invisible={!isEditingProfile}>
 								<button
 									class="btn btn-ghost"
 									on:click={cancelEditingProfile}
@@ -502,166 +856,12 @@
 					</div>
 				</div>
 			</div>
-			<!-- Change Password Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-[31%] w-full rounded-3xl">
-				<div class="card-body bg-secondary rounded-3xl">
-					<h1 class="text-primary mb-4 text-center text-4xl font-bold">Change Password</h1>
-					<form class="space-y-3" on:submit={handlePasswordChange}>
-						<div class="form-control flex flex-col sm:flex-row">
-							<div class="w-full">
-								<label for="current_password" class="label">
-									<span class="label-text">Current Password</span>
-								</label>
-								<div class="relative">
-									<input
-										type={showCurrentPassword ? 'text' : 'password'}
-										name="current_password"
-										bind:value={currentPassword}
-										class="input input-bordered validator custom-input pr-9"
-										required
-										minlength="8"
-										autocomplete="current-password"
-										placeholder="Enter your current password"
-									/>
-									<button
-										type="button"
-										class="absolute inset-y-0 right-0 flex items-center pb-6 pr-3 text-sm leading-5"
-										on:click={() => (showCurrentPassword = !showCurrentPassword)}
-									>
-										{#if showCurrentPassword}
-											<ShowPasswordIcon />
-										{:else}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="1.5"
-												stroke="currentColor"
-												class="size-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
-												/>
-											</svg>
-										{/if}
-									</button>
-									<p class="validator-hint">Must be more than 8 characters!</p>
-								</div>
-							</div>
-						</div>
-						<div class="form-control flex flex-col gap-3 sm:flex-row">
-							<div class="w-full">
-								<label for="new_password" class="label">
-									<span class="label-text">New Password</span>
-								</label>
-								<div class="relative">
-									<input
-										type={showNewPassword ? 'text' : 'password'}
-										name="new_password"
-										bind:value={newPassword}
-										class="input input-bordered validator custom-input pr-9"
-										required
-										minlength="8"
-										autocomplete="new-password"
-										placeholder="Enter your new password"
-									/>
-									<button
-										type="button"
-										class="absolute inset-y-0 right-0 flex items-center pb-6 pr-3 text-sm leading-5"
-										on:click={() => (showNewPassword = !showNewPassword)}
-									>
-										{#if showNewPassword}
-											<ShowPasswordIcon />
-										{:else}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="1.5"
-												stroke="currentColor"
-												class="size-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
-												/>
-											</svg>
-										{/if}
-									</button>
-									<p class="validator-hint">Must be more than 8 characters!</p>
-								</div>
-							</div>
-						</div>
-						<div class="form-control flex flex-col gap-3 sm:flex-row mb-0">
-							<div class="w-full">
-								<label for="confirm_password" class="label">
-									<span class="label-text">Confirm Password</span>
-								</label>
-								<div class="relative">
-									<input
-										type={showConfirmPassword ? 'text' : 'password'}
-										name="confirm_password"
-										bind:value={confirmPassword}
-										class="input input-bordered validator custom-input pr-9"
-										required
-										minlength="8"
-										autocomplete="new-password"
-										placeholder="Confirm your new password"
-									/>
-									<button
-										type="button"
-										class="absolute inset-y-0 right-0 flex items-center pb-6 pr-3 text-sm leading-5"
-										on:click={() => (showConfirmPassword = !showConfirmPassword)}
-									>
-										{#if showConfirmPassword}
-											<ShowPasswordIcon />
-										{:else}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="1.5"
-												stroke="currentColor"
-												class="size-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
-												/>
-											</svg>
-										{/if}
-									</button>
-									<p class="validator-hint">Must be more than 8 characters!</p>
-								</div>
-							</div>
-						</div>
-						<div class="form-control flex justify-center mb-0">
-							<button
-								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto"
-								type="submit"
-								disabled={isChangingPassword}
-							>
-								{#if isChangingPassword}
-									<span class="loading loading-spinner loading-xs"></span>
-									Changing...
-								{:else}
-									Confirm
-								{/if}
-							</button>
-						</div>
-					</form>
-				</div>
-			</div>
 		</div>
 
 		<!-- Right Column -->
 		<div class="space-y-10">
 			<!-- About Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-[32%] w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[30.5vh] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
@@ -718,7 +918,7 @@
 				</div>
 			</div>
 			<!-- Socials Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-[33%] w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[31.5vh] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
@@ -833,7 +1033,7 @@
 				</div>
 			</div>
 			<!-- Interests Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-[26.5%] w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[23.5vh] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
@@ -927,9 +1127,7 @@
 
 	<!-- Notification Modal -->
 	{#if showNotificationModal}
-		<div
-			class="fixed inset-x-0 top-0 mt-4 flex items-center justify-center z-50"
-		>
+		<div class="fixed inset-x-0 top-0 mt-4 flex items-center justify-center z-50">
 			<div class="bg-secondary rounded-lg p-4 shadow-lg max-w-md mx-auto">
 				<div class="flex items-center">
 					<!-- Email Icon -->
