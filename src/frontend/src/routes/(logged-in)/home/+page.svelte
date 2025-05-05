@@ -18,10 +18,15 @@
 	let searchTerm = '';
 	let subscribedCommunities = [];
 	let selectedCommunityId = '';
-	let postImage = null; // To store the selected image file
-	let selectedImage = null; // To store the selected image for enlargement
-	let showPostModal = false; // To control the visibility of the post modal
-	let currentTime = new Date(); // Track the current time
+	let postImage = null; 
+	let selectedImage = null; 
+	let showPostModal = false; 
+	let currentTime = new Date();
+	let postComments = {};
+	let activeCommentPostId = null;
+	let loadingComments = false;
+	let newComment = {};
+	let tempComment = '';
 
 	let userProfile = {
 		profile_picture: '',
@@ -306,6 +311,195 @@
 			console.error('Error fetching user profile:', error);
 		}
 	};
+
+	async function toggleComments(postId) {
+    if (activeCommentPostId === postId) {
+        activeCommentPostId = null;
+    } else {
+        activeCommentPostId = postId;
+
+        if (!postComments[postId]) {
+            loadingComments = true;
+            try {
+                let token = localStorage.getItem("access_token");
+                let refreshToken = localStorage.getItem("refresh_token");
+
+                if (!token) {
+                    console.error("No access token found");
+                    postComments[postId] = [];
+                    // Initialize newComment for this postId
+                    if (!newComment[postId]) {
+                        newComment[postId] = '';
+                    }
+                    return;
+                }
+
+                // Try to fetch comments with the current access token
+                let res = await fetch(`http://127.0.0.1:8000/comments/${postId}/`, {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                // If access token is expired (401), try refreshing the token
+                if (res.status === 401 && refreshToken) {
+                    // Refresh the token
+                    const refreshRes = await fetch("http://127.0.0.1:8000/api/token/refresh/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            refresh: refreshToken
+                        })
+                    });
+
+                    if (refreshRes.ok) {
+                        const data = await refreshRes.json();
+                        token = data.access;  // Get the new access token
+                        // Save the new token
+                        localStorage.setItem("accessToken", token);
+
+                        // Retry fetching comments with the new token
+                        res = await fetch(`http://127.0.0.1:8000/comments/${postId}/`, {
+                            method: "GET",
+                            headers: {
+                                "Authorization": `Bearer ${token}`,
+                                "Content-Type": "application/json"
+                            }
+                        });
+                    } else {
+                        console.error("Failed to refresh the token");
+                        postComments[postId] = [];
+                        // Initialize newComment for this postId
+                        if (!newComment[postId]) {
+                            newComment[postId] = '';
+                        }
+                        return;
+                    }
+                }
+
+                // Check if request was successful and initialize newComment
+                if (res.ok) {
+                    const data = await res.json();
+                    postComments[postId] = data;
+                    // Initialize newComment for this postId
+                    if (!newComment[postId]) {
+                        newComment[postId] = '';
+                    }
+                } else {
+                    console.error("Failed to fetch comments:", await res.text());
+                    postComments[postId] = [];
+                    // Initialize newComment for this postId
+                    if (!newComment[postId]) {
+                        newComment[postId] = '';
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading comments:", err);
+                postComments[postId] = [];
+                // Initialize newComment for this postId
+                if (!newComment[postId]) {
+                    newComment[postId] = '';
+                }
+            } finally {
+                loadingComments = false;
+            }
+        } else {
+            // Initialize newComment for this postId if it doesn't exist
+            if (!newComment[postId]) {
+                newComment[postId] = '';
+            }
+        }
+    }
+}
+const postComment = async (postId) => {
+        const commentText = newComment[postId]?.trim();
+        if (!commentText) {
+            alert('Please enter a comment.');
+            return;
+        }
+
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            console.error('No access token found.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://127.0.0.1:8000/comments/${postId}/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ comment: commentText }),
+            });
+
+            if (response.ok) {
+                const newCommentData = await response.json();
+                // Optimistically update the UI by adding the new comment to the postComments array
+                postComments[postId] = [...(postComments[postId] || []), newCommentData];
+                // Clear the comment input field
+                newComment[postId] = '';
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to post comment:', errorData);
+                alert('Failed to post comment.');
+                // Optionally, you could retry the comment submission or handle the error differently
+            }
+        } catch (error) {
+            console.error('Error posting comment:', error);
+            alert('An error occurred while posting the comment.');
+        }
+    };
+
+    const likeUnlikePost = async (postId) => {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            goto('http://localhost:5173/'); // Or handle unauthenticated state
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://127.0.0.1:8000/api/posts/${postId}/like/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                // Update the local posts array
+                posts = posts.map((post) => {
+                    if (post.id === postId) {
+                        const newUserLiked = !post.user_liked;
+                        const newLikeCount = newUserLiked ? post.like_count + 1 : post.like_count - 1;
+                        return { ...post, user_liked: newUserLiked, like_count: newLikeCount };
+                    }
+                    return post;
+                });
+                filteredPosts = filteredPosts.map((post) => {
+                    if (post.id === postId) {
+                        const newUserLiked = !post.user_liked;
+                        const newLikeCount = newUserLiked ? post.like_count + 1 : post.like_count - 1;
+                        return { ...post, user_liked: newUserLiked, like_count: newLikeCount };
+                    }
+                    return post;
+                });
+            } else {
+                console.error('Failed to like/unlike post:', await response.text());
+                alert('Failed to like/unlike post.');
+            }
+        } catch (error) {
+            console.error('Error liking/unliking post:', error);
+            alert('An error occurred while liking/unliking the post.');
+        }
+    };
 </script>
 
 <main class="px-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -487,18 +681,49 @@
 					</div>
 				</div>
 				<div class="flex items-center gap-x-4">
-					<div class="flex items-center gap-x-1">
-						<LikeIcon />
-						<p>Liked Count</p>
-					</div>
-					<div class="flex items-center gap-x-1">
+                    <button class="flex items-center gap-x-1" on:click={() => likeUnlikePost(p.id)}>
+                        {#if p.user_liked}
+                            <LikedIcon />
+                        {:else}
+                            <LikeIcon />
+                        {/if}
+                        <p>{p.like_count !== undefined ? p.like_count : 0} Likes</p>
+                    </button>
+					<div class="flex items-center gap-x-1 cursor-pointer" on:click={() => toggleComments(p.id)}>
 						<CommentIcon />
-						<p>Comment Count</p>
+						<p>{p.comment_count !== undefined ? p.comment_count : 'View'} Comments</p>
 					</div>
 				</div>
-			</div>
-		</div>
-	{/each}
+				{#if activeCommentPostId === p.id}
+				    <div class="mt-4 bg-base-200 p-4 rounded-xl">
+				        {#if loadingComments}
+				            <p class="italic">Loading comments...</p>
+				        {:else if postComments[p.id]?.length}
+				            <h4 class="text-base-content font-semibold mb-2">Comments:</h4>
+				            {#each postComments[p.id] as c}
+				                <p class="text-base-content mb-1">
+				                    <strong>@{c.user.username}</strong>: {c.comment}
+				                    <span class="text-sm text-gray-500 ml-2">{new Date(c.timestamp).toLocaleString()}</span>
+				                </p>
+				            {/each}
+				        {:else}
+				            <p class="text-base-content italic">No comments yet.</p>
+				        {/if}
+				
+				        <div class="mt-4">
+					<input
+					type="text"
+					placeholder="Write a comment..."
+					class="input input-bordered w-full mb-2"
+					bind:value={newComment[p.id]}
+				/>
+				            <button class="btn btn-primary btn-sm" on:click={() => postComment(p.id)}>Post Comment</button>
+				        </div>
+				    </div>
+				{/if}
+        </div>
+    </div>
+{/each}
 
 	<!-- Modal for enlarged image -->
 	{#if selectedImage}
@@ -518,4 +743,7 @@
 	>
 		<AddIconNoCircle size={28} />
 	</button>
+
+
+
 </main>

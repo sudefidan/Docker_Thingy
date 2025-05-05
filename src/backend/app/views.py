@@ -11,10 +11,11 @@ from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import transaction
 from django.db.models import Q
+from django.db import models
 import requests
 import base64
 import re
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant, UserInterest
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant, UserInterest, Comment, PostLikes
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification, create_notification_community_interest
@@ -27,6 +28,8 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from proj.settings import DEFAULT_FROM_EMAIL, EMAIL_HOST, CSRF_TRUSTED_ORIGINS, EMAIL_PORT
+from django.utils.timezone import now
+from django.db.models import Count
 
 account_activation_token = PasswordResetTokenGenerator()
 
@@ -363,7 +366,12 @@ def get_users(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_posts(request):
-    posts = Post.objects.all().order_by('-date')
+    user = request.user
+    posts = Post.objects.annotate(
+        comment_count=Count('comment'),
+        like_count=Count('postlikes', distinct=True),
+        user_liked=Count('postlikes', filter=models.Q(postlikes__user=user), distinct=True)
+    ).order_by('-date')
 
     posts_data = []
     for post in posts:
@@ -378,9 +386,12 @@ def get_posts(request):
             'username': post.user.username,
             'community_id': community_id,
             'community_name': community_name,
+            'comment_count': post.comment_count,
+            'like_count': post.like_count,
+            'user_liked': post.user_liked > 0,  # True if the current user has liked
         })
 
-    return JsonResponse(posts_data, safe=False, status=200)
+    return Response(posts_data, status=status.HTTP_200_OK)
 
 
 # send the post from the backend to the database
@@ -1578,3 +1589,73 @@ class verify_email_change(APIView):
 
         except (User.DoesNotExist, ValueError, TypeError, OverflowError):
              return Response({'error': 'Email change verification link is invalid or expired!'}, status=status.HTTP_400_BAD_REQUEST)
+        
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def comment_list_create(request, post_id):
+    post = get_object_or_404(Post, post_id=post_id)
+
+    if request.method == 'GET':
+        comments = Comment.objects.filter(post_id=post_id).select_related('user').order_by('-timestamp')
+        comment_data = [
+            {
+                "comment_id": comment.comment_id,
+                "comment": comment.comment,
+                "timestamp": comment.timestamp.isoformat(),
+                "post_id": comment.post_id,
+                "user": {
+                    "user_id": comment.user.id,
+                    "username": comment.user.username
+                }
+            }
+            for comment in comments
+        ]
+        return Response(comment_data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        comment_text = request.data.get('comment', '').strip()
+
+        if not comment_text:
+            return Response({"error": "Comment cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+
+        new_comment = Comment.objects.create(
+            comment=comment_text,
+            post_id=post_id,
+            user=request.user,
+            timestamp=now()
+        )
+
+        # Create a notification for the post owner if the commenter is not the owner
+        if post.user != request.user:
+            notification_message = f'{request.user.username} commented on your post: "{post.title}"'
+            Notification.objects.create(user=post.user, message=notification_message)
+
+        return Response({
+            "comment_id": new_comment.comment_id,
+            "comment": new_comment.comment,
+            "timestamp": new_comment.timestamp.isoformat(),
+            "post_id": new_comment.post_id,
+            "user": {
+                "user_id": new_comment.user.id,
+                "username": new_comment.user.username
+            }
+        }, status=status.HTTP_201_CREATED)
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def like_unlike_post(request, post_id):
+    post = get_object_or_404(Post, post_id=post_id)
+    user = request.user
+
+    try:
+        like = PostLikes.objects.get(post=post, user=user)
+        like.delete()
+        return Response({'message': 'Post unliked'}, status=status.HTTP_200_OK)
+    except PostLikes.DoesNotExist:
+        PostLikes.objects.create(post=post, user=user)
+        # Create a notification for the post owner (if the liker is not the owner)
+        if post.user != user:
+            message = f"{user.username} liked your post: {post.title}"  # Construct message
+            create_notification(user_id=post.user.id, message=message)
+        return Response({'message': 'Post liked'}, status=status.HTTP_201_CREATED)
+    
