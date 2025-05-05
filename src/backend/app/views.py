@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,6 +20,61 @@ from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification, create_notification_community_interest
 from django.views import View
 from datetime import datetime
+from django.urls import reverse
+from django.conf import settings
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.mail import send_mail
+from proj.settings import DEFAULT_FROM_EMAIL, EMAIL_HOST, CSRF_TRUSTED_ORIGINS, EMAIL_PORT
+
+account_activation_token = PasswordResetTokenGenerator()
+
+def send_verification_email(request, user):
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+    token = account_activation_token.make_token(user)
+    verification_url = f"{CSRF_TRUSTED_ORIGINS[1]}/api/verify-email/{uidb64}/{token}/"
+    subject = 'Activate Your Account'
+    message = f'Hi {user.username},\n\nPlease click the link to activate your account:\n{verification_url}\n\nThanks!'
+    try:
+        print("Attempting to send verification email")
+        print(f"To: {user.email}")
+        print(f"From: {DEFAULT_FROM_EMAIL}")
+        print(f"Host: {EMAIL_HOST}:{EMAIL_PORT}")
+        send_mail(
+            subject, message, DEFAULT_FROM_EMAIL, [user.email], fail_silently=False
+        )
+        print(f"Verification email sent to {user.email}")
+        print(f"Verification URL: {verification_url}")
+        print(f"Verification URL generated: {verification_url}")
+    except Exception as e:
+        print(f"Error sending verification email: {e}")
+
+        print(f"ERROR sending verification email")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error details: {e}")
+
+def send_email_change_verification(request, user, new_email):
+    """Sends the email change verification email to the new address."""
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+    token = account_activation_token.make_token(user)
+
+    verification_url = f"{CSRF_TRUSTED_ORIGINS[1]}/api/verify-email-change/{uidb64}/{token}/"
+
+    subject = 'Confirm Your New Email Address'
+    message = f'Hi {user.username},\n\nPlease click the link below to confirm your new email address ({new_email}):\n{verification_url}\n\nIf you did not request this change, please ignore this email.\n\nThanks!'
+    try:
+        print(f"--- Attempting to send email change verification to {new_email} ---")
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [new_email], # Send to the NEW email address
+            fail_silently=False,
+        )
+        print(f"--- Email change verification sent successfully to {new_email} ---")
+    except Exception as e:
+        print(f"--- ERROR sending email change verification to {new_email}: {e} ---")
 
 
 def index(request):
@@ -31,14 +86,6 @@ def example_view(request):
         "another_key": "another_value"
     }
     return JsonResponse(data)
-
-# def svelte_view(request, path=''):
-#     # Development URL
-#     svelte_url = f"http://svelte_frontend:5173/{path}"
-#     # Production URL
-#     # svelte_url = f"http://svelte_frontend:4173/{path}"
-#     response = requests.get(svelte_url)
-#     return HttpResponse(response.content, status=response.status_code)
 
 class create_user(APIView):
     permission_classes = [AllowAny]
@@ -56,18 +103,16 @@ class create_user(APIView):
             if not all([username, password, first_name, last_name, email]):
                 return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            user = User.objects.create_user(username=username, password=password, email=email, first_name=first_name, last_name=last_name)
+            # Ensure user is inactive until email is verified
+            user = User.objects.create_user(username=username, password=password, email=email, first_name=first_name, last_name=last_name, is_active=False)
             user.access_level = data.get('access_level', 1)
             user.save()
-            # refresh access token instead of regular so user no longer has to log in and it be annoying it will just refresh :D
-            refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
-            refresh_token = str(refresh)
-            # check response that shit is working :D
+
+            # Removed tokens as they will be added only in login (user must be verified through email first)
+            send_verification_email(request, user)
+
             return Response({
-                'message': 'User created successfully',
-                'access': access_token,
-                'refresh': refresh_token
+                'message': 'User created successfully. Please check your email to activate your account.'
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -79,6 +124,8 @@ class login_user(APIView):
     def post(self, request):
         identifier = request.data.get('identifier')
         password = request.data.get('password')
+
+        user_obj = None
 
         #this determines whether the user has inputted email or password.
         try:
@@ -96,7 +143,7 @@ class login_user(APIView):
             return Response({
                 'access': str(refresh.access_token),
                 'refresh': str(refresh)}, status=status.HTTP_200_OK)
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'error': 'Invalid credentials or account not yet verified'}, status=status.HTTP_401_UNAUTHORIZED)
 # Testing JWT requirement
 class protected_view(APIView):
     permission_classes = [IsAuthenticated]
@@ -509,6 +556,7 @@ class update_user_profile(APIView):
         try:
             user = request.user
             data = request.data
+            email_changed_pending = False
 
             # validate required fields
             if not all([data.get('username'), data.get('first_name'), data.get('last_name'), data.get('email')]):
@@ -567,21 +615,37 @@ class update_user_profile(APIView):
                     "error": "Email is already in use"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+            new_email = data['email']
+            if new_email != user.email:
+                # Check if this new email is already pending verification for this user
+                if user.pending_email == new_email:
+                     # Avoid resending if already pending for the same address
+                    return Response({
+                        "message": "Profile updated successfully. Verification for this email address is already pending.",
+                        "username": user.username, "first_name": user.first_name,
+                        "last_name": user.last_name, "email": user.email # Return current email
+                        }, status=status.HTTP_200_OK)
+
+                # Store pending email and send verification
+                user.pending_email = new_email
+                send_email_change_verification(request, user, new_email) # Call the verification email function
+                email_changed_pending = True
+
             # update user information
             user.username = username
             user.first_name = first_name
             user.last_name = last_name
-            user.email = email
             user.save()
 
             return Response({
-                "message": "Profile updated successfully",
+                "message": "Profile updated successfully, email changes must be verified.",
                 "username": user.username,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "email": user.email
-            }, status=status.HTTP_200_OK)
-
+                # Add a specific message if email change is pending
+            },
+            status=status.HTTP_200_OK)
         except Exception as e:
             return Response({
                 "error": "Failed to update profile",
@@ -1465,3 +1529,52 @@ def update_event_field(request):
             {"error": "An error occurred while updating the event."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+class verify_email(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and account_activation_token.check_token(user, token):
+            user.is_active = True
+            user.save()
+            # Redirect to login page if successful
+            return HttpResponseRedirect("http://localhost:5173")
+        else:
+            # Invalid token or user
+            return Response({'error': 'Activation link is invalid or expired!'}, status=status.HTTP_400_BAD_REQUEST)
+
+class verify_email_change(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, uidb64, token):
+        try:
+            # Decode uidb64 to get user primary key
+            user_pk = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=user_pk)
+
+            # Check if the token is valid for the user
+            if not account_activation_token.check_token(user, token):
+                raise ValueError("Invalid token")
+
+            # Check if there is a pending email change
+            if not user.pending_email:
+                 return Response({'error': 'No pending email change found or it was already completed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Update the user's actual email address
+            new_email = user.pending_email # Get the email from the pending field
+            user.email = new_email
+            user.pending_email = None # Clear the pending email field
+            user.save(update_fields=['email', 'pending_email'])
+
+            # Redirect to profile page after successful change
+            login_url = f"http://localhost:5173/profile"
+            return HttpResponseRedirect(login_url)
+
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+             return Response({'error': 'Email change verification link is invalid or expired!'}, status=status.HTTP_400_BAD_REQUEST)

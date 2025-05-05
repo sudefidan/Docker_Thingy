@@ -5,8 +5,7 @@
 	let password = '';
 	let message = '';
 	let showPassword = false;
-	let identifier = "";
-	
+	let identifier = '';
 
 	async function login() {
 		try {
@@ -37,7 +36,7 @@
 				}
 			} else {
 				const data = await res.json();
-				message = 'Invalid username or password!';
+				message = 'Invalid user credentials, or user must be verified through email!';
 				// Clear the form inputs
 				identifier = '';
 				password = '';

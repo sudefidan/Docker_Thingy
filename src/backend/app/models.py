@@ -9,6 +9,7 @@ class User(AbstractUser):
     program = models.CharField(max_length=255, blank=True, null=True)
     uni_year = models.IntegerField(blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
+    pending_email = models.EmailField(blank=True, null=True)
 
     def __str__(self):
         return self.username
