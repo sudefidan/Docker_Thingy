@@ -20,6 +20,9 @@ export interface UserProfile {
     social_username: string[];
     about: string;
     interests: string[];
+    address: string;
+    program: string;
+    uni_year: string;
 }
 
 export async function fetchUserProfile(): Promise<UserProfile> {
@@ -52,6 +55,9 @@ export async function updateProfile(profile: {
     first_name: string;
     last_name: string;
     email: string;
+    address: string;
+    program: string;
+    year: string;
 }): Promise<void> {
     try {
         const response = await fetch('http://localhost:8000/api/update-profile/', {
