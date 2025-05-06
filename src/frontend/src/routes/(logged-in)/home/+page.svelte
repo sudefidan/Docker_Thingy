@@ -520,7 +520,6 @@
 			>
 				<form id="post-form" class="space-y-4" on:submit|preventDefault={createPost}>
 					<div class="flex items-start">
-						<!-- TODO: Show User's Profile Picture -->
 						{#if userProfile.profile_picture}
 							<img
 								src={`data:image/jpeg;base64,${userProfile.profile_picture}`}
