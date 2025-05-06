@@ -301,7 +301,10 @@ button.fixed:hover {
 	/* Smooth transition */
 }
 
+
+/* Card styles */
 .card {
+	background: var(--color-secondary);
 	transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -309,6 +312,14 @@ button.fixed:hover {
 	transform: translateY(-5px);
 	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
+
+.home-page .card {
+	isolation: isolate;
+	/* Creates a new stacking context */
+	overflow: hidden;
+	/* Prevents any child elements from showing outside */
+}
+
 
 
 @source "../node_modules/flowbite-svelte/dist";
