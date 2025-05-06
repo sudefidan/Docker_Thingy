@@ -1,19 +1,26 @@
-import adapter from '@sveltejs/adapter-static'
+import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-	// Consult https://svelte.dev/docs/kit/integrations
-	// for more information about preprocessors
-	preprocess: vitePreprocess(),
+  // Enable svelte preprocessing (e.g. PostCSS, TypeScript, etc.)
+  preprocess: vitePreprocess(),
 
-	kit: {
-		// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-		// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
-		adapter: adapter(),
-		prerender: { entries: [] }
-	}
+  kit: {
+    // Use the static-site adapter
+    adapter: adapter({
+      // default options are usually fine
+      pages: 'build',
+      assets: 'build',
+      fallback: null
+    }),
+
+    // If you have any prerendered pages, list them here,
+    // or use `entries: ['*']` to prerender everything.
+    prerender: {
+      entries: []
+    }
+  }
 };
 
 export default {
