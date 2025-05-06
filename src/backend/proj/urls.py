@@ -25,8 +25,10 @@ urlpatterns = [
     path('api/logout/', logout_user.as_view()),
     path('api/protected/', views.protected_view.as_view()),
     path('api/change-password/', change_password.as_view(), name='change_password'),
+    path('api/users/delete/', views.delete_user_account, name='delete_user_account'), 
     re_path(r'^api/verify-email/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$', verify_email.as_view(), name='verify_email'),
     re_path(r'^api/verify-email-change/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$', verify_email_change.as_view(), name='verify_email_change'),
+
 
     # profile related endpoints
     path('api/user-profile/', user_profile_view.as_view(), name='user_profile'),
@@ -49,7 +51,7 @@ urlpatterns = [
     path('comments/<int:post_id>/', comment_list_create, name='comment-list-create'),
     path('comments/<int:post_id>/', views.comment_list_create, name='comment-list-create'),
     path('api/posts/<int:post_id>/like/', views.like_unlike_post, name='like_unlike_post'),
-
+    path('api/comments/<int:comment_id>/', views.delete_comment, name='delete_comment'),
 
     # community related endpoints
     path('api/create_community/', views.create_community.as_view()),
@@ -64,11 +66,14 @@ urlpatterns = [
     path('api/community/get_leaders/<int:community_id>/', get_community_leaders, name="get_community_leaders"),
     path('api/community/<int:community_id>/leaders/<int:leader_id>/delete/', delete_community_leader, name="delete_community_leaders"),
     path('api/community/<int:community_id>/leaders/<int:user_id>/add/', add_community_leader, name='add_community_leader'),
+    path('api/community/<int:community_id>/image/', views.get_community_image, name='get_community_image'),
+    path('api/community/update_image/', views.update_community_image, name='update_community_image'),
+    path('api/community/<int:community_id>/delete_image/', views.delete_community_image, name='delete_community_image'),
 
     # notifications
     path('api/notifications/', get_notifications, name="get_notifications"),
     path('api/notifications/delete/<int:notification_id>/', delete_notification, name="delete_notification"),
-  
+
     # event endpoints
     path('api/user/communities/', fetch_communities, name="user_communities"),
     path('api/events/', list_events, name='list_events'),
