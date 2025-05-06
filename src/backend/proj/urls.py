@@ -64,11 +64,14 @@ urlpatterns = [
     path('api/community/get_leaders/<int:community_id>/', get_community_leaders, name="get_community_leaders"),
     path('api/community/<int:community_id>/leaders/<int:leader_id>/delete/', delete_community_leader, name="delete_community_leaders"),
     path('api/community/<int:community_id>/leaders/<int:user_id>/add/', add_community_leader, name='add_community_leader'),
-
+    path('api/community/<int:community_id>/image/', views.get_community_image, name='get_community_image'),
+    path('api/community/update_image/', views.update_community_image, name='update_community_image'),
+    path('api/community/<int:community_id>/delete_image/', views.delete_community_image, name='delete_community_image'),
+    
     # notifications
     path('api/notifications/', get_notifications, name="get_notifications"),
     path('api/notifications/delete/<int:notification_id>/', delete_notification, name="delete_notification"),
-  
+
     # event endpoints
     path('api/user/communities/', fetch_communities, name="user_communities"),
     path('api/events/', list_events, name='list_events'),
