@@ -301,15 +301,6 @@ button.fixed:hover {
 	/* Smooth transition */
 }
 
-
-.community-description {
-	display: -webkit-box;
-	-webkit-line-clamp: 3;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
 .card {
 	transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
