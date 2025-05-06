@@ -301,6 +301,8 @@ class create_community(APIView):
         description = request.data.get('description')
         category = request.data.get('category')
         leader_ids = request.data.get('leader_ids', [])
+        image_file = request.FILES.get('community_image')
+
         # check if users is authenticated
         if request.user.is_authenticated:
             owner_id = request.user.id
@@ -317,6 +319,17 @@ class create_community(APIView):
             category=category,
             owner_id=owner_id
         )
+
+        if image_file:
+                try:
+                    # Read image data and save it to the community's picture field
+                    image_data = image_file.read()
+                    community.community_picture = image_data
+                    community.save()
+                except Exception as e:
+                    print(f"Error saving community image data: {e}")
+
+
         # create the link between the leader and the community
         for leader_id in leader_ids:
             user = get_object_or_404(User, id=leader_id)
@@ -332,6 +345,94 @@ class create_community(APIView):
             "community_id": community.community_id,
             "message": "Community created successfully and selected leaders assigned"
         })
+
+@api_view(['GET'])
+def get_community_image(request, community_id):
+    """
+    Retrieves community image as base64-encoded data or returns 404 if no image exists.
+    """
+    try:
+        community = get_object_or_404(Community, community_id=community_id)
+
+        if community.community_picture:
+            # Convert binary data to base64 for use in frontend
+            image_base64 = base64.b64encode(community.community_picture).decode('utf-8')
+            return JsonResponse({
+                'image': f"data:image/png;base64,{image_base64}"
+            })
+        else:
+            return JsonResponse({'image': None}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_community_image(request):
+    """
+    Update the image for a community
+    """
+    try:
+        community_id = request.data.get('community_id')
+        image_file = request.FILES.get('community_image')
+
+        if not community_id:
+            return Response({"error": "Community ID is required"}, status=400)
+
+        if not image_file:
+            return Response({"error": "No image provided"}, status=400)
+
+        # Get the community
+        community = get_object_or_404(Community, community_id=community_id)
+
+        # Check if the user is the owner of the community
+        if community.owner_id != request.user.id:
+            return Response({"error": "You are not authorized to update this community"}, status=403)
+
+        # Update the image
+        try:
+            # Read image data and save it to the community's picture field
+            image_data = image_file.read()
+            community.community_picture = image_data
+            community.save()
+
+            return Response({
+                "message": "Community image updated successfully",
+                "community_id": community.community_id
+            })
+        except Exception as e:
+            return Response({"error": f"Error updating community image: {str(e)}"}, status=500)
+
+    except Exception as e:
+        return Response({"error": f"Error processing request: {str(e)}"}, status=500)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_community_image(request, community_id):
+    """
+    Deletes the image for a specified community
+    """
+    try:
+        # Get the community
+        community = get_object_or_404(Community, community_id=community_id)
+
+        # Check if the user is the owner of the community
+        if community.owner_id != request.user.id:
+            return Response({"error": "You are not authorized to update this community"}, status=403)
+
+        # Check if the community has an image
+        if not community.community_picture:
+            return Response({"error": "This community doesn't have an image to delete"}, status=400)
+
+        # Delete the image by setting the field to None
+        community.community_picture = None
+        community.save()
+
+        return Response({
+            "message": "Community image deleted successfully",
+            "community_id": community.community_id
+        })
+    except Exception as e:
+        return Response({"error": f"Error deleting community image: {str(e)}"}, status=500)
 
 class SubscribedCommunities(APIView):
     # the user must be logged in otherwise it will not work
@@ -487,13 +588,24 @@ def get_post_image(request, post_id):
     except PostImage.DoesNotExist:
         return HttpResponse(status=404)
 
+@api_view(['GET'])
 def fetch_communities(request):
     if request.method == "GET":
-        communities = Community.objects.all().values()
-        return JsonResponse(list(communities), safe=False)
+        communities = Community.objects.all()
+        communities_data = [
+            {
+                "community_id": community.community_id,
+                "name": community.name,
+                "description": community.description,
+                "category": community.category,
+                "owner_id": community.owner_id,
+                "has_image": bool(community.community_picture)  # Just indicate if image exists
+            }
+            for community in communities
+        ]
+        return JsonResponse(communities_data, safe=False)
 
     return JsonResponse({"error": "Invalid request"}, status=400)
-
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -1698,3 +1810,128 @@ def delete_comment(request, comment_id):
         return Response({'message': 'Comment deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
     else:
         return Response({'error': 'You are not authorized to delete this comment.'}, status=status.HTTP_403_FORBIDDEN)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_comment(request, comment_id):
+    try:
+        comment = Comment.objects.get(comment_id=comment_id)
+    except Comment.DoesNotExist:
+        return Response({'error': 'Comment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if comment.user == request.user:
+        comment.delete()
+        return Response({'message': 'Comment deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+    else:
+        return Response({'error': 'You are not authorized to delete this comment.'}, status=status.HTTP_403_FORBIDDEN)
+
+
+# Delete user account and all associated data
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_user_account(request):
+    """
+    Completely delete a user's account and all associated data.
+    This includes:
+    - Communities they own (and all associated data)
+    - Community Subscriptions
+    - Community leadership positions
+    - Posts they've created
+    - Event Participations
+    - Comments they've made
+    - Likes they've added
+
+    - Social media connections
+    - Interests
+    - Notifications
+    """
+    try:
+        user = request.user
+        user_id = user.id
+        django_request =  request._request
+
+        with transaction.atomic():
+            # Delete all communities owned by the user, and notify subscribers
+            communities_owned = Community.objects.filter(owner=user)
+            for community in communities_owned:
+                # Get subscribers for notifications
+                subscribed_users = Subscribed.objects.filter(community=community)
+                for subscription in subscribed_users:
+                    if subscription.user.id != user.id:  # Don't notify the user being deleted
+                        message = f"The community '{community.name}' has been deleted because the owner's account was removed."
+                        Notification.objects.create(user=subscription.user, message=message)
+            Community.objects.filter(owner=user).delete()
+
+
+            # Leave all communities the user is subscribed to and notify the owners
+            subscribed_communities = Subscribed.objects.filter(user=user).select_related('community__owner')
+            for subscription in subscribed_communities:
+                community = subscription.community
+                owner = community.owner
+                if owner and owner.id != user.id:  # Don't create notification if owner is being deleted
+                    message = f"{user.username} has left your community '{community.name}' (account deleted)."
+                    Notification.objects.create(user=owner, message=message)
+            Subscribed.objects.filter(user=user).delete()
+
+            # Remove from all leadership positions
+            leadership_positions = CommunityLeader.objects.filter(user=user).select_related('community__owner')
+            for position in leadership_positions:
+                community = position.community
+                owner = community.owner
+                if owner and owner.id != user.id:  # Don't create notification if owner is being deleted
+                    message = f"{user.username} is no longer a leader of community '{community.name}' (account deleted)."
+                    Notification.objects.create(user=owner, message=message)
+            CommunityLeader.objects.filter(user=user).delete()
+
+            # Handle posts and associated data
+            Post.objects.filter(user=user).delete()
+
+            # Delete comments the user has made on any post
+            comments = Comment.objects.filter(user=user)
+            for comment in comments:
+                # Notify the post owner that a comment was removed (if they're not being deleted)
+                if comment.post.user.id != user.id:
+                    message = f"A comment by {user.username} was removed from your post '{comment.post.title}' (account deleted)."
+                    Notification.objects.create(user=comment.post.user, message=message)
+            Comment.objects.filter(user=user).delete()
+
+
+            # Delete likes the user has made on any post
+            likes = PostLikes.objects.filter(user=user)
+            for like in likes:
+                if like.post.user.id != user.id:
+                    message = f"{user.username} has removed their like from your post '{like.post.title}' (account deleted)."
+                    Notification.objects.create(user=like.post.user, message=message)
+            PostLikes.objects.filter(user=user).delete()
+
+
+            # Leave all events the user is participating in and notify event owners
+            participations = EventParticipant.objects.filter(user=user).select_related('event__community__owner')
+            for participation in participations:
+                event = participation.event
+                # Get the community owner (event owner) to notify
+                community_owner = event.community.owner
+                if community_owner and community_owner.id != user.id:  # Don't notify if owner is being deleted
+                    message = f"{user.username} has left your event '{event.title}' (account deleted)."
+                    Notification.objects.create(user=community_owner, message=message)
+            EventParticipant.objects.filter(user=user).delete()
+
+            # Delete all user social media connections
+            UserSocial.objects.filter(user=user).delete()
+
+            # Delete all user interests
+            UserInterest.objects.filter(user=user).delete()
+
+            # Notifications
+            Notification.objects.filter(user=user).delete()
+
+            # Finally, delete the user account
+            user.delete()
+
+        return Response({"message": "Account deleted successfully"}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to delete account: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

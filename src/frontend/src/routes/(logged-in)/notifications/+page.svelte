@@ -26,7 +26,10 @@
 			if (response.ok) {
 				const data = await response.json();
 				console.log('Fetched all notifications:', data);
-				notifications = data; // This will trigger reactivity in Svelte
+				// Sort notifications by timestamp (newest first)
+                notifications = data.sort((a, b) => {
+                    return new Date(b.timestamp) - new Date(a.timestamp);
+                });
 			} else {
 				console.error('Failed to fetch communities');
 			}
@@ -48,7 +51,8 @@
 			);
 
 			if (response.ok) {
-				location.reload();
+				// Instead of reloading the page, just update the notifications list
+                notifications = notifications.filter(n => n.notification_id !== notification_id);
 			} else {
 				console.error('Failed to fetch communities');
 			}

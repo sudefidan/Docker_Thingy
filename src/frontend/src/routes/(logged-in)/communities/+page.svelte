@@ -6,6 +6,7 @@
 	import { MultiSelect, Badge } from 'flowbite-svelte';
 	import AddIconNoCircle from '../../../assets/AddIconNoCircle.svelte';
 	import SettingsIcon from '../../../assets/SettingsIcon.svelte';
+	import MediaIcon from '../../../assets/MediaIcon.svelte';
 
 	let categories = [...CATEGORIES.sort((a, b) => a.trim().localeCompare(b.trim())), 'Other']; // Sort the categories alphabetically
 
@@ -14,6 +15,7 @@
 	let description = ''; // Community description
 	let category = ''; // Community category
 	let customCategory = ''; // Custom category if category is 'Other'
+	let community_image = null; // Community image
 	let users = []; // List of users fetched from the API
 	let selectedUsersForCommunityCreation = []; // Selected users to be Community Leaders
 	let usersList = []; // List of users for the MultiSelect component
@@ -25,6 +27,8 @@
 	let new_community_name = null; // New name for the community
 	let new_community_description = null; // New description for the community
 	let new_community_category = null; // New category for the community
+	let new_community_image = null; // New community image for management
+	let selected_community_has_image = false; // Flag to check if the selected community has an image
 	$: community_leaders = []; // Current members of the selected community
 	let community_member_to_demote = null; // Member to demote from leader
 	let community_member_to_promote = null; // Member to promote to leader
@@ -54,8 +58,105 @@
 		selectedAction = event.target.value;
 	}
 
+	// Function to handle image selection
+	const handleImageChange = (event) => {
+		community_image = event.target.files[0];
+	};
+
+	// Function to handle image selection for community management
+	const handleManagementImageChange = (event) => {
+		new_community_image = event.target.files[0];
+	};
+
+	const update_community_image = async () => {
+		if (!community_management_selected) {
+			console.error('No community selected.');
+			return;
+		}
+
+		if (!new_community_image) {
+			alert('Please select an image first.');
+			return;
+		}
+
+		const confirmation = confirm('Are you sure you want to change the community image?');
+		if (!confirmation) return;
+
+		// Create FormData object for file upload
+		const formData = new FormData();
+		formData.append('community_image', new_community_image);
+		formData.append('community_id', community_management_selected);
+
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/community/update_image/', {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${access_token}`
+				},
+				body: formData
+			});
+			const result = await response.json();
+			if (response.ok) {
+				console.log('Community image updated:', result);
+				alert('Community image updated successfully!');
+				window.location.reload();
+			} else {
+				alert(result.error || 'Failed to update community image');
+				console.error('Error updating community image:', result.error);
+			}
+		} catch (error) {
+			console.error('Network Error:', error.message);
+			alert('An error occurred. Please try again!');
+		}
+	};
+
+	// Function to delete community image
+	const delete_community_image = async () => {
+		if (!community_management_selected) {
+			console.error('No community selected.');
+			return;
+		}
+
+		const confirmation = confirm('Are you sure you want to remove the community image?');
+		if (!confirmation) return;
+
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:8000/api/community/${community_management_selected}/delete_image/`,
+				{
+					method: 'DELETE',
+					headers: {
+						Authorization: `Bearer ${access_token}`
+					}
+				}
+			);
+
+			const result = await response.json();
+			if (response.ok) {
+				console.log('Community image deleted:', result);
+				alert('Community image removed successfully!');
+				window.location.reload();
+			} else {
+				alert(result.error || 'Failed to remove community image');
+				console.error('Error removing community image:', result.error);
+			}
+		} catch (error) {
+			console.error('Network Error:', error.message);
+			alert('An error occurred. Please try again!');
+		}
+	};
+
 	// Function to toggle the community creation modal
 	const toggleCommunityCreateModal = () => {
+		// Reset the data when the modal is opened
+		if (showCommunityCreateModal) {
+			name = '';
+			description = '';
+			category = '';
+			customCategory = '';
+			selectedUsersForCommunityCreation = [];
+			community_image = null;
+		}
 		showCommunityCreateModal = !showCommunityCreateModal;
 	};
 
@@ -64,9 +165,14 @@
 		community_management_selected = communityId; // Assign the selected community
 		if (communityId) {
 			await get_community_leaders(); // Fetch the leaders for the selected community
+
+			// Check if the selected community has an image
+			const community = communities.find((c) => c.community_id === communityId);
+			selected_community_has_image = community ? community.has_image : false;
 		}
 		showCommunityManagementModal = !showCommunityManagementModal; // Toggle the modal
 		selectedAction = ''; // Reset the selected action
+		new_community_image = null; // Reset the new community image
 	};
 
 	onMount(async () => {
@@ -168,26 +274,34 @@
 			console.log('All fields are required!');
 			return;
 		}
-		// data that will be passed through the api
-		const data = {
-			name,
-			description,
-			category: category === 'Other' ? customCategory : category,
-			leader_ids: selectedUsersForCommunityCreation
-		};
 
 		const confirmation = confirm('Are you sure?');
 		if (!confirmation) return;
+
+		// Create FormData object for file upload
+		const formData = new FormData();
+		formData.append('name', name);
+		formData.append('description', description);
+		formData.append('category', category === 'Other' ? customCategory : category);
+
+		// Add leader_ids as a JSON string
+		if (selectedUsersForCommunityCreation.length > 0) {
+			formData.append('leader_ids', JSON.stringify(selectedUsersForCommunityCreation));
+		}
+
+		// Add the image file if it exists
+		if (community_image) {
+			formData.append('community_image', community_image);
+		}
 
 		// the api call and post method
 		try {
 			const response = await fetch('http://127.0.0.1:8000/api/create_community/', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
 					Authorization: `Bearer ${access_token}`
 				},
-				body: JSON.stringify(data)
+				body: formData
 			});
 
 			const result = await response.json();
@@ -198,6 +312,7 @@
 				description = '';
 				category = '';
 				selectedUsersForCommunityCreation = [];
+				community_image = null;
 				window.location.reload();
 			} else {
 				alert(result.error);
@@ -518,7 +633,7 @@
 							</div>
 						</div>
 					{/if}
-					<div class="form-control mb-2 flex flex-col gap-3 sm:flex-row">
+					<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
 						<div class="w-full">
 							<label for="name" class="label">
 								<span class="label-text wrap">Community Leaders(Optional)</span>
@@ -544,6 +659,45 @@
 										{item.name}
 									</Badge>
 								</MultiSelect>
+							</div>
+						</div>
+					</div>
+
+					<!-- In the community creation modal form, add this section after the category section: -->
+					<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+						<div class="w-full">
+							<label for="community-image" class="label">
+								<span class="label-text">Community Image (Optional)</span>
+							</label>
+							<div class="relative">
+								<!-- Image Preview -->
+								{#if community_image}
+									<div class="mb-3 flex justify-center">
+										<img
+											src={URL.createObjectURL(community_image)}
+											alt="Selected Image"
+											class="rounded-md min-w-[20%] max-w-[25%] h-auto"
+										/>
+									</div>
+								{/if}
+								<!-- Image Upload Widget -->
+								<div class="tooltip-container">
+									<label
+										for="community-file-upload"
+										class="ml-2 cursor-pointer flex items-center text-base-100 hover:text-primary"
+									>
+										<MediaIcon size={28} />
+									</label>
+									<!-- Hidden File Input -->
+									<input
+										id="community-file-upload"
+										type="file"
+										accept="image/*"
+										class="hidden"
+										on:change={handleImageChange}
+									/>
+									<span class="tooltip">Add Media</span>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -593,6 +747,12 @@
 							<option value="changeCategory">Change Community Category</option>
 							<option value="promoteLeader">Promote User to Community Leader</option>
 							<option value="demoteLeader">Demote a Community Leader</option>
+							{#if selected_community_has_image}
+								<option value="changeImage">Change Community Image</option>
+								<option value="deleteImage">Delete Community Image</option>
+							{:else}
+								<option value="addImage">Add Community Image</option>
+							{/if}
 							<option value="deleteCommunity">Delete Community</option>
 						</select>
 					</div>
@@ -751,9 +911,121 @@
 						</div>
 					</div>
 				{/if}
+
+				<!-- Change Community Image -->
+				{#if selectedAction === 'changeImage' && selected_community_has_image}
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="community-image-update" class="label">
+								<span class="label-text">Upload a new community image</span>
+							</label>
+							<div class="relative">
+								<!-- Image Preview -->
+								{#if new_community_image}
+									<div class="mb-3 flex justify-center">
+										<img
+											src={URL.createObjectURL(new_community_image)}
+											alt="Selected Image"
+											class="rounded-md min-w-[20%] max-w-[50%] h-auto"
+										/>
+									</div>
+								{/if}
+
+								<!-- File Input -->
+								<div class="flex items-center gap-2">
+									<label
+										for="community-management-file-upload"
+										class="ml-2 cursor-pointer flex items-center gap-2 text-base-100 hover:text-primary"
+									>
+										<MediaIcon size={28} />
+									</label>
+									<input
+										id="community-management-file-upload"
+										type="file"
+										accept="image/*"
+										class="hidden"
+										on:change={handleManagementImageChange}
+									/>
+								</div>
+							</div>
+						</div>
+						<div class="mb-2 mt-2 flex justify-center">
+							<button
+								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+								on:click={update_community_image}
+								disabled={!new_community_image}
+							>
+								Update
+							</button>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Delete Community Image (when image exists) -->
+				{#if selectedAction === 'deleteImage' && selected_community_has_image}
+
+						<div class="mb-2 mt-2 flex justify-center">
+							<button
+								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+								on:click={delete_community_image}
+							>
+								Delete
+							</button>
+						</div>
+
+				{/if}
+
+				<!-- Add Community Image (when no image exists) -->
+				{#if selectedAction === 'addImage' && !selected_community_has_image}
+					<div class="form-control mb-2 flex flex-col gap-3">
+						<div class="w-full">
+							<label for="community-image-add" class="label">
+								<span class="label-text">Upload a community image</span>
+							</label>
+							<div class="relative">
+								<!-- Image Preview -->
+								{#if new_community_image}
+									<div class="mb-3 flex justify-center">
+										<img
+											src={URL.createObjectURL(new_community_image)}
+											alt="Selected Image"
+											class="rounded-md max-w-[50%] h-auto"
+										/>
+									</div>
+								{/if}
+
+								<!-- File Input -->
+								<div class="flex items-center gap-2">
+									<label
+										for="community-management-file-upload"
+										class="ml-2 cursor-pointer flex items-center gap-2 text-base-100 hover:text-primary"
+									>
+										<MediaIcon size={28} />
+									</label>
+									<input
+										id="community-management-file-upload"
+										type="file"
+										accept="image/*"
+										class="hidden"
+										on:change={handleManagementImageChange}
+									/>
+								</div>
+							</div>
+						</div>
+						<div class="mb-2 mt-2 flex justify-center">
+							<button
+								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+								on:click={update_community_image}
+								disabled={!new_community_image}
+							>
+								Add Image
+							</button>
+						</div>
+					</div>
+				{/if}
+
 				<!-- Delete the community -->
 				{#if selectedAction === 'deleteCommunity'}
-					<div class="form-control mb-2 flex flex-col gap-3">
 						<div class="mb-2 mt-2 flex justify-center">
 							<button
 								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
@@ -761,7 +1033,6 @@
 								on:click={delete_community}>Delete</button
 							>
 						</div>
-					</div>
 				{/if}
 			</div>
 		</div>
@@ -772,66 +1043,91 @@
 		<!-- List Communities and Join Button -->
 		{#each filteredCommunities as community}
 			<div class="card bg-base-100 w-full rounded-3xl">
-				<div class="card-body bg-secondary rounded-3xl">
-					<div class="mb-4 flex items-center justify-between">
-						<div class="flex-grow text-center">
-							<h1 class="text-primary text-4xl font-bold">{community.name}</h1>
-						</div>
-						<!-- Show "Manage" button if the user is the owner of the community-->
-						{#if community.owner_id === loggedInUserId}
-							<div class="tooltip-container">
-								<button
-									on:click={() => toggleCommunityManagementModal(community.community_id)}
-									class="hover:text-primary"
-									aria-label="Manage Community"
-								>
-									<SettingsIcon />
-								</button>
-								<span class="tooltip">Manage this community</span>
+				<!-- Community Image -->
+				{#if community.has_image}
+					<figure class="h-48 w-full">
+						{#await fetch(`http://127.0.0.1:8000/api/community/${community.community_id}/image/`).then( (r) => r.json() ) then imageData}
+							<img
+								src={imageData.image}
+								alt={community.name}
+								class="w-full h-full object-contain bg-gray-200"
+							/>
+						{:catch}
+							<div class="flex items-center justify-center w-full h-full bg-gray-200">
+								<MediaIcon size={48} class="text-gray-400" />
 							</div>
-						{/if}
-						<!-- Show "Leave" button if the user is subscribed and not the owner of the community -->
-						{#if subscribedCommunities.some((sub) => sub.id === community.community_id) && community.owner_id != loggedInUserId}
-							<div class="tooltip-container">
-								<button
-									on:click={() => leave_community(community.community_id)}
-									class="hover:text-primary"
-									aria-label="Leave Community"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="currentColor"
-										class="bi bi-box-arrow-right size-7"
-										viewBox="0 0 16 16"
+						{/await}
+					</figure>
+				{:else}
+					<figure class="bg-gray-200 h-48 flex items-center justify-center">
+						<span class="text-gray-400">No image available</span>
+					</figure>
+				{/if}
+				<div class="card-body bg-secondary rounded-b-3xl">
+					<div class="card-title flex justify-between">
+						<h2 class="text-primary text-2xl font-bold truncate">{community.name}</h2>
+
+						<div class="flex gap-2">
+							<!-- Show "Manage" button if the user is the owner of the community-->
+							{#if community.owner_id === loggedInUserId}
+								<div class="tooltip-container">
+									<button
+										on:click={() => toggleCommunityManagementModal(community.community_id)}
+										class="hover:text-primary"
+										aria-label="Manage Community"
 									>
-										<path
-											fill-rule="evenodd"
-											d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"
-										/>
-										<path
-											fill-rule="evenodd"
-											d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"
-										/>
-									</svg>
-								</button>
-								<span class="tooltip">Leave this community</span>
-							</div>
-							<!-- Show "Join" button if the user is not subscribed, or leader or owner -->
-						{:else if !subscribedCommunities.some((sub) => sub.id === community.community_id)}
-							<div class="tooltip-container">
-								<button
-									on:click={() => join_community(community.community_id)}
-									class="hover:text-primary"
-								>
-									<AddIcon />
-								</button>
-								<span class="tooltip">Join this community</span>
-							</div>
-						{/if}
+										<SettingsIcon />
+									</button>
+									<span class="tooltip">Manage this community</span>
+								</div>
+							{/if}
+							<!-- Show "Leave" button if the user is subscribed and not the owner of the community -->
+							{#if subscribedCommunities.some((sub) => sub.id === community.community_id) && community.owner_id != loggedInUserId}
+								<div class="tooltip-container">
+									<button
+										on:click={() => leave_community(community.community_id)}
+										class="hover:text-primary"
+										aria-label="Leave Community"
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="currentColor"
+											class="bi bi-box-arrow-right size-7"
+											viewBox="0 0 16 16"
+										>
+											<path
+												fill-rule="evenodd"
+												d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"
+											/>
+											<path
+												fill-rule="evenodd"
+												d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"
+											/>
+										</svg>
+									</button>
+									<span class="tooltip">Leave this community</span>
+								</div>
+								<!-- Show "Join" button if the user is not subscribed, or leader or owner -->
+							{:else if !subscribedCommunities.some((sub) => sub.id === community.community_id)}
+								<div class="tooltip-container">
+									<button
+										on:click={() => join_community(community.community_id)}
+										class="hover:text-primary"
+									>
+										<AddIcon />
+									</button>
+									<span class="tooltip">Join this community</span>
+								</div>
+							{/if}
+						</div>
 					</div>
-					<div class="mb-4">
-						<p>Category: {community.category}</p>
-						<p class="community-description">{community.description}</p>
+
+					<!-- Community description -->
+					<p class="community-description">{community.description}</p>
+
+					<!-- Category badges at bottom -->
+					<div class="card-actions justify-end mt-2">
+						<div class="badge badge-outline">{community.category}</div>
 					</div>
 				</div>
 			</div>
