@@ -49,7 +49,7 @@
 </script>
 
 <main class="flex items-center justify-center">
-	<div class="card bg-base-100 shadow-4xl max-7xl w-full rounded-3xl">
+	<div class="card bg-base-100 shadow-4xl max-8xl min-w-[80vh] w-full rounded-3xl">
 		<div class="card-body bg-secondary rounded-3xl p-10">
 			<h1 class="text-primary mb-6 mt-2 text-center text-4xl font-bold">Login to UniHub</h1>
 			<form on:submit|preventDefault={login}>
@@ -116,7 +116,7 @@
 					{#if message}
 						<p>{message}</p>
 					{:else}
-						<p class="invisible flex">PlaceholderPlaceholderPlaceholder</p>
+						<p class="invisible flex">PlaceholderPlaceholderPlaceholderPlaceholderPlaceholderPla</p>
 					{/if}
 				</div>
 				<div class="form-control mb-4 flex justify-center pt-4">
