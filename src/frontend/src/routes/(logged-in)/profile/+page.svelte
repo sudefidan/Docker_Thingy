@@ -363,9 +363,24 @@
 	}
 
 	// Function to handle removing an interest
-	function removeInterest(index: number) {
-		editedInterests = editedInterests.filter((_, i) => i !== index);
-		// TODO: To John -> this should be removed from UserInterest in the backend instead of edited Interests?
+	async function removeInterest(index: number) {
+		try {
+			isUpdatingInterests = true;
+			// Create a new array without the removed interest
+			const updatedInterests = userProfile.interests.filter((_, i) => i !== index);
+			
+			// Call the backend API to update interests
+			const result = await updateInterests(updatedInterests);
+			
+			// Update the local state with the new interests list
+			userProfile = { ...userProfile, interests: result.interests };
+		} catch (error) {
+			console.error('Failed to remove interest:', error);
+			let errorMessage = error instanceof Error ? error.message : 'Failed to remove interest';
+			alert(errorMessage + '. Please try again!');
+		} finally {
+			isUpdatingInterests = false;
+		}
 	}
 
 	onMount(async () => {
