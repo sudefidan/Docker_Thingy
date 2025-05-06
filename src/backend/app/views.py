@@ -301,6 +301,8 @@ class create_community(APIView):
         description = request.data.get('description')
         category = request.data.get('category')
         leader_ids = request.data.get('leader_ids', [])
+        image_file = request.FILES.get('community_image')
+
         # check if users is authenticated
         if request.user.is_authenticated:
             owner_id = request.user.id
@@ -317,6 +319,17 @@ class create_community(APIView):
             category=category,
             owner_id=owner_id
         )
+
+        if image_file:
+                try:
+                    # Read image data and save it to the community's picture field
+                    image_data = image_file.read()
+                    community.community_picture = image_data
+                    community.save()
+                except Exception as e:
+                    print(f"Error saving community image data: {e}")
+
+
         # create the link between the leader and the community
         for leader_id in leader_ids:
             user = get_object_or_404(User, id=leader_id)
@@ -332,6 +345,94 @@ class create_community(APIView):
             "community_id": community.community_id,
             "message": "Community created successfully and selected leaders assigned"
         })
+
+@api_view(['GET'])
+def get_community_image(request, community_id):
+    """
+    Retrieves community image as base64-encoded data or returns 404 if no image exists.
+    """
+    try:
+        community = get_object_or_404(Community, community_id=community_id)
+
+        if community.community_picture:
+            # Convert binary data to base64 for use in frontend
+            image_base64 = base64.b64encode(community.community_picture).decode('utf-8')
+            return JsonResponse({
+                'image': f"data:image/png;base64,{image_base64}"
+            })
+        else:
+            return JsonResponse({'image': None}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_community_image(request):
+    """
+    Update the image for a community
+    """
+    try:
+        community_id = request.data.get('community_id')
+        image_file = request.FILES.get('community_image')
+
+        if not community_id:
+            return Response({"error": "Community ID is required"}, status=400)
+
+        if not image_file:
+            return Response({"error": "No image provided"}, status=400)
+
+        # Get the community
+        community = get_object_or_404(Community, community_id=community_id)
+
+        # Check if the user is the owner of the community
+        if community.owner_id != request.user.id:
+            return Response({"error": "You are not authorized to update this community"}, status=403)
+
+        # Update the image
+        try:
+            # Read image data and save it to the community's picture field
+            image_data = image_file.read()
+            community.community_picture = image_data
+            community.save()
+
+            return Response({
+                "message": "Community image updated successfully",
+                "community_id": community.community_id
+            })
+        except Exception as e:
+            return Response({"error": f"Error updating community image: {str(e)}"}, status=500)
+
+    except Exception as e:
+        return Response({"error": f"Error processing request: {str(e)}"}, status=500)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_community_image(request, community_id):
+    """
+    Deletes the image for a specified community
+    """
+    try:
+        # Get the community
+        community = get_object_or_404(Community, community_id=community_id)
+
+        # Check if the user is the owner of the community
+        if community.owner_id != request.user.id:
+            return Response({"error": "You are not authorized to update this community"}, status=403)
+
+        # Check if the community has an image
+        if not community.community_picture:
+            return Response({"error": "This community doesn't have an image to delete"}, status=400)
+
+        # Delete the image by setting the field to None
+        community.community_picture = None
+        community.save()
+
+        return Response({
+            "message": "Community image deleted successfully",
+            "community_id": community.community_id
+        })
+    except Exception as e:
+        return Response({"error": f"Error deleting community image: {str(e)}"}, status=500)
 
 class SubscribedCommunities(APIView):
     # the user must be logged in otherwise it will not work
@@ -435,18 +536,6 @@ def create_post(request):
             user=request.user,
             community=community
         )
-        image_url = None
-        # if an image is attached to the post this will handle it
-        if image_file:
-            try:
-                image_data = image_file.read()
-                post_image = PostImage.objects.create(
-                    post=post,
-                    image=image_data
-                )
-
-            except Exception as e:
-                print(f"Error saving image data: {e}")
 
         response_data = {
             'id': post.post_id,
@@ -473,13 +562,24 @@ def get_post_image(request, post_id):
     except PostImage.DoesNotExist:
         return HttpResponse(status=404)
 
+@api_view(['GET'])
 def fetch_communities(request):
     if request.method == "GET":
-        communities = Community.objects.all().values()
-        return JsonResponse(list(communities), safe=False)
+        communities = Community.objects.all()
+        communities_data = [
+            {
+                "community_id": community.community_id,
+                "name": community.name,
+                "description": community.description,
+                "category": community.category,
+                "owner_id": community.owner_id,
+                "has_image": bool(community.community_picture)  # Just indicate if image exists
+            }
+            for community in communities
+        ]
+        return JsonResponse(communities_data, safe=False)
 
     return JsonResponse({"error": "Invalid request"}, status=400)
-
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
