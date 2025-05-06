@@ -1811,20 +1811,6 @@ def delete_comment(request, comment_id):
     else:
         return Response({'error': 'You are not authorized to delete this comment.'}, status=status.HTTP_403_FORBIDDEN)
 
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def delete_comment(request, comment_id):
-    try:
-        comment = Comment.objects.get(comment_id=comment_id)
-    except Comment.DoesNotExist:
-        return Response({'error': 'Comment not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-    if comment.user == request.user:
-        comment.delete()
-        return Response({'message': 'Comment deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
-    else:
-        return Response({'error': 'You are not authorized to delete this comment.'}, status=status.HTTP_403_FORBIDDEN)
-
 
 # Delete user account and all associated data
 @api_view(['DELETE'])
