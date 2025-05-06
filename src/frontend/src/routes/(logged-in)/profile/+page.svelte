@@ -792,8 +792,6 @@
 									<p class="text-user-info">{userProfile.email}</p>
 								{/if}
 							</div>
-
-							<!-- Add these fields after the email section in the profile information -->
 							<div class="mb-3 flex justify-between items-center">
 								<label for="address" class="label text-primary">
 									<p class="label-text">Address:</p>
@@ -856,7 +854,7 @@
 										{:else if userProfile.uni_year === '3'}
 											Year 3
 										{:else}
-											{userProfile.uni_year || 'Not specified'}
+											{userProfile.uni_year || ''}
 										{/if}
 									</p>
 								{/if}
