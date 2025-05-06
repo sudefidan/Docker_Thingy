@@ -401,7 +401,6 @@ def get_posts(request):
 @permission_classes([IsAuthenticated])
 def create_post(request):
     if request.method == 'POST':
-
         title = request.data.get('title')
         content = request.data.get('content')
         date = request.data.get('date')
@@ -415,9 +414,8 @@ def create_post(request):
             community_id = None
 
         # If no community_id is provided or it's empty set community to None
-        if not community_id:
-            community = None
-        else:
+        community = None
+        if community_id:
             try:
                 # Ensure the community exists
                 community = Community.objects.get(community_id=community_id)
@@ -432,18 +430,30 @@ def create_post(request):
             user=request.user,
             community=community
         )
-        image_url = None
-        # if an image is attached to the post this will handle it
+
+        # Handle image upload
         if image_file:
             try:
                 image_data = image_file.read()
-                post_image = PostImage.objects.create(
+                PostImage.objects.create(
                     post=post,
                     image=image_data
                 )
-
             except Exception as e:
                 print(f"Error saving image data: {e}")
+
+        # allows users to tag other users using findall so you can do @toby or @james and it will tag that user notifying them
+        mentioned_usernames = set(re.findall(r'@(\w+)', content))
+        for username in mentioned_usernames:
+            try:
+                tagged_user = User.objects.get(username=username)
+                if tagged_user != request.user:
+                    create_notification(
+                        user_id=tagged_user.id,
+                        message=f"{request.user.username} tagged you in a post: {post.title}"
+                    )
+            except User.DoesNotExist:
+                print(f"Warning: User '{username}' not found.")
 
         response_data = {
             'id': post.post_id,
@@ -455,8 +465,8 @@ def create_post(request):
             'community_name': post.community.name if post.community else None,
         }
 
-
         return Response(response_data, status=201)
+    return Response({'error': 'Invalid request method'}, status=400)
 
 # Retrieves the post image from the database
 @api_view(['GET'])
