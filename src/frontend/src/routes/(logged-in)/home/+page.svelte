@@ -127,7 +127,7 @@
 			await fetchUserProfile();
 			await fetchPosts();
 			await fetchSubscribedCommunities();
-			await fetchPosts();
+			
 		}
 	});
 
@@ -500,6 +500,34 @@ const postComment = async (postId) => {
             alert('An error occurred while liking/unliking the post.');
         }
     };
+
+	const deleteComment = async (commentId, postId) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.error('No access token found.');
+      return;
+    }
+
+    const confirmDelete = confirm('Are you sure you want to delete this comment?');
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/comments/${commentId}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 204) {
+        postComments[postId] = postComments[postId].filter(c => c.comment_id !== commentId);
+        postComments = { ...postComments };
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+    }
+  };
 </script>
 
 <main class="px-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -705,6 +733,14 @@ const postComment = async (postId) => {
 				                    <strong>@{c.user.username}</strong>: {c.comment}
 				                    <span class="text-sm text-gray-500 ml-2">{new Date(c.timestamp).toLocaleString()}</span>
 				                </p>
+				{#if loggedInUserId === c.user.user_id}
+				<button
+				  class="text-red-500 hover:text-red-700 focus:outline-none"
+				  on:click={() => deleteComment(c.comment_id, p.id)}
+				>
+				  <BinIcon size={16} />
+				</button>
+			  {/if}
 				            {/each}
 				        {:else}
 				            <p class="text-base-content italic">No comments yet.</p>

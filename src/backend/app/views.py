@@ -371,13 +371,17 @@ def get_users(request):
 def get_posts(request):
     user = request.user
     posts = Post.objects.annotate(
-        comment_count=Count('comment'),
         like_count=Count('postlikes', distinct=True),
-        user_liked=Count('postlikes', filter=models.Q(postlikes__user=user), distinct=True)
+        user_liked=Count('postlikes', filter=Q(postlikes__user=user), distinct=True)
     ).order_by('-date')
+
+    post_ids = [post.post_id for post in posts]
+    comment_counts = Comment.objects.filter(post__in=post_ids).values('post').annotate(count=Count('post')).order_by('post')
+    comment_count_dict = {item['post']: item['count'] for item in comment_counts}
 
     posts_data = []
     for post in posts:
+        comment_count = comment_count_dict.get(post.post_id, 0)
         community_id = post.community.community_id if post.community else None
         community_name = post.community.name if post.community else 'Everyone'
         posts_data.append({
@@ -389,9 +393,9 @@ def get_posts(request):
             'username': post.user.username,
             'community_id': community_id,
             'community_name': community_name,
-            'comment_count': post.comment_count,
+            'comment_count': comment_count,
             'like_count': post.like_count,
-            'user_liked': post.user_liked > 0,  # True if the current user has liked
+            'user_liked': post.user_liked > 0,
         })
 
     return Response(posts_data, status=status.HTTP_200_OK)
@@ -1680,3 +1684,17 @@ def like_unlike_post(request, post_id):
             message = f"{user.username} liked your post: {post.title}"  # Construct message
             create_notification(user_id=post.user.id, message=message)
         return Response({'message': 'Post liked'}, status=status.HTTP_201_CREATED)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_comment(request, comment_id):
+    try:
+        comment = Comment.objects.get(comment_id=comment_id)
+    except Comment.DoesNotExist:
+        return Response({'error': 'Comment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if comment.user == request.user:
+        comment.delete()
+        return Response({'message': 'Comment deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+    else:
+        return Response({'error': 'You are not authorized to delete this comment.'}, status=status.HTTP_403_FORBIDDEN)
