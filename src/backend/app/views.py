@@ -695,7 +695,7 @@ class update_user_profile(APIView):
             email_changed_pending = False
 
             # validate required fields
-            if not all([data.get('username'), data.get('first_name'), data.get('last_name'), data.get('email'), data.get('address'), data.get('program'), data.get('uni_year')]):
+            if not all([data.get('username'), data.get('first_name'), data.get('last_name'), data.get('email')]):
                 return Response({
                     "error": "All fields are required"
                 }, status=status.HTTP_400_BAD_REQUEST)

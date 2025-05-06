@@ -57,7 +57,7 @@ export async function updateProfile(profile: {
     email: string;
     address: string;
     program: string;
-    year: string;
+    uni_year: string;
 }): Promise<void> {
     try {
         const response = await fetch('http://localhost:8000/api/update-profile/', {
@@ -278,3 +278,4 @@ export async function updateInterests(interests: string[]): Promise<{ message: s
         throw error;
     }
 }
+
