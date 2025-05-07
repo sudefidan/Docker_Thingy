@@ -37,6 +37,7 @@
 	let modalLoading = false; // Flag to indicate if the user profile modal is loading
 	let modalError = false; // Flag to indicate if there was an error loading the user profile
 	let modalUserProfile = null; // Hold user profile data for the modal
+	let isFollowingModalUser = false; // Flag to indicate if the logged-in user is following the modal user
 
 	// User profile object to hold user details
 	let userProfile = {
@@ -383,8 +384,8 @@
 		} else {
 			loggedInUserId = getLoggedInUserIdFromToken(access_token);
 			await fetchUserProfile();
-			await fetchPosts();
 			await fetchSubscribedCommunities();
+			await fetchPosts();
 			await fetchUsers();
 		}
 	});
@@ -940,12 +941,70 @@
 			}
 
 			modalUserProfile = await response.json();
+
+			// Check if current user follows the profile user
+			checkFollowStatus(userId);
+
 			console.log('Fetched modal user profile:', modalUserProfile);
 		} catch (err) {
 			console.error('Error fetching user profile:', err);
 			modalError = true;
 		} finally {
 			modalLoading = false;
+		}
+	}
+
+	// Function to check if logged in user follows the modal user
+	async function checkFollowStatus(userId) {
+		try {
+			const token = localStorage.getItem('access_token');
+			const response = await fetch(`http://127.0.0.1:8000/api/check-follow/${userId}/`, {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				isFollowingModalUser = data.is_following;
+			} else {
+				console.error('Failed to check follow status');
+				isFollowingModalUser = false;
+			}
+		} catch (error) {
+			console.error('Error checking follow status:', error);
+			isFollowingModalUser = false;
+		}
+	}
+
+	// Function to toggle follow/unfollow
+	async function toggleFollow() {
+		try {
+			const token = localStorage.getItem('access_token');
+			const endpoint = isFollowingModalUser ? 'unfollow' : 'follow';
+
+			const response = await fetch(`http://127.0.0.1:8000/api/${endpoint}/${selectedUserId}/`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				}
+			});
+
+			if (response.ok) {
+				// Toggle the follow status
+				isFollowingModalUser = !isFollowingModalUser;
+
+				// Show success message
+				const action = isFollowingModalUser ? 'followed' : 'unfollowed';
+				console.log(`Successfully ${action} user`);
+				alert(`You have ${action} the user.`);
+			} else {
+				console.error(`Failed to ${isFollowingModalUser ? 'unfollow' : 'follow'} user`);
+			}
+		} catch (error) {
+			console.error('Error toggling follow status:', error);
 		}
 	}
 
@@ -1472,6 +1531,14 @@
 						<span class="text-2xl font-normal text-gray-400">
 							@{modalUserProfile.username}
 						</span>
+						<button
+							class="btn {isFollowingModalUser
+								? 'btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-5 pr-5'
+								: 'btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-5 pr-5'} ml-auto"
+							on:click={toggleFollow}
+						>
+							{isFollowingModalUser ? 'Unfollow' : 'Follow'}
+						</button>
 					</div>
 
 					<!-- User Information -->
