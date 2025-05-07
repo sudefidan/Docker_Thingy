@@ -14,18 +14,18 @@ UniHub is a university community platform designed to connect students, facilita
 
 The system comes pre-populated with 10 student accounts:
 
-| Username        | Password      | Role                      |
-| --------------- | ------------- | ------------------------- |
-| olivia_johnson  | SecurePass123 | Admin (Staff & Superuser) |
-| ethan_williams  | SecurePass123 | Student                   |
-| sophia_martinez | SecurePass123 | Student                   |
-| james_taylor    | SecurePass123 | Student                   |
-| ava_brown       | SecurePass123 | Student                   |
-| noah_garcia     | SecurePass123 | Student                   |
-| emma_wilson     | SecurePass123 | Student                   |
-| liam_patel      | SecurePass123 | Student                   |
-| chloe_zhang     | SecurePass123 | Student                   |
-| benjamin_ahmed  | SecurePass123 | Student                   |
+| Username        | Email                          | Password      | Role                      |
+| --------------- | ------------------------------ | ------------- | ------------------------- |
+| olivia_johnson  | olivia.johnson@live.uwe.ac.uk  | SecurePass123 | Admin (Staff & Superuser) |
+| ethan_williams  | ethan.williams@live.uwe.ac.uk  | SecurePass123 | Student                   |
+| sophia_martinez | sophia.martinez@live.uwe.ac.uk | SecurePass123 | Student                   |
+| james_taylor    | james.taylor@live.uwe.ac.uk    | SecurePass123 | Student                   |
+| ava_brown       | ava.brown@live.uwe.ac.uk       | SecurePass123 | Student                   |
+| noah_garcia     | noah.garcia@live.uwe.ac.uk     | SecurePass123 | Student                   |
+| emma_wilson     | emma.wilson@live.uwe.ac.uk     | SecurePass123 | Student                   |
+| liam_patel      | liam.patel@live.uwe.ac.uk      | SecurePass123 | Student                   |
+| chloe_zhang     | chloe.zhang@live.uwe.ac.uk     | SecurePass123 | Student                   |
+| benjamin_ahmed  | benjamin.ahmed@live.uwe.ac.uk  | SecurePass123 | Student                   |
 
 **Note**: For admin access, use Olivia's account as she has staff and superuser privileges.
 
