@@ -1299,7 +1299,7 @@ def create_event(request):
         materials = materials,
     )
 
-    # --- Auto-subscribe community owners and leaders, and notify if not the creator ---
+    # Auto-subscribe community owners and leaders, and notify if not the creator
     community_management_users = set()
     community_owner_obj = community.owner
     community_management_users.add(community_owner_obj) # Add the community owner
