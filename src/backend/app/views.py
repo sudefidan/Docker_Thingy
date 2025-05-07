@@ -15,7 +15,7 @@ from django.db import models
 import requests
 import base64
 import re
-from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant, UserInterest, Comment, PostLikes
+from .models import Community, CommunityLeader, Subscribed, SocialType, Post, Notification, EventType, User, PostImage, EventParticipant, UserInterest, Comment, PostLikes, Connection
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_notification, create_notification_community_interest
@@ -1996,3 +1996,72 @@ def delete_user_account(request):
             {"error": f"Failed to delete account: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_follow(request, user_id):
+    # Check if the request user is following the specified user
+    is_following = Connection.objects.filter(
+        follower=request.user,
+        following_id=user_id
+    ).exists()
+
+    return JsonResponse({'is_following': is_following})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def follow_user(request, user_id):
+    try:
+        # Get the user to follow
+        user_to_follow = User.objects.get(id=user_id)
+
+        # Don't allow following yourself
+        if request.user.id == user_to_follow.id:
+            return JsonResponse({'error': 'You cannot follow yourself'}, status=400)
+
+        # Check if already following
+        if Connection.objects.filter(follower=request.user, following=user_to_follow).exists():
+            return JsonResponse({'error': 'Already following this user'}, status=400)
+
+        # Create the connection
+        Connection.objects.create(follower=request.user, following=user_to_follow)
+
+        # Create notification
+        message = f"{request.user.username} started following you"
+        Notification.objects.create(
+            user=user_to_follow,
+            message=message
+        )
+
+        return JsonResponse({'success': 'Successfully followed user'})
+
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def unfollow_user(request, user_id):
+    try:
+        # Get the user to unfollow
+        user_to_unfollow = User.objects.get(id=user_id)
+
+        # Delete the connection if it exists
+        connection = Connection.objects.filter(
+            follower=request.user,
+            following=user_to_unfollow
+        )
+
+        if connection.exists():
+            connection.delete()
+            return JsonResponse({'success': 'Successfully unfollowed user'})
+        else:
+            return JsonResponse({'error': 'Not following this user'}, status=400)
+
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

@@ -25,9 +25,12 @@ urlpatterns = [
     path('api/logout/', logout_user.as_view()),
     path('api/protected/', views.protected_view.as_view()),
     path('api/change-password/', change_password.as_view(), name='change_password'),
-    path('api/users/delete/', views.delete_user_account, name='delete_user_account'), 
+    path('api/users/delete/', views.delete_user_account, name='delete_user_account'),
     re_path(r'^api/verify-email/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$', verify_email.as_view(), name='verify_email'),
     re_path(r'^api/verify-email-change/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$', verify_email_change.as_view(), name='verify_email_change'),
+    path('api/check-follow/<int:user_id>/', views.check_follow, name='check_follow'),
+    path('api/follow/<int:user_id>/', views.follow_user, name='follow_user'),
+    path('api/unfollow/<int:user_id>/', views.unfollow_user, name='unfollow_user'),
 
 
     # profile related endpoints
