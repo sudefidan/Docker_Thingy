@@ -368,10 +368,10 @@
 			isUpdatingInterests = true;
 			// Create a new array without the removed interest
 			const updatedInterests = userProfile.interests.filter((_, i) => i !== index);
-			
+
 			// Call the backend API to update interests
 			const result = await updateInterests(updatedInterests);
-			
+
 			// Update the local state with the new interests list
 			userProfile = { ...userProfile, interests: result.interests };
 		} catch (error) {
@@ -871,7 +871,7 @@
 										{:else if userProfile.uni_year === '3'}
 											Year 3
 										{:else}
-											{userProfile.uni_year || 'Not specified'}
+											{userProfile.uni_year || ''}
 										{/if}
 									</p>
 								{/if}
