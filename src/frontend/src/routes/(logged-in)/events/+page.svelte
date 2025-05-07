@@ -25,7 +25,7 @@
 	let selectedEventId = null;
 	let subscribedCommunityIds = []; // Stores IDs of communities the user is subscribed to
 	let selectedEventAction = '';
-	let maxCapacityInput = 20;
+	let maxCapacityInput = '';
 	let materials = '';
 
 	// Edit Event Form State
@@ -757,17 +757,6 @@
 								</div>
 							</div>
 						{/if}
-						<!-- Required materials Input -->
-						<div class="form-control mb-5">
-							<label class="label"><span class="label-text">Required Materials</span></label>
-							<input
-								type="text"
-								bind:value={materials}
-								class="input input-bordered"
-								placeholder="E.g. Zoom link, handout PDF, lab coat…"
-							/>
-						</div>
-
 						<!-- Virtual Link Input -->
 						{#if event_type === 'virtual'}
 							<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row w-full">
@@ -788,19 +777,43 @@
 								</div>
 							</div>
 						{/if}
-						<!-- Max Capacity Input -->
-						<div class="form-control mb-5">
-							<label class="label"><span class="label-text">Capacity</span></label>
-							<input
-								type="number"
-								bind:value={maxCapacityInput}
-								min="1"
-								class="input input-bordered"
-								placeholder="Max attendees"
-								required
-							/>
+						<!-- Required materials Input -->
+						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+							<div class="w-full">
+								<label for="materials" class="label">
+									<span class="label-text">Required Materials</span>
+								</label>
+								<div class="relative">
+									<input
+										type="text"
+										id="materials"
+										bind:value={materials}
+										required
+										class="input input-bordered validator custom-input"
+										placeholder="Which materials are needed for your event?"
+									/>
+								</div>
+							</div>
 						</div>
-
+						<!-- Max Capacity Input -->
+						<div class="form-control mb-5 flex flex-col gap-3 sm:flex-row">
+							<div class="w-full">
+								<label for="maxCapacityInput" class="label">
+									<span class="label-text">Capacity</span>
+								</label>
+								<div class="relative">
+									<input
+										type="number"
+										id="maxCapacityInput"
+										bind:value={maxCapacityInput}
+										required
+										min="1"
+										class="input input-bordered validator custom-input"
+										placeholder="Maximum attendees of your event"
+									/>
+								</div>
+							</div>
+						</div>
 						<!-- Submit Button -->
 						<div class="mb-2 mt-2 flex justify-center text-center">
 							<button
@@ -861,33 +874,39 @@
 							</select>
 						</div>
 					</div>
-
+					<!-- Change Max Capacity -->
 					{#if selectedEventAction === 'changeCapacity'}
-						<div class="form-control mb-4 flex flex-col gap-3">
-							<label for="capacity" class="label">
-								<span class="label-text">New Capacity</span>
-							</label>
-							<input
-								id="capacity"
-								type="number"
-								bind:value={editCapacity}
-								min="1"
-								class="input input-bordered"
-								placeholder="Enter new max attendees"
-								required
-							/>
-							<button
-								class="btn btn-primary mt-2"
-								on:click={() => {
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="capacity" class="label">
+									<span class="label-text">New Capacity</span>
+								</label>
+								<div class="relative flex items-center">
+									<input
+										id="capacity"
+										type="number"
+										bind:value={editCapacity}
+										min="1"
+										class="input input-bordered validator custom-input"
+										placeholder="Enter new max attendees..."
+										required
+									/>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => {
 									updateEvent('max_capacity', editCapacity);
 									selectedEventAction = '';
 								}}
-							>
-								Update Capacity
-							</button>
+								>
+									Update
+									</button
+								>
+							</div>
 						</div>
 					{/if}
-
 					<!-- Change Title -->
 					{#if selectedEventAction === 'changeTitle'}
 						<div class="form-control mb-2 flex flex-col gap-3">
@@ -1016,26 +1035,33 @@
 							</div>
 						</div>
 					{/if}
-
+					<!-- Change Required Materials -->
 					{#if selectedEventAction === 'changeMaterials'}
-						<div class="form-control mb-4 flex flex-col gap-3">
-							<label for="materials" class="label">
-								<span class="label-text">New Materials</span>
-							</label>
-							<input
-								id="materials"
-								type="text"
-								bind:value={editMaterials}
-								class="input input-bordered"
-								placeholder="e.g. Slides, PDF, Zoom link…"
-							/>
-							<button
-								class="btn btn-primary mt-2"
-								on:click={() => {
+						<div class="form-control mb-2 flex flex-col gap-3">
+							<div class="w-full">
+								<label for="materials" class="label">
+									<span class="label-text">New Materials</span>
+								</label>
+								<div class="relative flex items-center">
+									<input
+										type="text"
+										id ="materials"
+										bind:value={editMaterials}
+										required
+										class="input input-bordered validator custom-input"
+										placeholder="Enter new materials..."
+									/>
+								</div>
+							</div>
+							<div class="mb-2 mt-2 flex justify-center text-center">
+								<button
+									class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+									on:click={() => {
 									updateEvent('materials', editMaterials);
 									selectedEventAction = '';
-								}}>Update Materials</button
-							>
+								}}>Update</button
+								>
+							</div>
 						</div>
 					{/if}
 
@@ -1130,9 +1156,7 @@
 			<div class="card bg-base-100 w-full rounded-3xl mt-5">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
-						<div class="flex-grow">
-							<h3 class="text-primary text-2xl font-bold">{event.title}</h3>
-						</div>
+						<h3 class="text-primary text-2xl font-bold">{event.title}</h3>
 
 						<!-- Show "Manage" button if user can manage the event (owner or leader of the event's community) -->
 						{#if event.can_cancel}
@@ -1182,21 +1206,8 @@
 							</div>
 						{/if}
 					</div>
-
-					<div class="mt-2">
-						<button
-							class="btn btn-outline w-full"
-							on:click={() =>
-								alert(
-									`${event.participant_count} joined, ${event.max_capacity - event.participant_count} spots left`
-								)}
-						>
-							{event.participant_count}/{event.max_capacity} spots used
-						</button>
-					</div>
-
-					<div class="event-details">
-						<p>{event.description}</p>
+					<div>
+						<p><strong>Description:</strong>  {event.description}</p>
 						<p><strong>Date:</strong> {event.date}</p>
 						<p><strong>Community:</strong> {event.community}</p>
 						{#if event.event_type === 'in-person' && event.location}
@@ -1215,6 +1226,11 @@
 
 						{#if event.materials}
 							<p><strong>Materials:</strong> {event.materials}</p>
+						{/if}
+						{#if event.max_capacity - event.participant_count > 0}
+							<p><strong>Available Space:</strong> {event.max_capacity - event.participant_count} people</p>
+						{:else}
+							<p><strong>Available Space:</strong> No space available</p>
 						{/if}
 					</div>
 				</div>
