@@ -9,27 +9,29 @@
 	import LikedIcon from '../../../assets/LikedIcon.svelte';
 	import CommentIcon from '../../../assets/CommentIcon.svelte';
 
-	let access_token;
-	let loggedInUserId;
-	let postContent = '';
-	let title = '';
-	let posts = [];
-	let filteredPosts = [];
-	let searchTerm = '';
-	let subscribedCommunities = [];
-	let selectedCommunityId = '';
-	let postImage = null;
-	let selectedImage = null;
-	let showPostModal = false;
-	let currentTime = new Date();
-	let postComments = {};
-	let activeCommentPostId = null;
-	let loadingComments = false;
-	let newComment = {};
-	let tempComment = '';
-	let activeHashtag = null;
+	let access_token; // Access token for authentication
+	let loggedInUserId; // ID of the logged-in user
+	let postContent = ''; // Content of the post
+	let title = ''; // Title of the post
+	let posts = []; // Array to hold posts
+	let filteredPosts = []; // Filtered posts based on search term
+	let searchTerm = ''; // Search term for filtering posts
+	let subscribedCommunities = []; // Array to hold subscribed communities
+	let selectedCommunityId = ''; // ID of the selected community for the post
+	let postImage = null; // Image for the post
+	let selectedImage = null; // Image selected for preview
+	let showPostModal = false; // Flag to show/hide the post creation modal
+	let currentTime = new Date(); // Current time for date formatting
+	let postComments = {}; // Object to hold comments for each post
+	let activeCommentPostId = null; // ID of the post for which comments are being loaded
+	let loadingComments = false; // Flag to indicate if comments are being loaded
+	let newComment = {}; // Object to hold new comment text for each post
+	let activeHashtag = null; // Active hashtag for filtering posts
 	let allPosts = []; // Full list of posts
+	let users = []; // Array to hold all users
+	let usersList = []; // List of users for the dropdown
 
+	// User profile object to hold user details
 	let userProfile = {
 		profile_picture: '',
 		username: '',
@@ -41,6 +43,253 @@
 		about: '',
 		interests: []
 	};
+
+	// Dropdown object to manage the mention dropdown
+	let mentionDropdown = {
+		show: false,
+		position: { top: 0, left: 0 },
+		filteredUsers: [],
+		query: '',
+		selectedIndex: 0
+	};
+	let textareaElement; // Reference to the textarea element for mention handling
+	let commentMentionDropdown = {}; // Object to hold mention dropdown state for each post's comment
+	let commentTextareaElements = {}; // Object to hold textarea elements for each post's comment
+
+	// Function to handle mention in comments
+	function handleCommentMention(event, postId) {
+		const text = event.target.value;
+		const cursorPosition = event.target.selectionStart;
+
+		// Store textarea element reference
+		if (!commentTextareaElements[postId]) {
+			commentTextareaElements[postId] = event.target;
+		}
+
+		// Initialize dropdown for this post if it doesn't exist
+		if (!commentMentionDropdown[postId]) {
+			commentMentionDropdown[postId] = {
+				show: false,
+				position: { top: 0, left: 0 },
+				filteredUsers: [],
+				query: '',
+				selectedIndex: 0
+			};
+		}
+
+		// Check if we're in a potential mention context
+		const textBeforeCursor = text.substring(0, cursorPosition);
+		const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+		if (mentionMatch && commentTextareaElements[postId]) {
+			const query = mentionMatch[1].toLowerCase();
+			commentMentionDropdown[postId].query = query;
+
+			// Filter users based on query
+			commentMentionDropdown[postId].filteredUsers = usersList.filter((user) =>
+				user.name.toLowerCase().includes(query)
+			);
+
+			try {
+				// Calculate position for dropdown
+				const textareaRect = commentTextareaElements[postId].getBoundingClientRect();
+				const lineHeight =
+					parseInt(getComputedStyle(commentTextareaElements[postId]).lineHeight) || 20;
+
+				// Position dropdown below the current line
+				commentMentionDropdown[postId].position = {
+					left: textareaRect.left,
+					top: textareaRect.bottom + 5 // Position slightly below the textarea
+				};
+
+				commentMentionDropdown[postId].show =
+					commentMentionDropdown[postId].filteredUsers.length > 0;
+				commentMentionDropdown[postId].selectedIndex = 0;
+
+				// Force Svelte to update
+				commentMentionDropdown = { ...commentMentionDropdown };
+			} catch (error) {
+				console.error('Error calculating dropdown position:', error);
+				commentMentionDropdown[postId].show = false;
+				commentMentionDropdown = { ...commentMentionDropdown };
+			}
+		} else {
+			commentMentionDropdown[postId].show = false;
+			commentMentionDropdown = { ...commentMentionDropdown };
+		}
+	}
+
+	// Function to insert mention in comments
+	function insertCommentMention(user, postId) {
+		const textarea = commentTextareaElements[postId];
+		if (!textarea) return;
+
+		const text = newComment[postId] || '';
+		const cursorPosition = textarea.selectionStart;
+		const textBeforeCursor = text.substring(0, cursorPosition);
+		const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+		if (mentionMatch) {
+			const startPos = cursorPosition - mentionMatch[0].length;
+			const beforeMention = text.substring(0, startPos);
+			const afterMention = text.substring(cursorPosition);
+
+			newComment[postId] = beforeMention + `@${user.name} ` + afterMention;
+
+			// Set cursor position after the inserted mention
+			setTimeout(() => {
+				textarea.focus();
+				textarea.selectionStart = textarea.selectionEnd = startPos + user.name.length + 2; // +2 for '@' and space
+			}, 0);
+		}
+
+		commentMentionDropdown[postId].show = false;
+		commentMentionDropdown = { ...commentMentionDropdown };
+	}
+
+	// Handle keyboard navigation in the comment dropdown
+	function handleCommentKeyDown(event, postId) {
+		if (!commentMentionDropdown[postId]?.show) return;
+
+		switch (event.key) {
+			case 'ArrowDown':
+				event.preventDefault();
+				commentMentionDropdown[postId].selectedIndex = Math.min(
+					commentMentionDropdown[postId].selectedIndex + 1,
+					commentMentionDropdown[postId].filteredUsers.length - 1
+				);
+				commentMentionDropdown = { ...commentMentionDropdown };
+				break;
+			case 'ArrowUp':
+				event.preventDefault();
+				commentMentionDropdown[postId].selectedIndex = Math.max(
+					commentMentionDropdown[postId].selectedIndex - 1,
+					0
+				);
+				commentMentionDropdown = { ...commentMentionDropdown };
+				break;
+
+			case 'Enter':
+				event.preventDefault();
+				if (commentMentionDropdown[postId].filteredUsers.length > 0) {
+					insertCommentMention(
+						commentMentionDropdown[postId].filteredUsers[
+							commentMentionDropdown[postId].selectedIndex
+						],
+						postId
+					);
+				}
+				break;
+
+			case 'Escape':
+				event.preventDefault();
+				commentMentionDropdown[postId].show = false;
+				commentMentionDropdown = { ...commentMentionDropdown };
+				break;
+		}
+	}
+
+	// Function to handle mention selection
+	function handleMention(event) {
+		const text = event.target.value;
+		const cursorPosition = event.target.selectionStart;
+
+		// Set textareaElement reference from the event if it's not already set
+		if (!textareaElement) {
+			textareaElement = event.target;
+		}
+
+		// Check if we're in a potential mention context
+		const textBeforeCursor = text.substring(0, cursorPosition);
+		const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+		if (mentionMatch && textareaElement) {
+			const query = mentionMatch[1].toLowerCase();
+			mentionDropdown.query = query;
+
+			// Filter users based on query
+			mentionDropdown.filteredUsers = usersList.filter((user) =>
+				user.name.toLowerCase().includes(query)
+			);
+
+			// Calculate position for dropdown
+			try {
+				const textareaRect = textareaElement.getBoundingClientRect();
+				const lineHeight = parseInt(getComputedStyle(textareaElement).lineHeight) || 20;
+				const lines = textBeforeCursor.split('\n').length;
+
+				// Position dropdown below the current line
+				mentionDropdown.position = {
+					left: textareaRect.left,
+					top: textareaRect.top + lineHeight * lines
+				};
+
+				mentionDropdown.show = mentionDropdown.filteredUsers.length > 0;
+				mentionDropdown.selectedIndex = 0;
+			} catch (error) {
+				console.error('Error calculating dropdown position:', error);
+				mentionDropdown.show = false;
+			}
+		} else {
+			mentionDropdown.show = false;
+		}
+	}
+
+	// Function to insert the selected mention
+	function insertMention(user) {
+		const text = postContent;
+		const cursorPosition = textareaElement.selectionStart;
+		const textBeforeCursor = text.substring(0, cursorPosition);
+		const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+		if (mentionMatch) {
+			const startPos = cursorPosition - mentionMatch[0].length;
+			const beforeMention = text.substring(0, startPos);
+			const afterMention = text.substring(cursorPosition);
+
+			postContent = beforeMention + `@${user.name} ` + afterMention;
+
+			// Set cursor position after the inserted mention
+			setTimeout(() => {
+				textareaElement.selectionStart = textareaElement.selectionEnd =
+					startPos + user.name.length + 2; // +2 for '@' and space
+			}, 0);
+		}
+
+		mentionDropdown.show = false;
+	}
+
+	// Handle keyboard navigation in the dropdown
+	function handleKeyDown(event) {
+		if (!mentionDropdown.show) return;
+
+		switch (event.key) {
+			case 'ArrowDown':
+				event.preventDefault();
+				mentionDropdown.selectedIndex = Math.min(
+					mentionDropdown.selectedIndex + 1,
+					mentionDropdown.filteredUsers.length - 1
+				);
+				break;
+
+			case 'ArrowUp':
+				event.preventDefault();
+				mentionDropdown.selectedIndex = Math.max(mentionDropdown.selectedIndex - 1, 0);
+				break;
+
+			case 'Enter':
+				event.preventDefault();
+				if (mentionDropdown.filteredUsers.length > 0) {
+					insertMention(mentionDropdown.filteredUsers[mentionDropdown.selectedIndex]);
+				}
+				break;
+
+			case 'Escape':
+				event.preventDefault();
+				mentionDropdown.show = false;
+				break;
+		}
+	}
 
 	// Function to format the date
 	function formatDate(dateString) {
@@ -129,6 +378,7 @@
 			await fetchUserProfile();
 			await fetchPosts();
 			await fetchSubscribedCommunities();
+			await fetchUsers();
 		}
 	});
 
@@ -172,6 +422,30 @@
 			console.log('Posts:', posts);
 		} else {
 			console.error('Failed to fetch posts:', data);
+		}
+	};
+
+	// Fetch all users from the API
+	const fetchUsers = async () => {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/users/', {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${access_token}`
+				}
+			});
+
+			if (response.ok) {
+				users = await response.json();
+				// Filter out the logged-in user and admin users, then create a list for the dropdown
+				usersList = users
+					.filter((user) => user.id !== loggedInUserId && !user.is_admin)
+					.map((user) => ({ value: user.id, name: user.username }));
+			} else {
+				console.error('Failed to fetch users');
+			}
+		} catch (error) {
+			console.error('Network error:', error.message);
 		}
 	};
 
@@ -387,7 +661,43 @@
 					if (res.ok) {
 						const data = await res.json();
 						postComments[postId] = data;
-						// Initialize newComment for this postId
+
+						// Enhance comments with user profile data
+						postComments[postId] = await Promise.all(
+							data.map(async (comment) => {
+								// If comment user data doesn't include profile picture or full name
+								if (
+									!comment.user.profile_picture ||
+									!comment.user.first_name ||
+									!comment.user.last_name
+								) {
+									try {
+										const profileResponse = await fetch(
+											`http://127.0.0.1:8000/api/user-profile/${comment.user.user_id}/`,
+											{ headers: { Authorization: `Bearer ${token}` } }
+										);
+
+										if (profileResponse.ok) {
+											const profileData = await profileResponse.json();
+											return {
+												...comment,
+												user: {
+													...comment.user,
+													profile_picture: profileData.profile_picture || '',
+													first_name: profileData.first_name || '',
+													last_name: profileData.last_name || ''
+												}
+											};
+										}
+									} catch (err) {
+										console.error('Error fetching comment user profile:', err);
+									}
+								}
+								return comment;
+							})
+						);
+
+						// Initialise newComment for this postId
 						if (!newComment[postId]) {
 							newComment[postId] = '';
 						}
@@ -442,8 +752,21 @@
 
 			if (response.ok) {
 				const newCommentData = await response.json();
-				// Optimistically update the UI by adding the new comment to the postComments array
-				postComments[postId] = [...(postComments[postId] || []), newCommentData];
+
+				// Enhance the comment with user profile data for immediate display
+				const enhancedComment = {
+					...newCommentData,
+					user: {
+						...newCommentData.user,
+						profile_picture: userProfile.profile_picture,
+						first_name: userProfile.first_name,
+						last_name: userProfile.last_name
+					}
+				};
+
+				// Optimistically update the UI
+				postComments[postId] = [enhancedComment, ...(postComments[postId] || [])];
+
 				// Clear the comment input field
 				newComment[postId] = '';
 			} else {
@@ -638,8 +961,33 @@
 								required
 								class="input input-bordered text-area-input w-full min-h-[150px] mb-3"
 								placeholder="What's on your mind?"
-								on:input={adjustTextareaHeight}
+								on:input={(e) => {
+									adjustTextareaHeight(e);
+									handleMention(e);
+								}}
+								on:keydown={handleKeyDown}
 							></textarea>
+							{#if mentionDropdown.show}
+								<div
+									class="z-50 bg-secondary rounded-md shadow-lg max-h-48 overflow-y-auto"
+									style="top: {mentionDropdown.position.top}px; left: {mentionDropdown.position
+										.left}px; min-width: 200px;"
+								>
+									<ul class="py-1">
+										{#each mentionDropdown.filteredUsers as user, index}
+											<li
+												class="px-4 py-2 hover:bg-primary hover:text-secondary cursor-pointer {index ===
+												mentionDropdown.selectedIndex
+													? 'bg-primary text-secondary'
+													: ''}"
+												on:click={() => insertMention(user)}
+											>
+												@{user.name}
+											</li>
+										{/each}
+									</ul>
+								</div>
+							{/if}
 							<!-- Image Preview -->
 							{#if postImage}
 								<div class="mb-3 flex justify-center">
@@ -798,39 +1146,123 @@
 					<div class="mt-4 bg-base-200 p-4 rounded-xl">
 						{#if loadingComments}
 							<p class="italic">Loading comments...</p>
-						{:else if postComments[p.id]?.length}
-							<h4 class="text-base-content font-semibold mb-2">Comments:</h4>
-							{#each postComments[p.id] as c}
-								<p class="text-base-content mb-1">
-									<strong>@{c.user.username}</strong>: {c.comment}
-									<span class="text-sm text-gray-500 ml-2"
-										>{new Date(c.timestamp).toLocaleString()}</span
-									>
-								</p>
-								{#if loggedInUserId === c.user.user_id}
-									<button
-										class="text-red-500 hover:text-red-700 focus:outline-none"
-										on:click={() => deleteComment(c.comment_id, p.id)}
-									>
-										<BinIcon size={16} />
-									</button>
-								{/if}
-							{/each}
 						{:else}
-							<p class="text-base-content italic">No comments yet.</p>
-						{/if}
+							<!-- Comment Input Area with Profile Picture -->
+							<div class="mb-4 flex items-start gap-3">
+								{#if userProfile.profile_picture}
+									<img
+										src={`data:image/jpeg;base64,${userProfile.profile_picture}`}
+										alt="Your Profile"
+										class="w-10 h-10 rounded-full object-cover"
+									/>
+								{:else}
+									<ProfilePictureIcon size={40} class="rounded-full" />
+								{/if}
+								<div class="flex-1 relative">
+									<textarea
+										placeholder={postComments[p.id]?.length
+											? 'Add a comment...'
+											: 'Be the first to comment on this post!'}
+										class="input input-bordered text-area-input w-full mb-3 min-h-[60px]"
+										bind:value={newComment[p.id]}
+										on:input={(e) => handleCommentMention(e, p.id)}
+										on:keydown={(e) => handleCommentKeyDown(e, p.id)}
+									></textarea>
 
-						<div class="mt-4">
-							<input
-								type="text"
-								placeholder="Write a comment..."
-								class="input input-bordered w-full mb-2"
-								bind:value={newComment[p.id]}
-							/>
-							<button class="btn btn-primary btn-sm" on:click={() => postComment(p.id)}
-								>Post Comment</button
-							>
-						</div>
+									{#if commentMentionDropdown[p.id]?.show}
+										<div
+											class="z-50 bg-secondary rounded-md shadow-lg max-h-48 overflow-y-auto"
+											style="top: {commentMentionDropdown[p.id].position
+												.top}px; left: {commentMentionDropdown[p.id].position
+												.left}px; min-width: 200px;"
+										>
+											<ul class="py-1">
+												{#each commentMentionDropdown[p.id].filteredUsers as user, index}
+													<li
+														class="px-4 py-2 hover:bg-primary hover:text-secondary cursor-pointer {index ===
+														commentMentionDropdown[p.id].selectedIndex
+															? 'bg-primary text-secondary'
+															: ''}"
+														on:click={() => insertCommentMention(user, p.id)}
+													>
+														@{user.name}
+													</li>
+												{/each}
+											</ul>
+										</div>
+									{/if}
+
+									<button class="btn btn-primary text-secondary hover:bg-primary-focus w-auto btn-sm" on:click={() => postComment(p.id)}>
+										Comment
+									</button>
+								</div>
+							</div>
+
+							<!-- Comments List -->
+							{#if postComments[p.id]?.length}
+								<div class="space-y-3">
+									{#each postComments[p.id] as c}
+										<div class="flex items-start gap-3">
+											<!-- Comment User Profile Picture -->
+											{#if c.user?.profile_picture}
+												<img
+													src={`data:image/jpeg;base64,${c.user.profile_picture}`}
+													alt="{c.user.username}'s profile"
+													class="w-10 h-10 rounded-full object-cover"
+												/>
+											{:else}
+												<ProfilePictureIcon size={40} class="rounded-full" />
+											{/if}
+
+											<!-- Comment Content -->
+											<div class="flex-1 bg-secondary rounded-xl">
+												<div class="flex justify-between items-start">
+													<div>
+														<span class="font-bold text-base-content"
+															>{c.user?.first_name} {c.user?.last_name}</span
+														>
+														<span class="text-gray-500 text-sm ml-1">@{c.user.username}</span>
+														<span class="text-gray-500 text-xs ml-2"
+															>· {formatDate(c.timestamp)}</span
+														>
+													</div>
+
+													<!-- Delete button if user's own comment -->
+													{#if loggedInUserId === c.user.user_id}
+														<button
+															class="text-gray-500 hover:text-red-500"
+															on:click={() => deleteComment(c.comment_id, p.id)}
+														>
+															<BinIcon size={16} />
+														</button>
+													{/if}
+												</div>
+												<!-- Parse and highlight mentions in the comment -->
+												<p class="text-base-content mt-1">
+													{#each parseContent(c.comment) as part}
+														{#if part.type === 'hashtag'}
+															<span
+																style="color: #3b82f6; cursor: pointer;"
+																on:click={() => handleHashtagClick(part.text)}
+															>
+																#{part.text}
+															</span>
+														{:else if part.type === 'mention'}
+															<span style="color: #3b82f6; cursor: pointer;">
+																@{part.text}
+															</span>
+														{:else}
+															{part.text}
+														{/if}
+													{/each}
+												</p>
+
+											</div>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						{/if}
 					</div>
 				{/if}
 			</div>
