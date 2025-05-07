@@ -37,6 +37,10 @@
 	let showCommunityManagementModal = false; // Flag to show/hide the community management modal
 	let searchTerm = ''; // Search term for filtering
 
+	// Notification modal state
+	let showNotificationModal = false;
+	let notificationMessage = '';
+
 	// Add reactive statement to filter and sort communities
 	$: filteredCommunities = communities
 		.filter(
@@ -47,12 +51,26 @@
 				(community.category && community.category.toLowerCase().includes(searchTerm.toLowerCase()))
 		)
 		.sort((a, b) => {
+			// Determine priority for community 'a'
+			const isAOwned = a.owner_id === loggedInUserId;
 			const isASubscribed = subscribedCommunities.some((sub) => sub.id === a.community_id);
-			const isBSubscribed = subscribedCommunities.some((sub) => sub.id === b.community_id);
+			let priorityA = 3; // Default to 'Other'
+			if (isAOwned)
+				priorityA = 1; // Owned
+			else if (isASubscribed) priorityA = 2; // Joined but not owned
 
-			if (isASubscribed && !isBSubscribed) return -1; // a comes first
-			if (!isASubscribed && isBSubscribed) return 1; // b comes first
-			return 0; // maintain original order if both are subscribed or not subscribed
+			// Determine priority for community 'b'
+			const isBOwned = b.owner_id === loggedInUserId;
+			const isBSubscribed = subscribedCommunities.some((sub) => sub.id === b.community_id);
+			let priorityB = 3; // Default to 'Other'
+			if (isBOwned)
+				priorityB = 1; // Owned
+			else if (isBSubscribed) priorityB = 2; // Joined but not owned
+
+			if (priorityA < priorityB) return -1; // a comes first
+			if (priorityA > priorityB) return 1; // b comes first
+
+			return 0; // maintain original order if priorities are the same
 		});
 
 	// Function to adjust the height of the textarea dynamically
@@ -76,6 +94,22 @@
 	const handleManagementImageChange = (event) => {
 		new_community_image = event.target.files[0];
 	};
+
+	// Function to show notification
+	function showNotification(message) {
+		notificationMessage = message;
+		showNotificationModal = true;
+
+		// Automatically hide the notification after 5 seconds
+		setTimeout(() => {
+			showNotificationModal = false;
+		}, 5000);
+	}
+
+	// Function to close the notification
+	function closeNotification() {
+		showNotificationModal = false;
+	}
 
 	const update_community_image = async () => {
 		if (!community_management_selected) {
@@ -293,9 +327,11 @@
 		formData.append('description', description);
 		formData.append('category', category === 'Other' ? customCategory : category);
 
-		// Add leader_ids as a JSON string
+		// Add each selected leader ID as a separate form data entry
 		if (selectedUsersForCommunityCreation.length > 0) {
-			formData.append('leader_ids', JSON.stringify(selectedUsersForCommunityCreation));
+			selectedUsersForCommunityCreation.forEach((userId) => {
+				formData.append('leader_ids', userId.toString()); // Ensure userId is a string
+			});
 		}
 
 		// Add the image file if it exists
@@ -322,7 +358,8 @@
 				category = '';
 				selectedUsersForCommunityCreation = [];
 				community_image = null;
-				window.location.reload();
+				showCommunityCreateModal = false; // Close the modal after submission
+				showNotification('Community successfully created! Please wait for admin approval.');
 			} else {
 				alert(result.error);
 				console.error('Error creating community:', result.error || 'Something went wrong');
@@ -1148,4 +1185,51 @@
 	>
 		<AddIconNoCircle size={28} />
 	</button>
+
+	<!-- Notification Modal -->
+	{#if showNotificationModal}
+		<div class="fixed inset-x-0 top-0 mt-4 flex items-center justify-center z-50">
+			<div class="bg-secondary rounded-lg p-4 shadow-lg max-w-md mx-auto">
+				<div class="flex items-center">
+					<!-- Success Icon -->
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-6 w-6 text-primary mr-2"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M5 13l4 4L19 7"
+						/>
+					</svg>
+
+					<div class="flex-1">
+						<p class="font-medium">{notificationMessage}</p>
+					</div>
+
+					<!-- Close Button -->
+					<button class="ml-4 text-primary hover:text-base-100" on:click={closeNotification}>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </main>

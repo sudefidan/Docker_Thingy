@@ -300,7 +300,7 @@ class create_community(APIView):
         name = request.data.get('name')
         description = request.data.get('description')
         category = request.data.get('category')
-        leader_ids = request.data.get('leader_ids', [])
+        leader_ids_str_list = request.data.getlist('leader_ids') # Use getlist to handle multiple values
         image_file = request.FILES.get('community_image')
 
         # check if users is authenticated
@@ -311,6 +311,15 @@ class create_community(APIView):
 
         if Community.objects.filter(name__iexact=name).exists():
             return Response({"error": "This community already exists."}, status=400)
+
+        leader_ids_str_list = request.data.getlist('leader_ids')
+        leader_ids = []
+        if leader_ids_str_list:
+            for leader_id_str in leader_ids_str_list:
+                try:
+                    leader_ids.append(int(leader_id_str))
+                except ValueError:
+                    return Response({'error': f'Invalid leader ID format: "{leader_id_str}". IDs must be numbers.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # create the record in the database with these variables
         community = Community.objects.create(
@@ -349,7 +358,7 @@ class create_community(APIView):
 
         return Response({
             "community_id": community.community_id,
-            "message": "Community created successfully and selected leaders assigned"
+            "message": "Community created successfully and selected leaders assigned - community is inactive until approved by admin.",
         })
 
 @api_view(['GET'])
