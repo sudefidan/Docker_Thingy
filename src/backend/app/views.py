@@ -1220,6 +1220,11 @@ def create_event(request):
     data = request.data
     user = request.user
 
+    try:
+        max_capacity = int(data.get('max_capacity', 20))
+    except (TypeError, ValueError):
+        return Response({"error": "Invalid capacity."}, status=status.HTTP_400_BAD_REQUEST)
+
     EventType.objects.get_or_create(name='virtual')
     EventType.objects.get_or_create(name='in-person')
 
@@ -1265,6 +1270,7 @@ def create_event(request):
         location=location,
         event_type=event_type,
         community=community,
+        max_capacity = max_capacity,
     )
 
     if not is_owner:
@@ -1288,8 +1294,10 @@ def list_events(request):
     user = request.user
 
     # Prepare the event data for response
-    event_list = [
-        {
+    event_list = []
+    for event in events:
+        participant_count = EventParticipant.objects.filter(event=event).count()
+        event_list.append({
             'event_id': event.event_id,
             'title': event.title,
             'description': event.description,
@@ -1298,13 +1306,16 @@ def list_events(request):
             'location': event.location,
             'event_type': event.event_type.name if event.event_type else None,
             'community': event.community.name if event.community else None,
-            'participant_count': EventParticipant.objects.filter(event=event).count(),
+            'participant_count': participant_count,
             'is_participating': EventParticipant.objects.filter(event=event, user=user).exists(),
-            'can_cancel': event.community.owner == user or CommunityLeader.objects.filter(community=event.community, user=user).exists(),
-            'is_owner': event.community.owner == user
-        }
-        for event in events
-    ]
+            'can_cancel': (
+                event.community.owner == user or
+                CommunityLeader.objects.filter(community=event.community, user=user).exists()
+            ),
+            'is_owner': event.community.owner == user,
+            'max_capacity': event.max_capacity,
+            'is_full': participant_count >= event.max_capacity,
+        })
 
     return Response(event_list, status=200)
 
@@ -1475,6 +1486,7 @@ def join_event(request, event_id):
     """Allow a user to join an event"""
     user = request.user
     event = get_object_or_404(Event, pk=event_id)
+    current_count = EventParticipant.objects.filter(event=event).count()
 
     # Check if user is already a participant
     if EventParticipant.objects.filter(event=event, user=user).exists():
@@ -1482,6 +1494,9 @@ def join_event(request, event_id):
 
     # Add user as participant
     EventParticipant.objects.create(event=event, user=user)
+
+    if current_count >= event.max_capacity:
+        return Response({"error": "Event is full."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Create notification for event creator
     message = f"{user.username} has joined your event '{event.title}'"
@@ -1608,7 +1623,7 @@ def update_event_field(request):
         return Response({"error": "You do not have permission to edit this event."}, status=status.HTTP_403_FORBIDDEN)
 
     # Validate and Update Field
-    allowed_fields = ['title', 'description', 'date', 'virtual_link', 'location', 'event_type']
+    allowed_fields = ['title', 'description', 'date', 'virtual_link', 'location', 'event_type', 'max_capacity']
 
     if field_to_update not in allowed_fields:
         return Response({"error": f"Updating the field '{field_to_update}' is not allowed."}, status=status.HTTP_400_BAD_REQUEST)
@@ -1645,6 +1660,17 @@ def update_event_field(request):
              # Allow empty/null location
             setattr(event, field_to_update, str(new_value) if new_value else None)
 
+        elif field_to_update == 'max_capacity':
+            try:
+                # ensure it's a positive integer
+                cap = int(new_value)
+                if cap < 1:
+                    raise ValueError()
+                event.max_capacity = cap
+            except (TypeError, ValueError):
+                return Response({"error": "Invalid capacity. Must be a positive integer."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         elif field_to_update == 'event_type':
             if not new_value:
                  return Response({"error": "Event type cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
@@ -1655,6 +1681,7 @@ def update_event_field(request):
                 original_value = original_value.name if original_value else None # For notification message
             except EventType.DoesNotExist:
                 return Response({"error": f"Invalid event type: '{new_value}'. Must be 'virtual' or 'in-person'."}, status=status.HTTP_400_BAD_REQUEST)
+                
 
         # Notify participants
         participants = EventParticipant.objects.filter(event=event).select_related('user')

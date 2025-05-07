@@ -8,6 +8,7 @@
 	let loggedInUserId = null;
 	let users = []; // List of users fetched from API
 	let managedEvents = [];
+
 	let communities = []; // Stores the user's owned/managed communities
 	let allowedToCreate = false; // Controls form visibility
 	let title = '';
@@ -23,6 +24,7 @@
 	let showEventManagementModal = false;
 	let selectedEventId = null;
 	let selectedEventAction = '';
+	let maxCapacityInput = 20;
 
 	// Edit Event Form State
 	let editEventId = null; // Still useful to know which event we're editing
@@ -34,6 +36,7 @@
 	let editEventType = '';
 	let selectedEventEditCategory = '';
 	let allowedToEdit = false;
+	let editCapacity = "";
 
 	// Function to toggle event management modal
 	const toggleEventManagementModal = (eventId) => {
@@ -186,7 +189,8 @@
 			virtual_link: virtualLinkInput.trim() || null,
 			location: locationInput.trim() || null,
 			event_type,
-			community_id
+			community_id,
+			max_capacity: maxCapacityInput,
 		};
 
 		// Log event data, including community_id
@@ -704,6 +708,18 @@
 							</div>
 						{/if}
 
+						<div class="form-control mb-5">
+							<label class="label"><span class="label-text">Capacity</span></label>
+							<input
+							  type="number"
+							  bind:value={maxCapacityInput}
+							  min="1"
+							  class="input input-bordered"
+							  placeholder="Max attendees"
+							  required
+							/>
+						  </div>
+
 						<!-- Submit Button -->
 						<div class="mb-2 mt-2 flex justify-center text-center">
 							<button
@@ -747,6 +763,7 @@
 								<option value="changeDescription">Change Event Description</option>
 								<option value="changeDate">Change Event Date</option>
 								<option value="changeEventType">Change Event Type</option>
+								<option value="changeCapacity">Change Capacity</option>
 
 								<!-- Show virtual link option only for virtual events -->
 								{#if events.find((e) => e.event_id === selectedEventId)?.event_type === 'virtual'}
@@ -762,6 +779,32 @@
 							</select>
 						</div>
 					</div>
+
+					{#if selectedEventAction === 'changeCapacity'}
+						<div class="form-control mb-4 flex flex-col gap-3">
+							<label for="capacity" class="label">
+								<span class="label-text">New Capacity</span>
+							</label>
+							<input
+								id="capacity"
+								type="number"
+								bind:value={editCapacity}
+								min="1"
+								class="input input-bordered"
+								placeholder="Enter new max attendees"
+								required
+							/>
+							<button
+								class="btn btn-primary mt-2"
+								on:click={() => {
+									updateEvent('max_capacity', editCapacity);
+									selectedEventAction = '';
+								}}
+							>
+								Update Capacity
+							</button>
+						</div>
+					{/if}
 
 					<!-- Change Title -->
 					{#if selectedEventAction === 'changeTitle'}
@@ -919,7 +962,6 @@
 									</select>
 								</div>
 							</div>
-
 							<!-- Show virtual link input immediately if "virtual" is selected -->
 							{#if editEventType === 'virtual' && events.find((e) => e.event_id === selectedEventId)?.event_type !== 'virtual'}
 								<div class="w-full mt-3">
@@ -1030,7 +1072,7 @@
 								<span class="tooltip">Leave this event</span>
 							</div>
 							<!-- Show "Join" button if the user is not participating -->
-						{:else if !event.is_participating && !event.is_owner}
+						{:else if !event.is_participating && !event.is_owner && !event.is_full}
 							<div class="tooltip-container">
 								<button on:click={() => joinEvent(event.event_id)} class="hover:text-primary">
 									<AddIcon />
@@ -1039,6 +1081,15 @@
 							</div>
 						{/if}
 					</div>
+
+					<div class="mt-2">
+						<button
+							class="btn btn-outline w-full"
+							on:click={() => alert(`${event.participant_count} joined, ${event.max_capacity - event.participant_count} spots left`)}
+						>
+							{event.participant_count}/{event.max_capacity} spots used
+						</button>
+					  </div>
 
 					<div class="event-details">
 						<p>{event.description}</p>
