@@ -23,6 +23,7 @@
 	let showEventModal = false; // Controls the visibility of the event modal
 	let showEventManagementModal = false;
 	let selectedEventId = null;
+	let subscribedCommunityIds = []; // Stores IDs of communities the user is subscribed to
 	let selectedEventAction = '';
 	let maxCapacityInput = 20;
 	let materials = '';
@@ -153,6 +154,29 @@
 		}
 	}
 
+	// Fetch IDs of communities the user is subscribed to
+	async function fetchSubscribedCommunityIds() {
+		try {
+			const response = await fetch('http://127.0.0.1:8000/api/subscribed_communities/', {
+				headers: {
+					Authorization: `Bearer ${access_token}`
+				}
+			});
+			if (!response.ok) {
+				throw new Error(`Failed to fetch subscribed communities: ${response.status}`);
+			}
+			const data = await response.json();
+			if (data && Array.isArray(data.subscribed_communities)) {
+				subscribedCommunityIds = data.subscribed_communities.map((comm) => comm.id);
+				console.log('Fetched subscribed community IDs:', subscribedCommunityIds);
+			} else {
+				console.error('Subscribed communities data is not in the expected format:', data);
+				subscribedCommunityIds = [];
+			}
+		} catch (error) {
+			console.error('Error fetching subscribed community IDs:', error);
+		}
+	}
 	// Fetch user communities
 	async function fetchManagedEvents() {
 		try {
@@ -195,7 +219,7 @@
 			event_type,
 			community_id,
 			max_capacity: maxCapacityInput,
-			materials,
+			materials
 		};
 
 		// Log event data, including community_id
@@ -467,18 +491,59 @@
 		}
 	}
 
-	$: filteredEvents = events.filter((e) => {
-		const lowerSearch = searchTerm.toLowerCase();
-		return (
-			e.title.toLowerCase().includes(lowerSearch) ||
-			e.description.toLowerCase().includes(lowerSearch) ||
-			e.event_type.toLowerCase().includes(lowerSearch) ||
-			(e.location && e.location.toLowerCase().includes(lowerSearch)) ||
-			(e.date && e.date.toLowerCase().includes(lowerSearch)) ||
-			(e.community && e.community.toLowerCase().includes(lowerSearch)) ||
-			(e.virtual_link && e.virtual_link.toLowerCase().includes(lowerSearch))
-		);
-	});
+	$: filteredEvents = events
+		.filter((e) => {
+			const lowerSearch = searchTerm.toLowerCase();
+			return (
+				e.title.toLowerCase().includes(lowerSearch) ||
+				e.description.toLowerCase().includes(lowerSearch) ||
+				e.event_type.toLowerCase().includes(lowerSearch) ||
+				(e.location && e.location.toLowerCase().includes(lowerSearch)) ||
+				(e.date && e.date.toLowerCase().includes(lowerSearch)) ||
+				(e.community && e.community.toLowerCase().includes(lowerSearch)) ||
+				(e.virtual_link && e.virtual_link.toLowerCase().includes(lowerSearch))
+			);
+		})
+		.sort((eventA, eventB) => {
+			const getPriority = (event) => {
+				let calculatedPriority;
+
+				if (event.is_participating) {
+					// User has joined the event
+					if (event.is_owner) {
+						calculatedPriority = 1; // Priority 1: Owned by user, and user has joined
+					} else if (event.can_cancel) {
+						calculatedPriority = 3; // Priority 3: Led by user (not owned), and user has joined
+					} else {
+						calculatedPriority = 5; // Priority 5: Regular Joined (not in a community owned or led by user)
+					}
+				} else {
+					// User has NOT joined the event
+					if (event.is_owner) {
+						calculatedPriority = 2; // Priority 2: Owned by user, but user has NOT joined
+					} else if (event.can_cancel) {
+						calculatedPriority = 4; // Priority 4: Led by user (not owned), and user has NOT joined
+					} else if (subscribedCommunityIds.includes(Number(event.community_id))) {
+						// Convert event.community_id to Number
+						calculatedPriority = 6; // Priority 6: Unjoined, in a subscribed community (not owned/led by user)
+					} else {
+						calculatedPriority = 7; // Priority 7: Other unjoined events
+					}
+				}
+
+				return calculatedPriority;
+			};
+
+			const priorityA = getPriority(eventA);
+			const priorityB = getPriority(eventB);
+
+			if (priorityA < priorityB) return -1;
+			if (priorityA > priorityB) return 1;
+
+			// Optional: Add secondary sorting criteria here if priorities are the same, e.g., by date
+			// For now, maintain original relative order for events with the same priority.
+			return 0;
+		});
 
 	// Run the functions when the component loads
 	onMount(async () => {
@@ -499,8 +564,9 @@
 			await fetchUserCommunities(); // Load communities the user is part of
 			await fetchEvents(); // Load all events to display
 			await fetchManagedEvents(); // Load events the user can manage
+			await fetchSubscribedCommunityIds(); // Load IDs of subscribed communities for sorting
 
-			 // Fetch all communities from the server
+			// Fetch all communities from the server
 			const response = await fetch('http://127.0.0.1:8000/api/communities/', {
 				headers: {
 					Authorization: `Bearer ${access_token}`
@@ -515,7 +581,7 @@
 
 			// Check each community to see if user is owner or leader
 			for (const community of allCommunities) {
-				 // Check if user is the owner of this community
+				// Check if user is the owner of this community
 				const isOwner = community.owner_id === loggedInUserId;
 
 				// Get leaders for this community
@@ -534,7 +600,7 @@
 				const leaders = await leadersResponse.json();
 
 				// Check if user is a leader of this community
-      			const isLeader = leaders.some((leader) => leader.id === loggedInUserId);
+				const isLeader = leaders.some((leader) => leader.id === loggedInUserId);
 
 				// If user is either owner or leader, add community to permitted list
 				if (isOwner || isLeader) {
@@ -695,10 +761,10 @@
 						<div class="form-control mb-5">
 							<label class="label"><span class="label-text">Required Materials</span></label>
 							<input
-							  type="text"
-							  bind:value={materials}
-							  class="input input-bordered"
-							  placeholder="E.g. Zoom link, handout PDF, lab coat…"
+								type="text"
+								bind:value={materials}
+								class="input input-bordered"
+								placeholder="E.g. Zoom link, handout PDF, lab coat…"
 							/>
 						</div>
 
@@ -722,20 +788,18 @@
 								</div>
 							</div>
 						{/if}
-							<!-- Max Capacity Input -->
+						<!-- Max Capacity Input -->
 						<div class="form-control mb-5">
 							<label class="label"><span class="label-text">Capacity</span></label>
 							<input
-							  type="number"
-							  bind:value={maxCapacityInput}
-							  min="1"
-							  class="input input-bordered"
-							  placeholder="Max attendees"
-							  required
+								type="number"
+								bind:value={maxCapacityInput}
+								min="1"
+								class="input input-bordered"
+								placeholder="Max attendees"
+								required
 							/>
-						  </div>
-
-
+						</div>
 
 						<!-- Submit Button -->
 						<div class="mb-2 mt-2 flex justify-center text-center">
@@ -959,15 +1023,19 @@
 								<span class="label-text">New Materials</span>
 							</label>
 							<input
-							id="materials"
-							type="text"
-							bind:value={editMaterials}
-							class="input input-bordered"
-							placeholder="e.g. Slides, PDF, Zoom link…"
+								id="materials"
+								type="text"
+								bind:value={editMaterials}
+								class="input input-bordered"
+								placeholder="e.g. Slides, PDF, Zoom link…"
 							/>
 							<button
-							class="btn btn-primary mt-2"
-							on:click={() => {updateEvent('materials', editMaterials);selectedEventAction = '';}}>Update Materials</button>
+								class="btn btn-primary mt-2"
+								on:click={() => {
+									updateEvent('materials', editMaterials);
+									selectedEventAction = '';
+								}}>Update Materials</button
+							>
 						</div>
 					{/if}
 
@@ -1120,11 +1188,14 @@
 					<div class="mt-2">
 						<button
 							class="btn btn-outline w-full"
-							on:click={() => alert(`${event.participant_count} joined, ${event.max_capacity - event.participant_count} spots left`)}
+							on:click={() =>
+								alert(
+									`${event.participant_count} joined, ${event.max_capacity - event.participant_count} spots left`
+								)}
 						>
 							{event.participant_count}/{event.max_capacity} spots used
 						</button>
-					  </div>
+					</div>
 
 					<div class="event-details">
 						<p>{event.description}</p>
