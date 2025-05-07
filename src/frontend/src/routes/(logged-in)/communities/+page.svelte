@@ -37,14 +37,23 @@
 	let showCommunityManagementModal = false; // Flag to show/hide the community management modal
 	let searchTerm = ''; // Search term for filtering
 
-	// Add reactive statement to filter communities
-	$: filteredCommunities = communities.filter(
-		(community) =>
-			community.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			(community.description &&
-				community.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-			(community.category && community.category.toLowerCase().includes(searchTerm.toLowerCase()))
-	);
+	// Add reactive statement to filter and sort communities
+	$: filteredCommunities = communities
+		.filter(
+			(community) =>
+				community.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				(community.description &&
+					community.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+				(community.category && community.category.toLowerCase().includes(searchTerm.toLowerCase()))
+		)
+		.sort((a, b) => {
+			const isASubscribed = subscribedCommunities.some((sub) => sub.id === a.community_id);
+			const isBSubscribed = subscribedCommunities.some((sub) => sub.id === b.community_id);
+
+			if (isASubscribed && !isBSubscribed) return -1; // a comes first
+			if (!isASubscribed && isBSubscribed) return 1; // b comes first
+			return 0; // maintain original order if both are subscribed or not subscribed
+		});
 
 	// Function to adjust the height of the textarea dynamically
 	function adjustTextareaHeight(event) {
@@ -963,16 +972,14 @@
 
 				<!-- Delete Community Image (when image exists) -->
 				{#if selectedAction === 'deleteImage' && selected_community_has_image}
-
-						<div class="mb-2 mt-2 flex justify-center">
-							<button
-								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
-								on:click={delete_community_image}
-							>
-								Delete
-							</button>
-						</div>
-
+					<div class="mb-2 mt-2 flex justify-center">
+						<button
+							class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+							on:click={delete_community_image}
+						>
+							Delete
+						</button>
+					</div>
 				{/if}
 
 				<!-- Add Community Image (when no image exists) -->
@@ -1026,13 +1033,13 @@
 
 				<!-- Delete the community -->
 				{#if selectedAction === 'deleteCommunity'}
-						<div class="mb-2 mt-2 flex justify-center">
-							<button
-								class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
-								type="submit"
-								on:click={delete_community}>Delete</button
-							>
-						</div>
+					<div class="mb-2 mt-2 flex justify-center">
+						<button
+							class="btn btn-primary text-secondary hover:bg-primary-focus w-auto pl-10 pr-10"
+							type="submit"
+							on:click={delete_community}>Delete</button
+						>
+					</div>
 				{/if}
 			</div>
 		</div>
