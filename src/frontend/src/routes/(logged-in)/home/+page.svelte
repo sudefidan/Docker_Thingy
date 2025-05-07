@@ -27,7 +27,9 @@
 	let loadingComments = false;
 	let newComment = {};
 	let tempComment = '';
-
+	let activeHashtag = null;
+	let allPosts = [];         // Full list of posts
+	 
 	let userProfile = {
 		profile_picture: '',
 		username: '',
@@ -528,12 +530,57 @@
       console.error('Error deleting comment:', error);
     }
   };
+
+  const handleHashtagClick = (hashtag) => {
+    activeHashtag = hashtag;
+    filterPostsByHashtag(hashtag);
+  };
+
+  $: filteredPosts = activeHashtag
+    ? posts.filter(
+        (p) =>
+          p.content.toLowerCase().includes(`#${activeHashtag.toLowerCase()}`)
+      )
+    : posts;
+
+  const resetFilter = () => {
+    activeHashtag = null;
+    filteredPosts = allPosts;
+  };
+
+  function parseContent(content) {
+    const regex = /#(\w+)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', text: content.slice(lastIndex, match.index) });
+      }
+      parts.push({ type: 'hashtag', text: match[1] }); 
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < content.length) {
+      parts.push({ type: 'text', text: content.slice(lastIndex) });
+    }
+
+    return parts;
+  }
 </script>
 
 <main class="px-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
 	<div class="top-panel">
 		<input type="text" placeholder="Search..." class="input search-bar" bind:value={searchTerm} />
 	</div>
+
+	{#if activeHashtag}
+    	<div class="alert alert-info mb-4">
+      		<span>Filtering by hashtag: <strong>#{activeHashtag}</strong></span>
+      		<button class="btn btn-sm" on:click={resetFilter}>Reset Filter</button>
+    	</div>
+  	{/if}
 
 	<!-- Post Creation Modal -->
 	{#if showPostModal}
@@ -655,6 +702,19 @@
 						/>
 					</svg>
 					<p class="text-accent text-sm">{p.community_name}</p>
+					<p class="text-base-100 overflow-auto text-ellipsis" style="word-break: break-word;">
+						{#each parseContent(p.content) as part}
+						  {#if part.type === 'hashtag'}
+							<span 
+							  style="color: blue; cursor: pointer;" 
+							  on:click={() => handleHashtagClick(part.text)}>
+							  #{part.text}
+							</span>
+						  {:else}
+							{part.text}
+						  {/if}
+						{/each}
+					  </p>
 
 					<!-- Remove button for the post -->
 					{#if p.user_id === loggedInUserId}
