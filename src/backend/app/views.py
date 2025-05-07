@@ -1243,6 +1243,7 @@ def create_event(request):
     location = data.get('location')
     event_type_name = data.get('event_type')
     community_id = data.get('community_id')
+    materials = data.get('materials')
 
     # Validate required fields
     if not all([title, date_str, event_type_name, community_id]):
@@ -1278,6 +1279,7 @@ def create_event(request):
         event_type=event_type,
         community=community,
         max_capacity = max_capacity,
+        materials = materials,
     )
 
     if not is_owner:
@@ -1311,6 +1313,7 @@ def list_events(request):
             'date': event.date,
             'virtual_link': event.virtual_link,
             'location': event.location,
+            'materials': event.materials,
             'event_type': event.event_type.name if event.event_type else None,
             'community': event.community.name if event.community else None,
             'participant_count': participant_count,
@@ -1631,7 +1634,7 @@ def update_event_field(request):
         return Response({"error": "You do not have permission to edit this event."}, status=status.HTTP_403_FORBIDDEN)
 
     # Validate and Update Field
-    allowed_fields = ['title', 'description', 'date', 'virtual_link', 'location', 'event_type', 'max_capacity']
+    allowed_fields = ['title', 'description', 'date', 'virtual_link', 'location', 'event_type', 'max_capacity', 'materials']
 
     if field_to_update not in allowed_fields:
         return Response({"error": f"Updating the field '{field_to_update}' is not allowed."}, status=status.HTTP_400_BAD_REQUEST)
@@ -1678,6 +1681,9 @@ def update_event_field(request):
             except (TypeError, ValueError):
                 return Response({"error": "Invalid capacity. Must be a positive integer."},
                                 status=status.HTTP_400_BAD_REQUEST)
+
+        elif field_to_update == 'materials':
+            setattr(event, field_to_update, str(new_value) if new_value else None)
 
         elif field_to_update == 'event_type':
             if not new_value:

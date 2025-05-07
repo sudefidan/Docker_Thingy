@@ -25,6 +25,7 @@
 	let selectedEventId = null;
 	let selectedEventAction = '';
 	let maxCapacityInput = 20;
+	let materials = '';
 
 	// Edit Event Form State
 	let editEventId = null; // Still useful to know which event we're editing
@@ -36,7 +37,8 @@
 	let editEventType = '';
 	let selectedEventEditCategory = '';
 	let allowedToEdit = false;
-	let editCapacity = "";
+	let editCapacity = '';
+	let editMaterials = '';
 
 	// Function to toggle event management modal
 	const toggleEventManagementModal = (eventId) => {
@@ -49,6 +51,7 @@
 				editDescription = selectedEvent.description;
 				editDate = selectedEvent.date;
 				editEventType = selectedEvent.event_type;
+				editMaterials = selectedEvent.materials || '';
 
 				// Initialise location and virtual link fields based on event type
 				if (selectedEvent.event_type === 'virtual') {
@@ -67,6 +70,7 @@
 			editVirtualLink = '';
 			editLocation = '';
 			editEventType = '';
+			editMaterials = '';
 		}
 		showEventManagementModal = !showEventManagementModal;
 		selectedEventAction = '';
@@ -191,6 +195,7 @@
 			event_type,
 			community_id,
 			max_capacity: maxCapacityInput,
+			materials,
 		};
 
 		// Log event data, including community_id
@@ -686,6 +691,16 @@
 								</div>
 							</div>
 						{/if}
+						<!-- Required materials Input -->
+						<div class="form-control mb-5">
+							<label class="label"><span class="label-text">Required Materials</span></label>
+							<input
+							  type="text"
+							  bind:value={materials}
+							  class="input input-bordered"
+							  placeholder="E.g. Zoom link, handout PDF, lab coat…"
+							/>
+						</div>
 
 						<!-- Virtual Link Input -->
 						{#if event_type === 'virtual'}
@@ -707,7 +722,7 @@
 								</div>
 							</div>
 						{/if}
-
+							<!-- Max Capacity Input -->
 						<div class="form-control mb-5">
 							<label class="label"><span class="label-text">Capacity</span></label>
 							<input
@@ -719,6 +734,8 @@
 							  required
 							/>
 						  </div>
+
+
 
 						<!-- Submit Button -->
 						<div class="mb-2 mt-2 flex justify-center text-center">
@@ -764,6 +781,7 @@
 								<option value="changeDate">Change Event Date</option>
 								<option value="changeEventType">Change Event Type</option>
 								<option value="changeCapacity">Change Capacity</option>
+								<option value="changeMaterials">Change Materials</option>
 
 								<!-- Show virtual link option only for virtual events -->
 								{#if events.find((e) => e.event_id === selectedEventId)?.event_type === 'virtual'}
@@ -935,6 +953,24 @@
 						</div>
 					{/if}
 
+					{#if selectedEventAction === 'changeMaterials'}
+						<div class="form-control mb-4 flex flex-col gap-3">
+							<label for="materials" class="label">
+								<span class="label-text">New Materials</span>
+							</label>
+							<input
+							id="materials"
+							type="text"
+							bind:value={editMaterials}
+							class="input input-bordered"
+							placeholder="e.g. Slides, PDF, Zoom link…"
+							/>
+							<button
+							class="btn btn-primary mt-2"
+							on:click={() => {updateEvent('materials', editMaterials);selectedEventAction = '';}}>Update Materials</button>
+						</div>
+					{/if}
+
 					<!-- Change Event Type -->
 					{#if selectedEventAction === 'changeEventType'}
 						<div class="form-control mb-2 flex flex-col gap-3">
@@ -980,7 +1016,6 @@
 									</div>
 								</div>
 							{/if}
-
 							<!-- Show location input immediately if "in-person" is selected -->
 							{#if editEventType === 'in-person' && events.find((e) => e.event_id === selectedEventId)?.event_type !== 'in-person'}
 								<div class="w-full mt-3">
@@ -1107,6 +1142,10 @@
 							</p>
 						{:else}
 							<p><strong>Location:</strong> Online</p>
+						{/if}
+
+						{#if event.materials}
+							<p><strong>Materials:</strong> {event.materials}</p>
 						{/if}
 					</div>
 				</div>
