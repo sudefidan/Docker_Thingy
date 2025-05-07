@@ -1333,6 +1333,7 @@ def list_events(request):
             'materials': event.materials,
             'event_type': event.event_type.name if event.event_type else None,
             'community': event.community.name if event.community else None,
+            'community_id': event.community.community_id if event.community else None,
             'participant_count': participant_count,
             'is_participating': EventParticipant.objects.filter(event=event, user=user).exists(),
             'can_cancel': (
