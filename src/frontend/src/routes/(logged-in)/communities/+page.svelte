@@ -1087,7 +1087,7 @@
 	{/if}
 
 	<!-- Main Section -->
-	<div class="gap-6 grid w-full max-w-full grid-cols-1 justify-center md:grid-cols-3">
+	<div class="gap-6 grid w-full max-w-full grid-cols-1 justify-center md:grid-cols-3 mt-5">
 		<!-- List Communities and Join Button -->
 		{#each filteredCommunities as community}
 			<div class="card bg-base-100 w-full rounded-3xl">

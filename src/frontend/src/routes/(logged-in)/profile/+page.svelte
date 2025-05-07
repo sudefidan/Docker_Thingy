@@ -576,7 +576,7 @@
 	}
 </script>
 
-<main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
+<main class="pl-13 pr-13 mb-5 flex w-full flex-col items-center overflow-auto pt-10">
 	<!-- Main content area -->
 	<div
 		class="gap-13 flex grid w-full max-w-full grid-cols-1 flex-col justify-center md:grid-cols-2"
@@ -1051,7 +1051,7 @@
 		<!-- Right Column -->
 		<div class="space-y-10">
 			<!-- About Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-[30.5vh] w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[25.7vh] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
@@ -1074,7 +1074,7 @@
 						<div class="form-control flex flex-col gap-3 w-full">
 							<textarea
 								bind:value={editedAbout}
-								rows="5"
+								rows="3"
 								class="input input-bordered text-area-input"
 								placeholder="Tell us about yourself..."
 							></textarea>
@@ -1223,7 +1223,7 @@
 				</div>
 			</div>
 			<!-- Interests Section -->
-			<div class="card bg-base-100 shadow-4xl min-h-[23.5vh] w-full rounded-3xl">
+			<div class="card bg-base-100 shadow-4xl min-h-[24.5vh] w-full rounded-3xl">
 				<div class="card-body bg-secondary rounded-3xl">
 					<div class="mb-4 flex items-center justify-between">
 						<div class="flex-grow text-center">
