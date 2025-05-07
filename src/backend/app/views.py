@@ -317,8 +317,16 @@ class create_community(APIView):
             name=name,
             description=description,
             category=category,
-            owner_id=owner_id
+            owner_id=owner_id,
+            is_active=False # Ensure new communities are disabled by default
         )
+
+        # Create a notification for every super user or staff user (those with admin access) that a new community to approve (with name) exists
+        admin_users = User.objects.filter(Q(is_superuser=True) | Q(is_staff=True))
+        for admin in admin_users:
+            message = f"New community '{name}' created and awaiting approval."
+            create_notification(admin.id, message)
+
 
         if image_file:
                 try:
@@ -338,8 +346,6 @@ class create_community(APIView):
 
         # auto subscribe the current userid that is logged to the community
         Subscribed.objects.create(community=community, user_id=owner_id)
-
-        create_notification_community_interest(community)
 
         return Response({
             "community_id": community.community_id,
@@ -441,7 +447,7 @@ class SubscribedCommunities(APIView):
     def get(self, request):
         user = request.user
         # Fetch all subscriptions where user_id matches the currently logged in user.
-        subscriptions = Subscribed.objects.filter(user=user)
+        subscriptions = Subscribed.objects.filter(user=user, community__is_active=True) # Filter for active communities
         # Get the list of communities that have been subscribed too
         communities = [sub.community for sub in subscriptions]
 
@@ -591,7 +597,7 @@ def get_post_image(request, post_id):
 @api_view(['GET'])
 def fetch_communities(request):
     if request.method == "GET":
-        communities = Community.objects.all()
+        communities = Community.objects.filter(is_active=True) # Only fetch active communities
         communities_data = [
             {
                 "community_id": community.community_id,
@@ -599,7 +605,8 @@ def fetch_communities(request):
                 "description": community.description,
                 "category": community.category,
                 "owner_id": community.owner_id,
-                "has_image": bool(community.community_picture)  # Just indicate if image exists
+                "has_image": bool(community.community_picture),  # Just indicate if image exists
+                "active": community.is_active
             }
             for community in communities
         ]
@@ -612,7 +619,7 @@ def fetch_communities(request):
 def join_community(request, community_id):
     """Allow a user to join a community"""
     user = request.user
-    community = get_object_or_404(Community, pk=community_id)
+    community = get_object_or_404(Community, pk=community_id, is_active=True) # Ensure joining active community
 
     # Check if the user is a member or leader
     if CommunityLeader.objects.filter(community=community, user=user).exists() or \
@@ -629,7 +636,7 @@ def join_community(request, community_id):
 @permission_classes([IsAuthenticated])
 def leave_community(request, community_id):
         user = request.user
-        community = get_object_or_404(Community, pk=community_id)
+        community = get_object_or_404(Community, pk=community_id) # User can leave active or inactive
 
         try:
             membership = Subscribed.objects.get(user=user, community=community)
@@ -1248,7 +1255,7 @@ def create_event(request):
         return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validate community and permissions
-    community = get_object_or_404(Community, pk=community_id)
+    community = get_object_or_404(Community, pk=community_id, is_active=True) # Can only create events for active communities
     try:
         event_type = EventType.objects.get(name=event_type_name)
     except EventType.DoesNotExist:
@@ -1290,7 +1297,7 @@ def create_event(request):
 @permission_classes([IsAuthenticated])
 def list_events(request):
     # Retrieve all events for the authenticated user
-    events = Event.objects.all()
+    events = Event.objects.filter(community__is_active=True) # Only list events from active communities
     user = request.user
 
     # Prepare the event data for response
@@ -1326,7 +1333,7 @@ def cancel_event(request, event_id):
 
     try:
         # Get the event
-        event = Event.objects.get(event_id=event_id)
+        event = Event.objects.get(event_id=event_id, community__is_active=True) # Can only cancel events from active communities
     except Event.DoesNotExist:
         return Response({"error": "Event not found."}, status=404)
 
@@ -1485,7 +1492,7 @@ class DeletePostView(APIView):
 def join_event(request, event_id):
     """Allow a user to join an event"""
     user = request.user
-    event = get_object_or_404(Event, pk=event_id)
+    event = get_object_or_404(Event, pk=event_id, community__is_active=True) # Can only join events from active communities
     current_count = EventParticipant.objects.filter(event=event).count()
 
     # Check if user is already a participant
@@ -1509,7 +1516,7 @@ def join_event(request, event_id):
 def leave_event(request, event_id):
     """Allow a user to leave an event"""
     user = request.user
-    event = get_object_or_404(Event, pk=event_id)
+    event = get_object_or_404(Event, pk=event_id) # Can leave events from active or inactive communities
 
     # Check if user is a participant
     try:
@@ -1539,7 +1546,8 @@ def get_user_managed_events(request):
         # Condition 1: User is the owner of the event's community
         # Condition 2: User is listed as a leader for the event's community
         managed_events_qs = Event.objects.filter(
-            Q(community__owner=user) | Q(community__communityleader__user=user)
+            (Q(community__owner=user) | Q(community__communityleader__user=user)) &
+            Q(community__is_active=True) # Only manage events for active communities
         ).select_related('community', 'event_type').prefetch_related('eventparticipant_set')
         # Serialize the event data and handle deduplication
         event_list = []
@@ -1604,7 +1612,7 @@ def update_event_field(request):
 
     # Get the Event and Check Permissions
     try:
-        event = get_object_or_404(Event.objects.select_related('community', 'event_type'), pk=event_id)
+        event = get_object_or_404(Event.objects.select_related('community', 'event_type').filter(community__is_active=True), pk=event_id) # Can only update events for active communities
     except Event.DoesNotExist:
         return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
     except ValueError:
