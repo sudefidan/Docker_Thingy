@@ -90,6 +90,143 @@
 
 	let clickOutsideHandler: any; // Variable to store the click event handler
 
+	let followerCount = 0; // Initialise follower count
+	let followingCount = 0; // Initialise following count
+	let isFollowersModalOpen = false; // Initialise followers modal state
+	let isFollowingModalOpen = false; // Initialise following modal state
+	let followers = []; // Initialise followers list
+	let following = []; // Initialise following list
+	let loadingFollowers = false; // Initialise loading state for followers
+	let loadingFollowing = false; // Initialise loading state for following
+
+	// Function to show followers modal
+	async function showFollowersModal() {
+		isFollowersModalOpen = true;
+		await fetchFollowers();
+	}
+
+	// Function to show following modal
+	async function showFollowingModal() {
+		isFollowingModalOpen = true;
+		await fetchFollowing();
+	}
+
+	// Function to fetch followers
+	async function fetchFollowers() {
+		try {
+			loadingFollowers = true;
+			const token = localStorage.getItem('access_token');
+
+			const response = await fetch('http://127.0.0.1:8000/api/connections/followers/', {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				followers = data.followers;
+			} else {
+				console.error('Failed to fetch followers');
+			}
+		} catch (error) {
+			console.error('Error fetching followers:', error);
+		} finally {
+			loadingFollowers = false;
+		}
+	}
+
+	// Function to fetch following
+	async function fetchFollowing() {
+		try {
+			loadingFollowing = true;
+			const token = localStorage.getItem('access_token');
+
+			const response = await fetch('http://127.0.0.1:8000/api/connections/following/', {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				following = data.following;
+			} else {
+				console.error('Failed to fetch following');
+			}
+		} catch (error) {
+			console.error('Error fetching following:', error);
+		} finally {
+			loadingFollowing = false;
+		}
+	}
+
+	// Function to toggle follow/unfollow
+	async function toggleFollow(userId, isFollowing) {
+		try {
+			const token = localStorage.getItem('access_token');
+			const endpoint = isFollowing ? 'unfollow' : 'follow';
+
+			const response = await fetch(`http://127.0.0.1:8000/api/${endpoint}/${userId}/`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				}
+			});
+
+			if (response.ok) {
+				// Update followers/following lists
+				if (isFollowersModalOpen) await fetchFollowers();
+				if (isFollowingModalOpen) await fetchFollowing();
+
+				// Update connection counts
+				await fetchConnectionCounts();
+			} else {
+				console.error(`Failed to ${isFollowing ? 'unfollow' : 'follow'} user`);
+			}
+		} catch (error) {
+			console.error('Error toggling follow status:', error);
+		}
+	}
+
+	// Function to close follwers modal
+	function closeFollowersModal() {
+		isFollowersModalOpen = false;
+	}
+
+	// Function to close following modal
+	function closeFollowingModal() {
+		isFollowingModalOpen = false;
+	}
+
+	// Fetch connection counts
+	async function fetchConnectionCounts() {
+		try {
+			const token = localStorage.getItem('access_token');
+			if (!token) return;
+
+			const response = await fetch('http://127.0.0.1:8000/api/connections/counts/', {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				followerCount = data.follower_count;
+				followingCount = data.following_count;
+			} else {
+				console.error('Failed to fetch connection counts');
+			}
+		} catch (error) {
+			console.error('Error fetching connection counts:', error);
+		}
+	}
+
 	// Function to handle click outside the settings menu
 	function handleClickOutside(event: MouseEvent) {
 		const settingsMenuElement = document.getElementById('settings-menu');
@@ -386,6 +523,7 @@
 	onMount(async () => {
 		try {
 			userProfile = await fetchUserProfile();
+			await fetchConnectionCounts();
 		} catch (error) {
 			console.error('Failed to fetch user profile:', error);
 		}
@@ -694,7 +832,7 @@
 					</div>
 					<!-- Profile Image Container -->
 					<div class="flex flex-col items-center">
-						<div class="relative w-70 h-70 mt-0 mb-20">
+						<div class="relative w-70 h-70 mt-0 mb-10">
 							<!-- Profile Image or Placeholder -->
 							{#if tempProfilePicture || userProfile.profile_picture}
 								<img
@@ -734,7 +872,23 @@
 						</div>
 						<!-- Profile Information Section -->
 						<div class="w-full">
-							<div class="mb-3 flex justify-between items-center">
+							<div class="flex justify-center items-center gap-16 mb-15">
+								<div
+									class="flex flex-col items-center cursor-pointer hover:text-primary"
+									on:click={showFollowersModal}
+								>
+									<span class="text-2xl font-bold text-primary">{followerCount || 0}</span>
+									<span class="text-sm">Followers</span>
+								</div>
+								<div
+									class="flex flex-col items-center cursor-pointer hover:text-primary"
+									on:click={showFollowingModal}
+								>
+									<span class="text-2xl font-bold text-primary">{followingCount || 0}</span>
+									<span class="text-sm">Following</span>
+								</div>
+							</div>
+							<div class="mb-5 flex justify-between items-center">
 								<label for="user_name" class="label text-primary">
 									<p class="label-text">Username:</p>
 								</label>
@@ -755,46 +909,40 @@
 									<p class="text-user-info">{userProfile.username}</p>
 								{/if}
 							</div>
-							<div class="mb-3 flex justify-between items-center">
+							<div class="mb-5 flex justify-between items-center">
 								<label for="name" class="label text-primary">
 									<p class="label-text">Name:</p>
 								</label>
 								{#if isEditingProfile}
-									<div class="flex flex-col ml-2">
-										<div class="flex gap-2">
-											<div class="flex flex-col ml-auto justify-center">
-												<input
-													type="text"
-													id="first_name"
-													bind:value={editedProfile.first_name}
-													class="input input-bordered validator custom-input-profile"
-													required
-													pattern="[A-Za-z]+"
-													minlength="1"
-												/>
-											</div>
-											<div class="flex flex-col ml-auto justify-center">
-												<input
-													type="text"
-													id="last_name"
-													bind:value={editedProfile.last_name}
-													class="input input-bordered validator custom-input-profile"
-													required
-													pattern="[A-Za-z]+"
-												/>
-											</div>
-										</div>
+									<div class="flex gap-2 m-0">
+										<input
+											type="text"
+											id="first_name"
+											bind:value={editedProfile.first_name}
+											class="input input-bordered validator custom-input-profile"
+											required
+											pattern="[A-Za-z]+"
+											minlength="1"
+										/>
+										<input
+											type="text"
+											id="last_name"
+											bind:value={editedProfile.last_name}
+											class="input input-bordered validator custom-input-profile"
+											required
+											pattern="[A-Za-z]+"
+										/>
 									</div>
 								{:else}
 									<p class="text-user-info">{userProfile.first_name} {userProfile.last_name}</p>
 								{/if}
 							</div>
-							<div class="mb-3 flex justify-between items-center">
+							<div class="mb-5 flex justify-between items-center">
 								<label for="email" class="label text-primary">
 									<p class="label-text">Email:</p>
 								</label>
 								{#if isEditingProfile}
-									<div class="ml-auto justify-center">
+									<div>
 										<input
 											type="email"
 											id="email"
@@ -807,14 +955,12 @@
 									<p class="text-user-info">{userProfile.email}</p>
 								{/if}
 							</div>
-
-							<!-- Add these fields after the email section in the profile information -->
-							<div class="mb-3 flex justify-between items-center">
+							<div class="mb-5 flex justify-between items-center">
 								<label for="address" class="label text-primary">
 									<p class="label-text">Address:</p>
 								</label>
 								{#if isEditingProfile}
-									<div class="ml-auto justify-center">
+									<div>
 										<input
 											type="text"
 											id="address"
@@ -826,13 +972,12 @@
 									<p class="text-user-info">{userProfile.address}</p>
 								{/if}
 							</div>
-
-							<div class="mb-3 flex justify-between items-center">
+							<div class="mb-5 flex justify-between items-center">
 								<label for="program" class="label text-primary">
 									<p class="label-text">Program:</p>
 								</label>
 								{#if isEditingProfile}
-									<div class="ml-auto justify-center">
+									<div>
 										<input
 											type="text"
 											id="program"
@@ -844,13 +989,12 @@
 									<p class="text-user-info">{userProfile.program}</p>
 								{/if}
 							</div>
-
-							<div class="mb-3 mt-2 flex justify-between items-center">
+							<div class="mb-5 flex justify-between items-center">
 								<label for="year" class="label text-primary">
 									<p class="label-text">Year:</p>
 								</label>
 								{#if isEditingProfile}
-									<div class="flex flex-col ml-2">
+									<div>
 										<select
 											id="year"
 											bind:value={editedProfile.uni_year}
@@ -1214,6 +1358,194 @@
 						</svg>
 					</button>
 				</div>
+			</div>
+		</div>
+	{/if}
+	<!-- Followers Modal -->
+	{#if isFollowersModalOpen}
+		<div
+			style="background-color: rgba(0, 0, 0, 0.8);"
+			class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+			on:click={closeFollowersModal}
+		>
+			<div
+				class="card bg-secondary rounded-3xl p-6 max-w-lg min-w-[40%] w-full max-h-[80vh] overflow-y-auto"
+				on:click|stopPropagation
+			>
+				<!-- Modal Header -->
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-2xl font-bold text-primary">Followers</h2>
+					<button class="text-primary hover:text-base-100" on:click={closeFollowersModal}>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-6 w-6"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
+				</div>
+
+				<!-- Loading State -->
+				{#if loadingFollowers}
+					<div class="flex justify-center items-center py-8">
+						<span class="loading loading-spinner loading-lg text-primary"></span>
+					</div>
+					<!-- Empty State -->
+				{:else if followers.length === 0}
+					<div class="text-center py-8">
+						<p class="text-lg">You don't have any followers yet.</p>
+					</div>
+					<!-- Followers List -->
+				{:else}
+					<div class="space-y-4">
+						{#each followers as follower}
+							<div class="flex items-center justify-between p-3 border-b border-base-100">
+								<!-- User Info -->
+								<div class="flex items-center gap-3">
+									<!-- Profile Picture -->
+									{#if follower.profile_picture}
+										<img
+											src={`data:image/jpeg;base64,${follower.profile_picture}`}
+											alt="Profile"
+											class="w-12 h-12 rounded-full object-cover"
+										/>
+									{:else}
+										<div
+											class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												class="w-8 h-8 text-gray-500"
+											>
+												<path
+													fill="currentColor"
+													d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+												/>
+											</svg>
+										</div>
+									{/if}
+
+									<!-- User Name and Username -->
+									<div>
+										<p class="font-bold">{follower.first_name} {follower.last_name}</p>
+										<p class="text-gray-500">@{follower.username}</p>
+									</div>
+								</div>
+
+								<!-- Follow/Unfollow Button -->
+								<button
+									class="btn btn-sm {follower.is_following
+										? 'btn-outline'
+										: 'btn-primary text-secondary'}"
+									on:click={() => toggleFollow(follower.id, follower.is_following)}
+								>
+									{follower.is_following ? 'Unfollow' : 'Follow'}
+								</button>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Following Modal -->
+	{#if isFollowingModalOpen}
+		<div
+			style="background-color: rgba(0, 0, 0, 0.8);"
+			class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+			on:click={closeFollowingModal}
+		>
+			<div
+				class="card bg-secondary rounded-3xl p-6 max-w-lg min-w-[40%] w-full max-h-[80vh] overflow-y-auto"
+				on:click|stopPropagation
+			>
+				<!-- Modal Header -->
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-2xl font-bold text-primary">Following</h2>
+					<button class="text-primary hover:text-base-100" on:click={closeFollowingModal}>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-6 w-6"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
+				</div>
+
+				<!-- Loading State -->
+				{#if loadingFollowing}
+					<div class="flex justify-center items-center py-8">
+						<span class="loading loading-spinner loading-lg text-primary"></span>
+					</div>
+					<!-- Empty State -->
+				{:else if following.length === 0}
+					<div class="text-center py-8">
+						<p class="text-lg">You're not following anyone yet.</p>
+					</div>
+					<!-- Following List -->
+				{:else}
+					<div class="space-y-4">
+						{#each following as user}
+							<div class="flex items-center justify-between p-3 border-b border-base-100">
+								<!-- User Info -->
+								<div class="flex items-center gap-3">
+									<!-- Profile Picture -->
+									{#if user.profile_picture}
+										<img
+											src={`data:image/jpeg;base64,${user.profile_picture}`}
+											alt="Profile"
+											class="w-12 h-12 rounded-full object-cover"
+										/>
+									{:else}
+										<div
+											class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												class="w-8 h-8 text-gray-500"
+											>
+												<path
+													fill="currentColor"
+													d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+												/>
+											</svg>
+										</div>
+									{/if}
+
+									<!-- User Name and Username -->
+									<div>
+										<p class="font-bold">{user.first_name} {user.last_name}</p>
+										<p class="text-gray-500">@{user.username}</p>
+									</div>
+								</div>
+
+								<!-- Unfollow Button -->
+								<button class="btn btn-sm btn-outline" on:click={() => toggleFollow(user.id, true)}>
+									Unfollow
+								</button>
+							</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</div>
 	{/if}

@@ -2065,3 +2065,92 @@ def unfollow_user(request, user_id):
         return JsonResponse({'error': 'User not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def connection_counts(request):
+    """Get counts of followers and following for the current user"""
+    user = request.user
+
+    # Count followers (users who follow this user)
+    follower_count = Connection.objects.filter(following=user).count()
+
+    # Count following (users this user follows)
+    following_count = Connection.objects.filter(follower=user).count()
+
+    return JsonResponse({
+        'follower_count': follower_count,
+        'following_count': following_count
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_followers(request):
+    """Get users who follow the current user"""
+    user = request.user
+
+    # Find all connections where the current user is being followed
+    follower_connections = Connection.objects.filter(following=user)
+
+    followers = []
+    for connection in follower_connections:
+        follower = connection.follower
+
+        # Check if the current user is following this follower back
+        is_following = Connection.objects.filter(
+            follower=user,
+            following=follower
+        ).exists()
+
+        # Get profile picture as base64 if available
+        profile_picture = None
+        if follower.profile_picture:
+            try:
+                profile_picture = base64.b64encode(follower.profile_picture).decode('utf-8')
+            except Exception as e:
+                print(f"Error encoding profile picture: {e}")
+
+        # Get profile data
+        followers.append({
+            'id': follower.id,
+            'username': follower.username,
+            'first_name': follower.first_name or '',
+            'last_name': follower.last_name or '',
+            'profile_picture': profile_picture,
+            'is_following': is_following
+        })
+
+    return JsonResponse({'followers': followers})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_following(request):
+    """Get users that the current user follows"""
+    user = request.user
+
+    # Find all connections where the current user is following someone
+    following_connections = Connection.objects.filter(follower=user)
+
+    following = []
+    for connection in following_connections:
+        followed_user = connection.following
+
+        # Get profile picture as base64 if available
+        profile_picture = None
+        if followed_user.profile_picture:
+            try:
+                profile_picture = base64.b64encode(followed_user.profile_picture).decode('utf-8')
+            except Exception as e:
+                print(f"Error encoding profile picture: {e}")
+
+        # Get profile data
+        following.append({
+            'id': followed_user.id,
+            'username': followed_user.username,
+            'first_name': followed_user.first_name or '',
+            'last_name': followed_user.last_name or '',
+            'profile_picture': profile_picture,
+        })
+
+    return JsonResponse({'following': following})
+
