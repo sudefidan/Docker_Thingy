@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 
 
 class User(AbstractUser):
@@ -177,3 +178,39 @@ class PostLikes(models.Model):
     class Meta:
         db_table = 'PostLikes'
         unique_together = (('post', 'user'),)
+
+
+class Connection(models.Model):
+    follower = models.ForeignKey(
+        User,
+        related_name='following_set',  # Users that this user is following
+        on_delete=models.CASCADE
+    )
+    following = models.ForeignKey(
+        User,
+        related_name='followers_set',  # Users that are following this user
+        on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'Connection'
+        # Ensures that a user cannot follow another user more than once.
+        unique_together = (('follower', 'following'),)
+
+    def __str__(self):
+        follower_username = getattr(self.follower, 'username', 'N/A') if self.follower_id else 'N/A'
+        following_username = getattr(self.following, 'username', 'N/A') if self.following_id else 'N/A'
+        return f"{follower_username} follows {following_username}"
+
+    def clean(self):
+        """
+        Prevents self-following.
+        """
+        super().clean()
+        if self.follower_id and self.following_id and self.follower_id == self.following_id:
+            raise ValidationError("A user cannot follow themselves.")
+
+    def save(self, *args, **kwargs):
+         self.full_clean()
+         super().save(*args, **kwargs)
