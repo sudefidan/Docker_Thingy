@@ -702,19 +702,6 @@
 						/>
 					</svg>
 					<p class="text-accent text-sm">{p.community_name}</p>
-					<p class="text-base-100 overflow-auto text-ellipsis" style="word-break: break-word;">
-						{#each parseContent(p.content) as part}
-						  {#if part.type === 'hashtag'}
-							<span 
-							  style="color: blue; cursor: pointer;" 
-							  on:click={() => handleHashtagClick(part.text)}>
-							  #{part.text}
-							</span>
-						  {:else}
-							{part.text}
-						  {/if}
-						{/each}
-					  </p>
 
 					<!-- Remove button for the post -->
 					{#if p.user_id === loggedInUserId}
@@ -753,7 +740,18 @@
 						</p>
 						<h3 class="text-primary text-lg font-bold">{p.title}</h3>
 						<p class="text-base-100 overflow-auto text-ellipsis" style="word-break: break-word;">
-							{p.content}
+							<!-- {p.content} -->
+							{#each parseContent(p.content) as part}
+							{#if part.type === 'hashtag'}
+							  <span 
+								style="color: blue; cursor: pointer;" 
+								on:click={() => handleHashtagClick(part.text)}>
+								#{part.text}
+							  </span>
+							{:else}
+							  {part.text}
+							{/if}
+						  {/each}
 						</p>
 						{#if p.id}
 							<img
