@@ -601,6 +601,7 @@ def create_post(request):
 
 # Retrieves the post image from the database
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_post_image(request, post_id):
     try:
         post_image = PostImage.objects.get(post__post_id=post_id)
@@ -612,6 +613,7 @@ def get_post_image(request, post_id):
         return HttpResponse(status=404)
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def fetch_communities(request):
     if request.method == "GET":
         communities = Community.objects.filter(is_active=True) # Only fetch active communities
@@ -1470,7 +1472,7 @@ def cancel_event(request, event_id):
 
 # get user profile for any user, allows for users to see other users profile.
 class GetUserProfile(APIView):
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
         try:
@@ -1515,6 +1517,7 @@ class GetUserProfile(APIView):
             return Response({"error": "An error occurred.", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeletePostView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def delete(self, request, post_id):
         try:
