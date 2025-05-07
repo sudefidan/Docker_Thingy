@@ -54,5 +54,12 @@ All images used in this application are royalty-free stock photos sourced from [
 - **Database**: MySQL
 - **Containerization**: Docker
 
+## Maintainers
+
+- Sude Fidan (@sudefidan)
+- James Lymbery (@nerhZ)
+- James Smith (@jsmith3979)
+- John Higgins (@depxas)
+- Toby Meredith (@Toby02)
 
 © 2025 UniHub
