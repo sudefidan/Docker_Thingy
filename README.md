@@ -14,18 +14,18 @@ UniHub is a university community platform designed to connect students, facilita
 
 The system comes pre-populated with 10 student accounts:
 
-| Username | Password | Role |
-|----------|----------|------|
-| olivia_johnson | SecurePass123 | Admin (Staff & Superuser) |
-| ethan_williams | SecurePass123 | Student |
-| sophia_martinez | SecurePass123 | Student |
-| james_taylor | SecurePass123 | Student |
-| ava_brown | SecurePass123 | Student |
-| noah_garcia | SecurePass123 | Student |
-| emma_wilson | SecurePass123 | Student |
-| liam_patel | SecurePass123 | Student |
-| chloe_zhang | SecurePass123 | Student |
-| benjamin_ahmed | SecurePass123 | Student |
+| Username        | Password      | Role                      |
+| --------------- | ------------- | ------------------------- |
+| olivia_johnson  | SecurePass123 | Admin (Staff & Superuser) |
+| ethan_williams  | SecurePass123 | Student                   |
+| sophia_martinez | SecurePass123 | Student                   |
+| james_taylor    | SecurePass123 | Student                   |
+| ava_brown       | SecurePass123 | Student                   |
+| noah_garcia     | SecurePass123 | Student                   |
+| emma_wilson     | SecurePass123 | Student                   |
+| liam_patel      | SecurePass123 | Student                   |
+| chloe_zhang     | SecurePass123 | Student                   |
+| benjamin_ahmed  | SecurePass123 | Student                   |
 
 **Note**: For admin access, use Olivia's account as she has staff and superuser privileges.
 
@@ -36,6 +36,10 @@ The platform includes three pre-configured communities:
 1. **Tech Innovators Hub** - For technology enthusiasts and developers
 2. **Environmental Action Group** - Focused on sustainability and environmental initiatives
 3. **Business Leaders Network** - For entrepreneurship and business networking
+
+## External Services
+
+Third-party email services are utilised in order to perform email verification for changing an email address and registering an account. To test this feature, please make a new user or change an existing user's email address to test this feature.
 
 ## Development Information
 
