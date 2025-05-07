@@ -469,7 +469,15 @@ class SubscribedCommunities(APIView):
 @permission_classes([IsAuthenticated])
 def get_users(request):
     users = User.objects.all()
-    users_data = [{"id": user.id, "username": user.username, "email": user.email} for user in users]
+    users_data = [
+        {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "is_admin": user.is_superuser
+        }
+        for user in users
+    ]
     return JsonResponse(users_data, safe=False, status=200)
 
 # get the current posts from the database
@@ -1689,7 +1697,7 @@ def update_event_field(request):
                 original_value = original_value.name if original_value else None # For notification message
             except EventType.DoesNotExist:
                 return Response({"error": f"Invalid event type: '{new_value}'. Must be 'virtual' or 'in-person'."}, status=status.HTTP_400_BAD_REQUEST)
-                
+
 
         # Notify participants
         participants = EventParticipant.objects.filter(event=event).select_related('user')
@@ -1778,7 +1786,7 @@ def comment_list_create(request, post_id):
                 "post_id": comment.post_id,
                 "user": {
                     "user_id": comment.user.id,
-                    "username": comment.user.username
+                    "username": comment.user.username,
                 }
             }
             for comment in comments
@@ -1802,6 +1810,19 @@ def comment_list_create(request, post_id):
         if post.user != request.user:
             notification_message = f'{request.user.username} commented on your post: "{post.title}"'
             Notification.objects.create(user=post.user, message=notification_message)
+
+        # Process @mentions in the comment
+        mentioned_usernames = set(re.findall(r'@(\w+)', comment_text))
+        for username in mentioned_usernames:
+            try:
+                mentioned_user = User.objects.get(username=username)
+                # Don't notify yourself or the post owner (who already gets a notification about the comment)
+                if mentioned_user != request.user and mentioned_user != post.user:
+                    notification_message = f'{request.user.username} mentioned you in a comment: "{post.title}"'
+                    Notification.objects.create(user=mentioned_user, message=notification_message)
+            except User.DoesNotExist:
+                # Username doesn't exist, just skip it
+                pass
 
         return Response({
             "comment_id": new_comment.comment_id,
