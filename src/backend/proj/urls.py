@@ -31,7 +31,9 @@ urlpatterns = [
     path('api/check-follow/<int:user_id>/', views.check_follow, name='check_follow'),
     path('api/follow/<int:user_id>/', views.follow_user, name='follow_user'),
     path('api/unfollow/<int:user_id>/', views.unfollow_user, name='unfollow_user'),
-
+    path('api/connections/counts/', views.connection_counts, name='connection_counts'),
+    path('api/connections/followers/', views.get_followers, name='get_followers'),
+    path('api/connections/following/', views.get_following, name='get_following'),
 
     # profile related endpoints
     path('api/user-profile/', user_profile_view.as_view(), name='user_profile'),
