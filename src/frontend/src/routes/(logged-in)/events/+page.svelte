@@ -1134,8 +1134,8 @@
 							<h3 class="text-primary text-2xl font-bold">{event.title}</h3>
 						</div>
 
-						<!-- Show "Manage" button if user is the organizer/owner of the event -->
-						{#if event.is_owner}
+						<!-- Show "Manage" button if user can manage the event (owner or leader of the event's community) -->
+						{#if event.can_cancel}
 							<div class="tooltip-container">
 								<button
 									on:click={() => toggleEventManagementModal(event.event_id)}
@@ -1146,10 +1146,8 @@
 								</button>
 								<span class="tooltip">Manage this event</span>
 							</div>
-						{/if}
-
-						<!-- Show "Leave" button if user is participating and not the owner -->
-						{#if event.is_participating && !event.is_owner}
+							<!-- Show "Leave" button if user is participating and CANNOT manage the event -->
+						{:else if event.is_participating}
 							<div class="tooltip-container">
 								<button
 									on:click={() => leaveEvent(event.event_id)}
@@ -1174,8 +1172,8 @@
 								</button>
 								<span class="tooltip">Leave this event</span>
 							</div>
-							<!-- Show "Join" button if the user is not participating -->
-						{:else if !event.is_participating && !event.is_owner && !event.is_full}
+							<!-- Show "Join" button if the user is NOT participating, CANNOT manage, and event is not full -->
+						{:else if !event.is_participating && !event.is_full}
 							<div class="tooltip-container">
 								<button on:click={() => joinEvent(event.event_id)} class="hover:text-primary">
 									<AddIcon />

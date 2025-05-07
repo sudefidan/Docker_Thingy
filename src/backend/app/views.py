@@ -1299,16 +1299,32 @@ def create_event(request):
         materials = materials,
     )
 
-    if not is_owner:
-        EventParticipant.objects.create(event=event, user=user)
+    # --- Auto-subscribe community owners and leaders, and notify if not the creator ---
+    community_management_users = set()
+    community_owner_obj = community.owner
+    community_management_users.add(community_owner_obj) # Add the community owner
 
+    # Add all listed leaders of the community
+    listed_leaders_qs = CommunityLeader.objects.filter(community=community).select_related('user')
+    for leader_entry in listed_leaders_qs:
+        community_management_users.add(leader_entry.user)
+
+    # Iterate through all unique owners/leaders
+    for mgmt_user_obj in community_management_users:
+        # Auto-subscribe them to the event
+        _participant, created_participant_record = EventParticipant.objects.get_or_create(event=event, user=mgmt_user_obj)
+
+        if mgmt_user_obj != user and created_participant_record:
+            role_description = "owner" if mgmt_user_obj == community_owner_obj else "leader"
+            notification_message = f"As the {role_description} of '{community.name}', you've been automatically added to the new event: '{event.title}'."
+            create_notification(mgmt_user_obj.id, notification_message)
+
+    # Notify general community subscribers about the new event
     subscriptions = Subscribed.objects.filter(community=community).select_related('user')
     for sub in subscriptions:
-        if sub.user != user:
+        if sub.user != user: # Don't send this general notification to the event creator
             message = f"A new event '{event.title}' has been created in the '{community.name}' community!"
             create_notification(sub.user.id, message)
-
-    event.save()
 
     return Response({"message": "Event created!", "event_id": event.event_id}, status=status.HTTP_201_CREATED)
 
@@ -2154,4 +2170,3 @@ def get_following(request):
         })
 
     return JsonResponse({'following': following})
-
