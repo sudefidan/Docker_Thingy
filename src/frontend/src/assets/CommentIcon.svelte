@@ -1,5 +1,5 @@
 <script>
-	export let size = 25; // Default size
+	export let size = 23; // Default size
 </script>
 
 <svg

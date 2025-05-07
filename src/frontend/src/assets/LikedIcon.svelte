@@ -1,5 +1,5 @@
 <script>
-	export let size = 30; // Default size
+	export let size = 27; // Default size
 </script>
 
 <svg
@@ -8,7 +8,7 @@
 	height={size}
 	fill="currentColor"
 	class="bi bi-heart-fill"
-	viewBox="0 0 20 16"
+	viewBox="0 0 18 16"
 >
 	<path
 		fill-rule="evenodd"

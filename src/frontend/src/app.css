@@ -240,6 +240,11 @@ p::selection {
 	color: var(--color-secondary);
 }
 
+span::selection {
+	background: var(--color-primary);
+	color: var(--color-secondary);
+}
+
 /* Tooltip container */
 .tooltip-container {
 	position: relative;

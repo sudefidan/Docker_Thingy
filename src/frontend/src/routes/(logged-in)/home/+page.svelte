@@ -28,8 +28,8 @@
 	let newComment = {};
 	let tempComment = '';
 	let activeHashtag = null;
-	let allPosts = [];         // Full list of posts
-	 
+	let allPosts = []; // Full list of posts
+
 	let userProfile = {
 		profile_picture: '',
 		username: '',
@@ -129,7 +129,6 @@
 			await fetchUserProfile();
 			await fetchPosts();
 			await fetchSubscribedCommunities();
-			
 		}
 	});
 
@@ -233,10 +232,11 @@
 			if (response.ok) {
 				const newPost = await response.json();
 				posts.push(newPost);
+				// Reset the form fields
 				title = '';
 				postContent = '';
 				selectedCommunityId = '';
-				postImage = null; // Reset the image input
+				postImage = null;
 				window.location.reload();
 			} else {
 				const error = await response.json();
@@ -474,100 +474,104 @@
 				}
 			});
 
-            if (response.ok) {
-                const data = await response.json();
-                // Update the local posts array
-                posts = posts.map((post) => {
-                    if (post.id === postId) {
-                        const newUserLiked = !post.user_liked;
-                        const newLikeCount = newUserLiked ? post.like_count + 1 : post.like_count - 1;
-                        return { ...post, user_liked: newUserLiked, like_count: newLikeCount };
-                    }
-                    return post;
-                });
-                filteredPosts = filteredPosts.map((post) => {
-                    if (post.id === postId) {
-                        const newUserLiked = !post.user_liked;
-                        const newLikeCount = newUserLiked ? post.like_count + 1 : post.like_count - 1;
-                        return { ...post, user_liked: newUserLiked, like_count: newLikeCount };
-                    }
-                    return post;
-                });
-            } else {
-                console.error('Failed to like/unlike post:', await response.text());
-                alert('Failed to like/unlike post.');
-            }
-        } catch (error) {
-            console.error('Error liking/unliking post:', error);
-            alert('An error occurred while liking/unliking the post.');
-        }
-    };
+			if (response.ok) {
+				const data = await response.json();
+				// Update the local posts array
+				posts = posts.map((post) => {
+					if (post.id === postId) {
+						const newUserLiked = !post.user_liked;
+						const newLikeCount = newUserLiked ? post.like_count + 1 : post.like_count - 1;
+						return { ...post, user_liked: newUserLiked, like_count: newLikeCount };
+					}
+					return post;
+				});
+				filteredPosts = filteredPosts.map((post) => {
+					if (post.id === postId) {
+						const newUserLiked = !post.user_liked;
+						const newLikeCount = newUserLiked ? post.like_count + 1 : post.like_count - 1;
+						return { ...post, user_liked: newUserLiked, like_count: newLikeCount };
+					}
+					return post;
+				});
+			} else {
+				console.error('Failed to like/unlike post:', await response.text());
+				alert('Failed to like/unlike post.');
+			}
+		} catch (error) {
+			console.error('Error liking/unliking post:', error);
+			alert('An error occurred while liking/unliking the post.');
+		}
+	};
 
 	const deleteComment = async (commentId, postId) => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      console.error('No access token found.');
-      return;
-    }
+		const token = localStorage.getItem('access_token');
+		if (!token) {
+			console.error('No access token found.');
+			return;
+		}
 
-    const confirmDelete = confirm('Are you sure you want to delete this comment?');
-    if (!confirmDelete) return;
+		const confirmDelete = confirm('Are you sure you want to delete this comment?');
+		if (!confirmDelete) return;
 
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/comments/${commentId}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+		try {
+			const response = await fetch(`http://127.0.0.1:8000/api/comments/${commentId}/`, {
+				method: 'DELETE',
+				headers: {
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				}
+			});
 
-      if (response.status === 204) {
-        postComments[postId] = postComments[postId].filter(c => c.comment_id !== commentId);
-        postComments = { ...postComments };
-      }
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-    }
-  };
+			if (response.status === 204) {
+				postComments[postId] = postComments[postId].filter((c) => c.comment_id !== commentId);
+				postComments = { ...postComments };
+			}
+		} catch (error) {
+			console.error('Error deleting comment:', error);
+		}
+	};
 
-  const handleHashtagClick = (hashtag) => {
-    activeHashtag = hashtag;
-    filterPostsByHashtag(hashtag);
-  };
+	const handleHashtagClick = (hashtag) => {
+		activeHashtag = hashtag;
+		filterPostsByHashtag(hashtag);
+	};
 
-  $: filteredPosts = activeHashtag
-    ? posts.filter(
-        (p) =>
-          p.content.toLowerCase().includes(`#${activeHashtag.toLowerCase()}`)
-      )
-    : posts;
+	$: filteredPosts = activeHashtag
+		? posts.filter((p) => p.content.toLowerCase().includes(`#${activeHashtag.toLowerCase()}`))
+		: posts;
 
-  const resetFilter = () => {
-    activeHashtag = null;
-    filteredPosts = allPosts;
-  };
+	const resetFilter = () => {
+		activeHashtag = null;
+		filteredPosts = allPosts;
+	};
 
-  function parseContent(content) {
-    const regex = /#(\w+)/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
+	function parseContent(content) {
+		const regex = /(#(\w+)|@(\w+))/g;
+		const parts = [];
+		let lastIndex = 0;
+		let match;
 
-    while ((match = regex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push({ type: 'text', text: content.slice(lastIndex, match.index) });
-      }
-      parts.push({ type: 'hashtag', text: match[1] }); 
-      lastIndex = regex.lastIndex;
-    }
+		// Iterate through the content and find all hashtags
+		while ((match = regex.exec(content)) !== null) {
+			// If there's text before the hashtag, add it as a text part
+			if (match.index > lastIndex) {
+				parts.push({ type: 'text', text: content.slice(lastIndex, match.index) });
+			}
+			// Determine if it's a hashtag or mention
+			if (match[0].startsWith('#')) {
+				parts.push({ type: 'hashtag', text: match[2] });
+			} else if (match[0].startsWith('@')) {
+				parts.push({ type: 'mention', text: match[3] });
+			}
+			lastIndex = regex.lastIndex;
+		}
 
-    if (lastIndex < content.length) {
-      parts.push({ type: 'text', text: content.slice(lastIndex) });
-    }
+		if (lastIndex < content.length) {
+			parts.push({ type: 'text', text: content.slice(lastIndex) });
+		}
 
-    return parts;
-  }
+		return parts;
+	}
 </script>
 
 <main class="px-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -576,11 +580,11 @@
 	</div>
 
 	{#if activeHashtag}
-    	<div class="alert alert-info mb-4">
-      		<span>Filtering by hashtag: <strong>#{activeHashtag}</strong></span>
-      		<button class="btn btn-sm" on:click={resetFilter}>Reset Filter</button>
-    	</div>
-  	{/if}
+		<div class="alert alert-info mb-4">
+			<span>Filtering by hashtag: <strong>#{activeHashtag}</strong></span>
+			<button class="btn btn-sm" on:click={resetFilter}>Reset Filter</button>
+		</div>
+	{/if}
 
 	<!-- Post Creation Modal -->
 	{#if showPostModal}
@@ -742,16 +746,21 @@
 						<p class="text-base-100 overflow-auto text-ellipsis" style="word-break: break-word;">
 							<!-- {p.content} -->
 							{#each parseContent(p.content) as part}
-							{#if part.type === 'hashtag'}
-							  <span 
-								style="color: blue; cursor: pointer;" 
-								on:click={() => handleHashtagClick(part.text)}>
-								#{part.text}
-							  </span>
-							{:else}
-							  {part.text}
-							{/if}
-						  {/each}
+								{#if part.type === 'hashtag'}
+									<span
+										style="color: #3b82f6; cursor: pointer;"
+										on:click={() => handleHashtagClick(part.text)}
+									>
+										#{part.text}
+									</span>
+								{:else if part.type === 'mention'}
+									<span style="color: #3b82f6; cursor: pointer;">
+										@{part.text}
+									</span>
+								{:else}
+									{part.text}
+								{/if}
+							{/each}
 						</p>
 						{#if p.id}
 							<img
@@ -798,14 +807,14 @@
 										>{new Date(c.timestamp).toLocaleString()}</span
 									>
 								</p>
-				{#if loggedInUserId === c.user.user_id}
-				<button
-				  class="text-red-500 hover:text-red-700 focus:outline-none"
-				  on:click={() => deleteComment(c.comment_id, p.id)}
-				>
-				  <BinIcon size={16} />
-				</button>
-			  {/if}
+								{#if loggedInUserId === c.user.user_id}
+									<button
+										class="text-red-500 hover:text-red-700 focus:outline-none"
+										on:click={() => deleteComment(c.comment_id, p.id)}
+									>
+										<BinIcon size={16} />
+									</button>
+								{/if}
 							{/each}
 						{:else}
 							<p class="text-base-content italic">No comments yet.</p>
