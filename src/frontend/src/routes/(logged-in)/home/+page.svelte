@@ -29,6 +29,7 @@
 	let loadingComments = false; // Flag to indicate if comments are being loaded
 	let newComment = {}; // Object to hold new comment text for each post
 	let activeHashtag = null; // Active hashtag for filtering posts
+	let activeCommunity = null; // Active community for filtering posts
 	let allPosts = []; // Full list of posts
 	let users = []; // Array to hold all users
 	let usersList = []; // List of users for the dropdown
@@ -386,6 +387,7 @@
 			await fetchUserProfile();
 			await fetchSubscribedCommunities();
 			await fetchPosts();
+			allPosts = [...posts];
 			await fetchUsers();
 		}
 	});
@@ -862,18 +864,39 @@
 		}
 	};
 
-	const handleHashtagClick = (hashtag) => {
-		activeHashtag = hashtag;
-		filterPostsByHashtag(hashtag);
+	const handleCommunityClick = (communityId, communityName) => {
+		activeCommunity = { id: communityId, name: communityName };
+		activeHashtag = null; // Reset hashtag filter when community is selected
+		filterPosts();
 	};
 
-	$: filteredPosts = activeHashtag
-		? posts.filter((p) => p.content.toLowerCase().includes(`#${activeHashtag.toLowerCase()}`))
-		: posts;
+	const handleHashtagClick = (hashtag) => {
+		activeHashtag = hashtag;
+		activeCommunity = null; // Reset active community when a hashtag is clicked
+		filterPosts(hashtag);
+	};
+
+	const filterPosts = () => {
+		if (activeHashtag) {
+			filteredPosts = posts.filter((p) =>
+				p.content.toLowerCase().includes(`#${activeHashtag.toLowerCase()}`)
+			);
+		} else if (activeCommunity) {
+			filteredPosts = posts.filter((p) => p.community_id === activeCommunity.id);
+		} else {
+			filteredPosts = posts;
+		}
+	};
+
+	$: {
+		// Replace the existing reactive statement with a call to filterPosts
+		if (posts.length > 0) filterPosts();
+	}
 
 	const resetFilter = () => {
 		activeHashtag = null;
-		filteredPosts = allPosts;
+		activeCommunity = null;
+		filteredPosts = posts;
 	};
 
 	function parseContent(content) {
@@ -1034,6 +1057,11 @@
 			<span>Filtering by hashtag: <strong>#{activeHashtag}</strong></span>
 			<button class="btn btn-sm" on:click={resetFilter}>Reset Filter</button>
 		</div>
+	{:else if activeCommunity}
+		<div class="alert alert-info mb-4">
+			<span>Filtering by community: <strong>{activeCommunity.name}</strong></span>
+			<button class="btn btn-sm" on:click={resetFilter}>Reset Filter</button>
+		</div>
 	{/if}
 
 	<!-- Post Creation Modal -->
@@ -1180,7 +1208,18 @@
 							d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z"
 						/>
 					</svg>
-					<p class="text-accent text-sm">{p.community_name}</p>
+					<p
+						class="text-accent text-sm {p.community_name !== 'Everyone'
+							? 'cursor-pointer hover:underline'
+							: ''}"
+						on:click={() =>
+							p.community_name !== 'Everyone' &&
+							p.community_id &&
+							p.community_name &&
+							handleCommunityClick(p.community_id, p.community_name)}
+					>
+						{p.community_name}
+					</p>
 
 					<!-- Remove button for the post -->
 					{#if p.user_id === loggedInUserId}
