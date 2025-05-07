@@ -600,7 +600,7 @@
 				const leaders = await leadersResponse.json();
 
 				// Check if user is a leader of this community
-				const isLeader = leaders.some((leader) => leader.id === loggedInUserId);
+				const isLeader = leaders.some((leader) => leader.user_id === loggedInUserId);
 
 				// If user is either owner or leader, add community to permitted list
 				if (isOwner || isLeader) {
