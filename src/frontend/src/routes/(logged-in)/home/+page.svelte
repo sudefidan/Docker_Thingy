@@ -8,6 +8,8 @@
 	import LikeIcon from '../../../assets/LikeIcon.svelte';
 	import LikedIcon from '../../../assets/LikedIcon.svelte';
 	import CommentIcon from '../../../assets/CommentIcon.svelte';
+	import UniCapIcon from '../../../assets/UniCapIcon.svelte';
+	import { socialMedias } from '$lib/api/profile';
 
 	let access_token; // Access token for authentication
 	let loggedInUserId; // ID of the logged-in user
@@ -30,6 +32,11 @@
 	let allPosts = []; // Full list of posts
 	let users = []; // Array to hold all users
 	let usersList = []; // List of users for the dropdown
+	let showUserProfileModal = false; // Flag to show/hide the user profile modal
+	let selectedUserId = null; // ID of the selected user for profile viewing
+	let modalLoading = false; // Flag to indicate if the user profile modal is loading
+	let modalError = false; // Flag to indicate if there was an error loading the user profile
+	let modalUserProfile = null; // Hold user profile data for the modal
 
 	// User profile object to hold user details
 	let userProfile = {
@@ -895,6 +902,67 @@
 
 		return parts;
 	}
+
+	// Function to open user profile modal
+	function openUserProfileModal(userId) {
+		// Don't open modal for the current user
+		if (userId === loggedInUserId) return;
+
+		selectedUserId = userId;
+		showUserProfileModal = true;
+		modalLoading = true;
+		modalError = false;
+		modalUserProfile = null;
+
+		console.log('Selected user ID:', selectedUserId, 'Modal visible:', showUserProfileModal);
+
+		// Fetch user profile data
+		fetchModalUserProfile(userId);
+	}
+
+	// Function to fetch user profile for modal
+	async function fetchModalUserProfile(userId) {
+		try {
+			const token = localStorage.getItem('access_token');
+			if (!token) {
+				throw new Error('No access token found');
+			}
+
+			const response = await fetch(`http://127.0.0.1:8000/api/user-profile/${userId}/`, {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch user profile');
+			}
+
+			modalUserProfile = await response.json();
+			console.log('Fetched modal user profile:', modalUserProfile);
+		} catch (err) {
+			console.error('Error fetching user profile:', err);
+			modalError = true;
+		} finally {
+			modalLoading = false;
+		}
+	}
+
+	// Function to close the modal
+	function closeUserProfileModal() {
+		console.log('Closing modal');
+		showUserProfileModal = false;
+		selectedUserId = null;
+	}
+
+	// Function to handle clicking outside the modal
+	function handleModalClickOutside(event) {
+		const modalContent = document.getElementById('user-profile-modal-content');
+		if (modalContent && !modalContent.contains(event.target)) {
+			closeUserProfileModal();
+		}
+	}
 </script>
 
 <main class="px-13 mb-5 flex w-full flex-col items-center overflow-auto pt-5">
@@ -1078,16 +1146,32 @@
 						<img
 							src={`data:image/jpeg;base64,${p.userProfile.profile_picture}`}
 							alt="Profile Picture"
-							class="profile-picture"
+							class="profile-picture cursor-pointer"
+							on:click={() =>
+								p.user_id === loggedInUserId ? goto('/profile') : openUserProfileModal(p.user_id)}
 						/>
 					{:else}
-						<ProfilePictureIcon size={50} class="profile-picture" />
+						<div
+							class="cursor-pointer"
+							on:click={() =>
+								p.user_id === loggedInUserId ? goto('/profile') : openUserProfileModal(p.user_id)}
+						>
+							<ProfilePictureIcon size={50} class="profile-picture" />
+						</div>
 					{/if}
 					<div class="ml-2 mt-0 flex flex-col">
 						<p class="text-base-100 text-lg font-bold">
-							{p.userProfile.first_name}
-							{p.userProfile.last_name}
-							<span class="font-normal">@{p.userProfile.username}</span>
+							<span
+								class="cursor-pointer hover:underline"
+								on:click={() =>
+									p.user_id === loggedInUserId ? goto('/profile') : openUserProfileModal(p.user_id)}
+							>
+								{p.userProfile.first_name}
+								{p.userProfile.last_name}
+							</span>
+							<span class="font-normal cursor-pointer">
+								@{p.userProfile.username}
+							</span>
 							<span class="font-normal">· {formatDate(p.date)}</span>
 						</p>
 						<h3 class="text-primary text-lg font-bold">{p.title}</h3>
@@ -1102,7 +1186,17 @@
 										#{part.text}
 									</span>
 								{:else if part.type === 'mention'}
-									<span style="color: #3b82f6; cursor: pointer;">
+									<span
+										style="color: #3b82f6; cursor: pointer;"
+										on:click={() => {
+											const user = usersList.find((u) => u.name === part.text);
+											if (user) {
+												openUserProfileModal(user.value);
+											} else if (part.text === userProfile.username) {
+												goto('/profile');
+											}
+										}}
+									>
 										@{part.text}
 									</span>
 								{:else}
@@ -1192,7 +1286,10 @@
 										</div>
 									{/if}
 
-									<button class="btn btn-primary text-secondary hover:bg-primary-focus w-auto btn-sm" on:click={() => postComment(p.id)}>
+									<button
+										class="btn btn-primary text-secondary hover:bg-primary-focus w-auto btn-sm"
+										on:click={() => postComment(p.id)}
+									>
 										Comment
 									</button>
 								</div>
@@ -1208,20 +1305,41 @@
 												<img
 													src={`data:image/jpeg;base64,${c.user.profile_picture}`}
 													alt="{c.user.username}'s profile"
-													class="w-10 h-10 rounded-full object-cover"
+													class="w-10 h-10 rounded-full object-cover cursor-pointer"
+													on:click={() =>
+														c.user.user_id === loggedInUserId
+															? goto('/profile')
+															: openUserProfileModal(c.user.user_id)}
 												/>
 											{:else}
-												<ProfilePictureIcon size={40} class="rounded-full" />
+												<div
+													class="cursor-pointer"
+													on:click={() =>
+														c.user.user_id === loggedInUserId
+															? goto('/profile')
+															: openUserProfileModal(c.user.user_id)}
+												>
+													<ProfilePictureIcon size={40} class="rounded-full" />
+												</div>
 											{/if}
 
 											<!-- Comment Content -->
 											<div class="flex-1 bg-secondary rounded-xl">
 												<div class="flex justify-between items-start">
 													<div>
-														<span class="font-bold text-base-content"
-															>{c.user?.first_name} {c.user?.last_name}</span
+														<span
+															class="font-bold text-base-content cursor-pointer hover:underline"
+															on:click={() =>
+																c.user.user_id === loggedInUserId
+																	? goto('/profile')
+																	: openUserProfileModal(c.user.user_id)}
 														>
-														<span class="text-gray-500 text-sm ml-1">@{c.user.username}</span>
+															{c.user?.first_name}
+															{c.user?.last_name}
+														</span>
+														<span class="text-gray-500 text-sm ml-1">
+															@{c.user.username}
+														</span>
 														<span class="text-gray-500 text-xs ml-2"
 															>· {formatDate(c.timestamp)}</span
 														>
@@ -1248,7 +1366,17 @@
 																#{part.text}
 															</span>
 														{:else if part.type === 'mention'}
-															<span style="color: #3b82f6; cursor: pointer;">
+															<span
+																style="color: #3b82f6; cursor: pointer;"
+																on:click={() => {
+																	const user = usersList.find((u) => u.name === part.text);
+																	if (user) {
+																		openUserProfileModal(user.value);
+																	} else if (part.text === userProfile.username) {
+																		goto('/profile');
+																	}
+																}}
+															>
 																@{part.text}
 															</span>
 														{:else}
@@ -1256,7 +1384,6 @@
 														{/if}
 													{/each}
 												</p>
-
 											</div>
 										</div>
 									{/each}
@@ -1277,6 +1404,137 @@
 			on:click={closeImageModal}
 		>
 			<img src={selectedImage} alt="Enlarged Image" class="max-w-full max-h-full rounded-md" />
+		</div>
+	{/if}
+
+	{#if showUserProfileModal}
+		<div
+			style="background-color: rgba(0, 0, 0, 0.8);"
+			class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-100"
+			on:click={handleModalClickOutside}
+		>
+			<div
+				id="user-profile-modal-content"
+				class="bg-secondary rounded-3xl p-13 max-w-lg min-w-[40%] w-full max-h-[90vh] overflow-y-auto"
+				on:click|stopPropagation
+			>
+				<!-- Close button -->
+				<button
+					class="absolute top-4 right-4 text-primary hover:text-base-100"
+					on:click={closeUserProfileModal}
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-6 w-6"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+
+				{#if modalLoading}
+					<div class="flex justify-center items-center h-64">
+						<span class="loading loading-spinner loading-lg text-primary"></span>
+					</div>
+				{:else if modalError}
+					<div class="text-center p-8">
+						<p class="text-red-500">Failed to load user profile.</p>
+					</div>
+				{:else if modalUserProfile}
+					<div class="flex flex-col items-center">
+						<!-- Center the profile picture -->
+						<div class="w-50 h-50 mb-6">
+							{#if modalUserProfile.profile_picture}
+								<img
+									src={`data:image/jpeg;base64,${modalUserProfile.profile_picture}`}
+									alt="Profile Picture"
+									class="h-full w-full object-cover rounded-full"
+								/>
+							{:else}
+								<ProfilePictureIcon size={200} class="h-full w-full object-cover rounded-full" />
+							{/if}
+						</div>
+					</div>
+
+					<div class="flex items-center gap-2">
+						<span class="text-3xl font-bold">
+							{modalUserProfile.first_name || ''}
+							{modalUserProfile.last_name || ''}
+						</span>
+
+						<span class="text-2xl font-normal text-gray-400">
+							@{modalUserProfile.username}
+						</span>
+					</div>
+
+					<!-- User Information -->
+					<div class="space-y-6">
+						{#if modalUserProfile.uni_year || modalUserProfile.program}
+							<div class="flex items-center gap-2">
+								<p>
+									{modalUserProfile.program || 'Not specified'}
+									{#if modalUserProfile.uni_year}
+										- Year {modalUserProfile.uni_year}
+									{/if}
+								</p>
+							</div>
+						{:else}
+							<!-- This empty div maintains spacing even when there's no education info -->
+							<div class="h-4"></div>
+						{/if}
+
+						{#if modalUserProfile.about}
+							<div>
+								<h3 class="text-xl font-semibold text-primary mb-2">About</h3>
+								<p class="text-lg">{modalUserProfile.about}</p>
+							</div>
+						{/if}
+
+						{#if modalUserProfile.social_links && modalUserProfile.social_links.length > 0}
+							<div>
+								<h3 class="text-xl font-semibold text-primary mb-2">Social Media</h3>
+								<div class="flex flex-wrap gap-2">
+									<!-- Loop through social media accounts -->
+									{#each modalUserProfile.social_links as link}
+										{#each socialMedias as social (social.name)}
+											{#if social.name === link.social_type}
+												<div class="badge-outline badge p-3 flex items-center gap-2">
+													<div class="w-5 h-5 flex items-center justify-center">
+														{@html social.svg}
+													</div>
+													<p class="text-lg">{link.social_username}</p>
+												</div>
+											{/if}
+										{/each}
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						{#if modalUserProfile.interests && modalUserProfile.interests.length > 0}
+							<div>
+								<h3 class="text-xl font-semibold text-primary mb-2">Interests</h3>
+								<div class="flex flex-wrap gap-2">
+									{#each modalUserProfile.interests as interest}
+										<span class="badge badge-outline text-lg">{interest}</span>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					</div>
+				{:else}
+					<div class="text-center p-8">
+						<p>No profile data available</p>
+					</div>
+				{/if}
+			</div>
 		</div>
 	{/if}
 

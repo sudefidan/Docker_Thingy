@@ -1481,6 +1481,10 @@ class GetUserProfile(APIView):
                     {"social_type": link['social_type__social_type'], "social_username": link['social_username']}
                     for link in social_links
                 ],
+                "interests": [interest.interest for interest in UserInterest.objects.filter(user=user)],
+                "address": user.address,
+                "program": user.program,
+                "uni_year": user.uni_year,
             }
 
             # Return profile data
