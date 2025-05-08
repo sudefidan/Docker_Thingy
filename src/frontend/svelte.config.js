@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-static'
+import adapter from '@sveltejs/adapter-node'
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -12,12 +12,12 @@ const config = {
 		// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
 		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 		adapter: adapter(),
-		prerender: { entries: [] }
+		csrf: { checkOrigin: false },
+	}, 
+	// Used for final build to stop warnings from being shown in the console
+	onwarn: (warning, handler) => {
+		return;
 	}
 };
 
-export default {
-	kit: {
-	  adapter: adapter(),
-	}
-  };
+export default config;
