@@ -925,50 +925,6 @@ class update_user_about(APIView):
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# handles user's interests/hobbies updates
-# allows users to add, remove, or modify their interests
-# requires user to be authenticated
-class update_user_interests(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @transaction.atomic
-    def put(self, request):
-        try:
-            user = request.user
-            interests_list = request.data.get('interests', [])
-
-            if not isinstance(interests_list, list):
-                return Response({
-                    "error": "Interests must be a list of strings"
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            if not all(isinstance(item, str) for item in interests_list):
-                 return Response({
-                    "error": "Each interest must be a string"
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            UserInterest.objects.filter(user=user).delete()
-
-            new_interests = []
-            for interest_text in interests_list:
-                if interest_text: # Avoid saving empty strings if necessary
-                    interest_obj = UserInterest.objects.create(user=user, interest=interest_text)
-                    new_interests.append(interest_obj.interest) # Store the saved interest text
-
-            return Response({
-                "message": "Interests updated successfully",
-                # Return the list of interests that were actually saved
-                "interests": new_interests
-            }, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the exception for debugging
-            print(f"Error updating interests for user {user.id}: {e}")
-            return Response({
-                "error": "Failed to update interests",
-                "details": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
 def update_community_name(request):
@@ -1399,76 +1355,6 @@ def cancel_event(request, event_id):
     event.delete()
 
     return Response({"message": f"Event '{event.title}' has been cancelled."})
-
-# @api_view(['GET', 'POST'])
-# @permission_classes([IsAuthenticated])
-# def event_handler(request):
-#     # Handle POST method (Create Event)
-#     if request.method == 'POST':
-#         # Extract data from the request body
-#         data = request.data
-#         user = request.user
-
-#         print(" Incoming Event Data:", data)
-
-#         # Extract fields
-#         title = data.get('title')
-#         description = data.get('description', '')
-#         date = data.get('date')
-#         virtual_link = data.get('virtual_link')
-#         location = data.get('location')
-#         event_type_name = data.get('event_type')
-#         community_id = data.get('community_id')
-
-#         # Validate community and permissions
-#         community = get_object_or_404(Community, pk=community_id)
-
-#         try:
-#             event_type = EventType.objects.get(name=event_type_name)
-#         except EventType.DoesNotExist:
-#             return Response({"error": f"EventType '{event_type_name}' not found."}, status=400)
-
-#         # Check if the user is an owner or a leader of the community
-#         is_owner = community.owner == user
-#         is_leader = CommunityLeader.objects.filter(community=community, user=user).exists()
-
-#         if not (is_owner or is_leader):
-#             return Response({"error": "Permission denied."}, status=403)
-
-#         # Create event
-#         event = Event.objects.create(
-#             title=title,
-#             description=description,
-#             date=date,
-#             virtual_link=virtual_link,
-#             location=location,
-#             event_type=event_type,
-#             community=community
-#         )
-
-#         return Response({"message": "Event created!", "event_id": event.event_id}, status=201)
-
-#     # Handle GET method (List Events)
-#     elif request.method == 'GET':
-#         # Retrieve all events for the authenticated user
-#         events = Event.objects.all()
-
-#         # Prepare the event data for response
-#         event_list = [
-#             {
-#                 'event_id': event.event_id,
-#                 'title': event.title,
-#                 'description': event.description,
-#                 'date': event.date,
-#                 'virtual_link': event.virtual_link,
-#                 'location': event.location,
-#                 'event_type': event.event_type.name if event.event_type else None,
-#                 'community': event.community.name if event.community else None
-#             }
-#             for event in events
-#         ]
-
-#         return Response(event_list, status=200)
 
 # get user profile for any user, allows for users to see other users profile.
 class GetUserProfile(APIView):
@@ -2173,3 +2059,49 @@ def get_following(request):
         })
 
     return JsonResponse({'following': following})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_user_interest(request):
+    """Add an interest to the user's profile"""
+    user = request.user
+    interest = request.data.get('interest')
+
+    if not interest:
+        return Response({"error": "Interest is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if the interest already exists for this user
+    if UserInterest.objects.filter(user=user, interest=interest).exists():
+        return Response({"error": "Interest already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Create the interest
+    UserInterest.objects.create(user=user, interest=interest)
+
+    interests = UserInterest.objects.filter(user=user).values_list('interest', flat=True)
+    return Response({
+        "message": "Interest added successfully.",
+        "interests": list(interests)
+    }, status=status.HTTP_201_CREATED)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def remove_user_interest(request):
+    """Remove an interest from the user's profile"""
+    user = request.user
+    interest = request.data.get('interest')
+
+    if not interest:
+        return Response({"error": "Interest is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user_interest = UserInterest.objects.get(user=user, interest=interest)
+        user_interest.delete()
+
+        interests = UserInterest.objects.filter(user=user).values_list('interest', flat=True)
+        return Response({
+            "message": "Interest removed successfully.",
+            "interests": list(interests)
+        }, status=status.HTTP_200_OK)
+    except UserInterest.DoesNotExist:
+        return Response({"error": "Interest not found."}, status=status.HTTP_404_NOT_FOUND)

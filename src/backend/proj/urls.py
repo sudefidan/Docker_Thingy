@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, re_path, include
 from app import views
-from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, update_user_interests, GetUserProfile, DeletePostView
+from app.views import login_user, logout_user, user_profile_view, upload_profile_picture, GetProfilePicture, change_password, update_user_profile, update_social_media, update_user_about, add_user_interest, remove_user_interest, GetUserProfile, DeletePostView
 from rest_framework import routers, serializers, viewsets
 from app.views import get_users, join_community, fetch_communities, leave_community, update_community_name, update_community_description, update_community_category, delete_community, get_notifications, delete_notification, get_community_leaders, delete_community_leader, add_community_leader, create_event, list_events, join_event, leave_event, cancel_event, get_user_managed_events, update_event_field, verify_email, verify_email_change, comment_list_create
 from rest_framework_simplejwt.views import (
@@ -43,9 +43,8 @@ urlpatterns = [
     path('api/user-profile/<int:user_id>/', GetUserProfile.as_view(), name='get_user_profile'),
     path('api/update-social-media/', update_social_media.as_view(), name='update_social_media'),
     path('api/update-about/', update_user_about.as_view(), name='update_about'),
-    path('api/update-interests/', update_user_interests.as_view(), name='update_interests'),
-
-    # users endpoint
+    path('api/user-interests/add/', views.add_user_interest, name='add_user_interest'),
+    path('api/user-interests/remove/', views.remove_user_interest, name='remove_user_interest'),
     path('api/users/', get_users, name='get_users'),
 
     # posts endpoint

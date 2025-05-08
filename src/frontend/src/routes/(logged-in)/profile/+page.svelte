@@ -16,7 +16,8 @@
 		removeSocialMedia,
 		socialMedias,
 		updateAbout,
-		updateInterests
+		addInterest,
+		removeInterest
 	} from '$lib/api/profile';
 	import { changePassword } from '$lib/api/password';
 	import RemoveIcon from '../../../assets/RemoveIcon.svelte';
@@ -99,6 +100,42 @@
 	let following = []; // Initialise following list
 	let loadingFollowers = false; // Initialise loading state for followers
 	let loadingFollowing = false; // Initialise loading state for following
+
+	// Function to handle adding an interest
+    async function handleAddInterest(event) {
+        event.preventDefault();
+
+        if (!newInterest) {
+            return;
+        }
+
+        try {
+            isUpdatingInterests = true;
+            userProfile = await addInterest(newInterest);
+            newInterest = '';
+            isEditingInterests = false;
+        } catch (error) {
+            console.error('Failed to add interest:', error);
+            let errorMessage = error instanceof Error ? error.message : 'Failed to add interest';
+            alert(errorMessage + '. Please try again!');
+        } finally {
+            isUpdatingInterests = false;
+        }
+    }
+
+	// Function to handle removing an interest
+    async function handleRemoveInterest(interest) {
+        try {
+            isUpdatingInterests = true;
+            userProfile = await removeInterest(interest);
+        } catch (error) {
+            console.error('Failed to remove interest:', error);
+            let errorMessage = error instanceof Error ? error.message : 'Failed to remove interest';
+            alert(errorMessage + '. Please try again!');
+        } finally {
+            isUpdatingInterests = false;
+        }
+    }
 
 	// Function to show followers modal
 	async function showFollowersModal() {
@@ -460,64 +497,6 @@
 	function cancelEditingInterests() {
 		isEditingInterests = false;
 		newInterest = '';
-	}
-
-	// Function to handle adding a new interest
-	async function addInterest(event: Event) {
-		event.preventDefault();
-
-		if (!newInterest) {
-			alert('Please select an interest!');
-			return;
-		}
-
-		try {
-			isUpdatingInterests = true;
-
-			// TODO: John -> this should be adding the interest to the backend
-
-			// Add the new interest to the list
-			editedInterests = [...editedInterests, newInterest]; // TODO: John -> this won't be necessary, for the dropdown under interests section, user shouldn't see the the interest that they already have which comes from the database
-
-			//TODO: John -> Think as the same way as the social media section, we are not creating a new list in the page as socialMedias we are handling on the backend
-
-			// Update the backend
-			const result = await updateInterests(editedInterests);
-
-			// Update the user profile
-			userProfile = { ...userProfile, interests: result.interests };
-
-			// Reset the form
-			newInterest = '';
-			isEditingInterests = false;
-		} catch (error) {
-			console.error('Failed to add interest:', error);
-			let errorMessage = error instanceof Error ? error.message : 'Failed to update interests';
-			alert(errorMessage + '. Please try again!');
-		} finally {
-			isUpdatingInterests = false;
-		}
-	}
-
-	// Function to handle removing an interest
-	async function removeInterest(index: number) {
-		try {
-			isUpdatingInterests = true;
-			// Create a new array without the removed interest
-			const updatedInterests = userProfile.interests.filter((_, i) => i !== index);
-
-			// Call the backend API to update interests
-			const result = await updateInterests(updatedInterests);
-
-			// Update the local state with the new interests list
-			userProfile = { ...userProfile, interests: result.interests };
-		} catch (error) {
-			console.error('Failed to remove interest:', error);
-			let errorMessage = error instanceof Error ? error.message : 'Failed to remove interest';
-			alert(errorMessage + '. Please try again!');
-		} finally {
-			isUpdatingInterests = false;
-		}
 	}
 
 	onMount(async () => {
@@ -1256,7 +1235,7 @@
 
 					{#if isEditingInterests}
 						<!-- Form to Add Interests -->
-						<form class="form-control flex flex-col gap-3" on:submit={addInterest}>
+						<form class="form-control flex flex-col gap-3" on:submit={handleAddInterest}>
 							<div class="w-full">
 								<label class="label">
 									<span class="label-text">Select an interest</span>
@@ -1307,12 +1286,12 @@
 					{:else}
 						<!-- Display Interests -->
 						<div class="flex flex-wrap justify-center space-y-2">
-							{#each userProfile.interests as interest, index}
+							{#each userProfile.interests as interest}
 								<div class="border-base-100 m-1 flex space-x-2 rounded-lg border-2 p-2">
 									<p class="text-user-details pr-2">{interest}</p>
 									<button
 										class="hover:text-primary"
-										on:click={() => removeInterest(index)}
+										on:click={() => handleRemoveInterest(interest)}
 										disabled={isUpdatingInterests}
 									>
 										<RemoveIcon />

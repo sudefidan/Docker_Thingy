@@ -279,10 +279,11 @@ def populate_data(apps, schema_editor):
         users_data.append(user)
         username_to_user[username] = user
 
-        # Add interests for each user (only from valid categories)
-        for interest in interests:
-            if interest in CATEGORIES:
-                UserInterest.objects.get_or_create(user=user, interest=interest)
+        # Add interests for each user (only from valid categories) and only if they don't exist
+        if not UserInterest.objects.filter(user=user).exists():
+            for interest in interests:
+                if interest in CATEGORIES:
+                    UserInterest.objects.get_or_create(user=user, interest=interest)
 
         # Add social media accounts for each user
         for platform, username in social_accounts.items():

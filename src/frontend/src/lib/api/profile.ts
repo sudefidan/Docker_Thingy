@@ -253,28 +253,54 @@ export async function updateAbout(about: string): Promise<{ message: string; abo
     }
 }
 
-// handles interests updates
-// sends the new interests array to the backend
-// returns the updated interests data
-export async function updateInterests(interests: string[]): Promise<{ message: string; interests: string[] }> {
-    try {
-        const response = await fetch('http://localhost:8000/api/update-interests/', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${getToken()}`
-            },
-            body: JSON.stringify({ interests })
-        });
+// Adds a new interest to the user's profile
+export async function addInterest(interest: string): Promise<UserProfile> {
+  try {
+    const response = await fetch('http://localhost:8000/api/user-interests/add/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ interest })
+    });
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to update interests');
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Error updating interests:', error);
-        throw error;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to add interest');
     }
+
+    // Return updated profile data
+    return await fetchUserProfile();
+  } catch (error) {
+    console.error('Error adding interest:', error);
+    throw error;
+  }
 }
+
+
+// Removes an interest from the user's profile
+export async function removeInterest(interest: string): Promise<UserProfile> {
+  try {
+    const response = await fetch('http://localhost:8000/api/user-interests/remove/', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ interest })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to remove interest');
+    }
+
+    // Return updated profile data
+    return await fetchUserProfile();
+  } catch (error) {
+    console.error('Error removing interest:', error);
+    throw error;
+  }
+}
+
