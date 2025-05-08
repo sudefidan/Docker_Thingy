@@ -1433,7 +1433,7 @@
 
 								<!-- Follow/Unfollow Button -->
 								<button
-									class="btn btn-sm {follower.is_following
+									class="btn btn-sm min-w-[90px] {follower.is_following
 										? 'btn-outline'
 										: 'btn-primary text-secondary'}"
 									on:click={() => toggleFollow(follower.id, follower.is_following)}
