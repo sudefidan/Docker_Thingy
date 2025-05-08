@@ -625,7 +625,7 @@ def populate_data(apps, schema_editor):
         },
         {
             'title': '3D Modeling Workshop Interest',
-            'content': 'Thinking of organizing a weekend workshop on 3D modeling basics. Tag @benjamin_ahmed if you\'d be interested! #Art #Gaming',
+            'content': 'Thinking of organising a weekend workshop on 3D modeling basics. Tag @benjamin_ahmed if you\'d be interested! #Art #Gaming',
             'user': user9  # Chloe
         },
         {
