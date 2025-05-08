@@ -39,6 +39,7 @@
 	let modalError = false; // Flag to indicate if there was an error loading the user profile
 	let modalUserProfile = null; // Hold user profile data for the modal
 	let isFollowingModalUser = false; // Flag to indicate if the logged-in user is following the modal user
+	let objectUrlsToRevoke = []; // To keep track of blob URLs for cleanup
 
 	// User profile object to hold user details
 	let userProfile = {
@@ -347,6 +348,9 @@
 
 	onDestroy(() => {
 		clearInterval(interval); // Clear the interval when the component is destroyed
+		objectUrlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
+		objectUrlsToRevoke = [];
+		console.log('Revoked image object URLs');
 	});
 
 	// Function to toggle the post creation modal
@@ -423,13 +427,20 @@
 		if (response.ok) {
 			posts = await Promise.all(
 				data
-					.filter((post) => !post.community_id || isUserSubscribedToCommunity(post.community_id)) // Only include posts from subscribed communities
-					.map(async (post) => {
-						const userProfile = await fetchUserProfileForPost(post.user_id);
-						return { ...post, userProfile };
+					.filter(
+						(postData) =>
+							!postData.community_id || isUserSubscribedToCommunity(postData.community_id)
+					) // Only include posts from subscribed communities
+					.map(async (postData) => {
+						const userProfile = await fetchUserProfileForPost(postData.user_id);
+						let imageUrl = null;
+						// Assuming postData.id exists and is valid for posts that might have an image
+						if (postData.id) {
+							imageUrl = await fetchAuthenticatedImage(postData.id);
+						}
+						return { ...postData, userProfile, imageUrl };
 					})
 			);
-			console.log('Posts:', posts);
 		} else {
 			console.error('Failed to fetch posts:', data);
 		}
@@ -458,6 +469,73 @@
 			console.error('Network error:', error.message);
 		}
 	};
+
+	async function fetchAuthenticatedImage(postId) {
+		let token = localStorage.getItem('access_token');
+		let refreshToken = localStorage.getItem('refresh_token');
+
+		if (!token) {
+			console.error('No access token found for fetching image');
+			return null;
+		}
+
+		const imageUrlPath = `http://127.0.0.1:8000/post_image/${postId}/`;
+
+		try {
+			let response = await fetch(imageUrlPath, {
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+
+			if (response.status === 401 && refreshToken) {
+				console.log('Access token expired, attempting to refresh for image...');
+				const refreshRes = await fetch('http://127.0.0.1:8000/api/token/refresh/', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						refresh: refreshToken
+					})
+				});
+
+				if (refreshRes.ok) {
+					const data = await refreshRes.json();
+					token = data.access;
+					localStorage.setItem('access_token', token); // Update the stored token
+					console.log('Token refreshed, retrying image fetch...');
+					response = await fetch(imageUrlPath, {
+						// Retry fetching image
+						headers: { Authorization: `Bearer ${token}` }
+					});
+				} else {
+					console.error('Failed to refresh token for image, logging out.');
+					goto('http://localhost:5173/'); // Or handle logout
+					return null;
+				}
+			}
+
+			if (response.ok) {
+				const imageBlob = await response.blob();
+				if (imageBlob.size === 0) return null; // No image content
+				const objectUrl = URL.createObjectURL(imageBlob);
+				objectUrlsToRevoke.push(objectUrl); // Track for cleanup
+				return objectUrl;
+			} else if (response.status !== 404) {
+				// Don't log error for 404s (no image for post)
+				console.error(
+					`Failed to fetch image for post ${postId}:`,
+					response.status,
+					await response.text()
+				);
+			}
+			return null;
+		} catch (error) {
+			console.error(`Error fetching image for post ${postId}:`, error);
+			return null;
+		}
+	}
 
 	// Fetch the user's profile for a given post
 	const fetchUserProfileForPost = async (userId) => {
@@ -1302,14 +1380,17 @@
 								{/if}
 							{/each}
 						</p>
-						{#if p.id}
+						{#if p.imageUrl}
 							<img
-								src={`http://127.0.0.1:8000/post_image/${p.id}/`}
+								src={p.imageUrl}
 								alt="Post Image"
 								class="mt-4 rounded-md"
 								style="max-width: 30%; height: auto;"
-								on:error={(event) => (event.target.style.display = 'none')}
-								on:click={() => openImageModal(`http://127.0.0.1:8000/post_image/${p.id}/`)}
+								on:error={(event) => {
+									event.target.style.display = 'none';
+									console.warn(`Failed to load image from object URL for post ${p.id}`);
+								}}
+								on:click={() => openImageModal(p.imageUrl)}
 							/>
 						{/if}
 					</div>
