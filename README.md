@@ -4,10 +4,10 @@ UniHub is a university community platform designed to connect students, facilita
 
 ## Getting Started
 
-### Access URLs
+### GitHub Repo URL: [https://github.com/sudefidan/Docker_Thingy.git](https://github.com/sudefidan/Docker_Thingy.git)
 
+### Access URLs
 - **Frontend Application**: [http://localhost:5173/](http://localhost:5173/)
-  - Network URL: [http://172.18.0.4:5173/](http://172.18.0.4:5173/)
 - **Admin Dashboard**: [http://localhost:8000/admin](http://localhost:8000/admin)
 
 ### User Accounts
@@ -60,10 +60,10 @@ All images used in this application are royalty-free stock photos sourced from [
 
 ## Maintainers
 
-- Sude Fidan (@sudefidan)
-- James Lymbery (@nerhZ)
-- James Smith (@jsmith3979)
-- John Higgins (@depxas)
-- Toby Meredith (@Toby02)
+- Sude Fidan ([@sudefidan](https://github.com/sudefidan))
+- James Lymbery ([@nerhZ](https://github.com/nerhZ))
+- James Smith ([@jsmith3979](https://github.com/jsmith3979))
+- John Higgins ([@depxas](https://github.com/depxas))
+- Toby Meredith ([@Toby02](https://github.com/Toby02))
 
 © 2025 UniHub
