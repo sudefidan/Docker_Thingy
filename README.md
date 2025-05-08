@@ -4,6 +4,8 @@ UniHub is a university community platform designed to connect students, facilita
 
 ## Getting Started
 
+**IMPORTANT**: In order to run, please open the root folder with a command line tool and with Docker running, run the command "Docker Compose Up --Build" and it should build and run the project - with the front-end accessible at http://localhost:5173/. The admin panel can be accessed at http://localhost:8000/admin. Further instructions below.
+
 ### Access URLs
 
 - **GitHub Repo**: [https://github.com/sudefidan/Docker_Thingy.git](https://github.com/sudefidan/Docker_Thingy.git)
@@ -67,11 +69,13 @@ UniHub implements a comprehensive security architecture with multiple protection
 ### Access Control System
 
 1. **User Access Tiers**
+
    - Regular users: Can create content, join communities, and participate in events
    - Staff users: Can moderate content and access additional features
    - Admin users: Full system access including approving communities and managing all content
 
 2. **Role-Based Permissions**
+
    - Only community owners can manage community leaders and community settings
    - Community owners and leaders can create events for the community, and manage them
    - Community membership controls access to community-specific features
@@ -79,6 +83,7 @@ UniHub implements a comprehensive security architecture with multiple protection
    - Users can only delete their own posts or comments
 
 3. **Safety Features**
+
    - Email verification for registration and address changes
    - User data protection with granular edit permissions
    - JWT authentication with secure token management
