@@ -6,12 +6,15 @@
 
 	async function logout() {
 		const refreshToken = localStorage.getItem('refresh_token');
+		const accessToken = localStorage.getItem('access_token');
 
 		if (refreshToken) {
 			try {
-				const response = await fetch('/api/logout/', {
+				const response = await fetch('http://localhost:8000/api/logout/', {
 					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json',
+						Authorization: `Bearer ${localStorage.getItem('access_token')}`
+					 },
 					body: JSON.stringify({ refresh: refreshToken })
 				});
 

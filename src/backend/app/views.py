@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from app.models import User, UserSocial, Event
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import transaction
@@ -164,12 +164,14 @@ class logout_user(APIView):
             if not refresh:
                 return Response({'error': 'Refresh token is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Ensure refresh token is blacklisted
             token = RefreshToken(refresh)
             token.blacklist()
 
             return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({'error': 'Invalid Token'}, status=status.HTTP_400_BAD_REQUEST)
+            print(e)
+            return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # handles user profile data retrieval
