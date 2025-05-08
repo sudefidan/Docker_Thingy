@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import { CATEGORIES } from '../../../assets/categories.json';
 	import AddIcon from '../../../assets/AddIcon.svelte';
 	import EditIcon from '../../../assets/EditIcon.svelte';
 	import ShowPasswordIcon from '../../../assets/ShowPasswordIcon.svelte';
 	import SettingsIcon from '../../../assets/SettingsIcon.svelte';
-	import { page } from '$app/stores';
+
 	import {
 		fetchUserProfile,
 		type UserProfile,
@@ -341,7 +342,6 @@
 			userProfile.username = editedProfile.username;
 			userProfile.first_name = editedProfile.first_name;
 			userProfile.last_name = editedProfile.last_name;
-			userProfile.email = editedProfile.email;
 			userProfile.address = editedProfile.address;
 			userProfile.program = editedProfile.program;
 			userProfile.uni_year = editedProfile.uni_year;
@@ -522,22 +522,33 @@
 
 	onMount(async () => {
 		try {
+			// Fetch initial data on the client-side
 			userProfile = await fetchUserProfile();
 			await fetchConnectionCounts();
 		} catch (error) {
-			console.error('Failed to fetch user profile:', error);
+			console.error('Failed to fetch user profile or connection counts:', error);
+		}
+
+		// Add event listener for click outside the settings menu, only in browser
+		if (browser) {
+			clickOutsideHandler = (event: MouseEvent) => handleClickOutside(event);
+			document.addEventListener('click', clickOutsideHandler);
 		}
 	});
 
 	// Add event listener for click outside the settings menu
 	onMount(() => {
 		clickOutsideHandler = (event: MouseEvent) => handleClickOutside(event);
-		document.addEventListener('click', clickOutsideHandler);
+		if (browser) {
+			document.addEventListener('click', clickOutsideHandler);
+		}
 	});
 
 	// Cleanup event listener on component destroy
 	onDestroy(() => {
-		document.removeEventListener('click', clickOutsideHandler);
+		if (browser) {
+			document.removeEventListener('click', clickOutsideHandler);
+		}
 	});
 
 	// Function to handle delete account action
