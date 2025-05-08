@@ -4,9 +4,12 @@ UniHub is a university community platform designed to connect students, facilita
 
 ## Getting Started
 
-### GitHub Repo URL: [https://github.com/sudefidan/Docker_Thingy.git](https://github.com/sudefidan/Docker_Thingy.git)
+### GitHub Repo URL
+
+[https://github.com/sudefidan/Docker_Thingy.git](https://github.com/sudefidan/Docker_Thingy.git)
 
 ### Access URLs
+
 - **Frontend Application**: [http://localhost:5173/](http://localhost:5173/)
 - **Admin Dashboard**: [http://localhost:8000/admin](http://localhost:8000/admin)
 
@@ -40,6 +43,35 @@ The platform includes three pre-configured communities:
 ## External Services
 
 Third-party email services are utilised in order to perform email verification for changing an email address and registering an account. To test this feature, please make a new user or change an existing user's email address to test this feature.
+
+## Authorisation System
+
+UniHub implements a robust authorisation system to ensure platform security and content moderation:
+
+1. **Community Approval Process**
+   - All new communities require admin approval before becoming active
+   - Admins review community details via the admin panel at [http://localhost:8000/admin](http://localhost:8000/admin)
+   - Communities remain in "inactive" state until explicitly approved
+
+2. **User Access Levels**
+   - Regular users: Can create content, join communities, and participate in events
+   - Staff users: Can moderate content and access additional features
+   - Admin users: Full system access including approving communities and managing all content
+
+3. **Role-Based Permissions**
+   - Only community owners can manage community leaders and community settings
+   - Community owners and leaders can create events for the community, and manage them
+   - Community membership controls access to community-specific features
+   - Event participation is controlled with capacity limits and join/leave permissions
+   - Users can only delete their own posts or comments
+
+4. **Safety Features**
+   - Email verification required for account registration and email changes
+   - User profile data is protected with user-specific edit permissions
+   - JWT authentication with secure token management
+   - CSRF protection with trusted origins configuration
+   - Secure password management requiring verification for changes
+   - Comprehensive data cleanup when users delete their accounts
 
 ## Development Information
 
